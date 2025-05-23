@@ -19,7 +19,6 @@ app.use((req, res, next) => {
 const SPREADSHEET_ID = '1I6pVLSBav-U7c86FLavh0tikPghLDVrWCFuru-qwQ4Y';
 
 const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-
 const auth = new google.auth.GoogleAuth({
   credentials: serviceAccount,
   scopes: ['https://www.googleapis.com/auth/spreadsheets']
@@ -37,8 +36,8 @@ async function initializeGoogleSheetsClient() {
   }
 }
 initializeGoogleSheetsClient();
-const resetCodes = {}; // Almacena los códigos de verificación por ID
 
+const resetCodes = {};
 
 function calculateLevel(points) {
   if (points >= 100) return 5;
@@ -51,6 +50,7 @@ function calculateLevel(points) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ----------------- LOGIN -----------------
 app.post('/api/login', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
   const { studentId, password } = req.body;
@@ -119,6 +119,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// ----------------- BADGES -----------------
 app.get('/api/badges', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
   try {
@@ -143,6 +144,7 @@ app.get('/api/badges', async (req, res) => {
   }
 });
 
+// ----------------- COMPRAR BADGES -----------------
 app.post('/api/purchase', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
 
@@ -244,8 +246,42 @@ Gracias.`
   }
 });
 
+// ----------------- REGISTRO DE USUARIOS -----------------
+app.post('/api/register', async (req, res) => {
+  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
 
+  const { id, name, sexo, password } = req.body;
+  if (!id || !name || !sexo || !password || !/^[A-Z0-9]{4}$/.test(password)) {
+    return res.status(400).json({ error: 'Datos inválidos o incompletos.' });
+  }
 
+  try {
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1!A:A'
+    });
+    const ids = existing.data.values?.flat() || [];
+    if (ids.includes(id)) {
+      return res.status(400).json({ error: 'ID ya registrado.' });
+    }
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1!A:E',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[id, name, sexo, new Date().toLocaleString(), password]]
+      }
+    });
+
+    res.json({ message: 'Registro exitoso.' });
+  } catch (error) {
+    console.error('Error al registrar usuario:', error);
+    res.status(500).json({ error: 'Error al registrar usuario', details: error.message });
+  }
+});
+
+// ----------------- RECUPERACIÓN DE CONTRASEÑA -----------------
 app.post('/api/send-reset-code', async (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: 'ID requerido' });
@@ -307,8 +343,7 @@ app.post('/api/reset-password-with-code', async (req, res) => {
       requestBody: { values: [[password]] }
     });
 
-    delete resetCodes[id]; // invalidar el código usado
-
+    delete resetCodes[id];
     res.json({ message: 'Contraseña actualizada correctamente.' });
   } catch (error) {
     console.error('Error al actualizar contraseña con código:', error);
@@ -316,7 +351,7 @@ app.post('/api/reset-password-with-code', async (req, res) => {
   }
 });
 
-
+// ----------------- INICIAR SERVIDOR -----------------
 app.listen(PORT, () => {
   console.log(`Servidor backend escuchando en http://localhost:${PORT}`);
 });
