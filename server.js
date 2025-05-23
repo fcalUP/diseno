@@ -18,7 +18,10 @@ app.use((req, res, next) => {
 
 const SPREADSHEET_ID = '1I6pVLSBav-U7c86FLavh0tikPghLDVrWCFuru-qwQ4Y';
 
+const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+
 const auth = new google.auth.GoogleAuth({
+  credentials: serviceAccount,
   scopes: ['https://www.googleapis.com/auth/spreadsheets']
 });
 
