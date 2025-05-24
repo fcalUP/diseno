@@ -14,7 +14,7 @@
 
   <script type="text/babel">
     const BACKEND_BASE_URL = window.location.origin;
-    // const BACKEND_BASE_URL = 'http://localhost:3000'; // Descomentar para pruebas locale
+    // const BACKEND_BASE_URL = 'http://localhost:3000'; // Descomentar para pruebas locales
 
     const LoginScreen = ({
       studentId, setStudentId,
@@ -22,17 +22,17 @@
       handleLogin,
       showRegister, setShowRegister,
       showReset, setShowReset,
-      showCodeField, setShowCodeField, // Asegurarse de pasar estas props
+      showCodeField, setShowCodeField,
       resetId, setResetId,
       resetCode, setResetCode,
       resetPass, setResetPass,
-      handleSendResetCode, // Función para enviar código de reseteo
-      handleUpdatePassword // Función para actualizar contraseña
+      handleSendResetCode,
+      handleUpdatePassword
     }) => (
       <>
-        <div className="flex w-screen h-screen">
-          <div className="w-1/2 bg-cover bg-center" style={{ backgroundImage: "url('/img/side-image.jpg')" }}></div>
-          <div className="w-1/2 flex items-center justify-center bg-white">
+        <div className="flex flex-col md:flex-row w-screen h-screen"> {/* AQUI: flex-col en móvil, md:flex-row en desktop */}
+          <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: "url('/img/side-image.jpg')" }}></div> {/* AQUI: Oculto en móvil, visible en md y ocupa 1/2 */}
+          <div className="w-full md:w-1/2 flex items-center justify-center bg-white"> {/* AQUI: w-full en móvil, 1/2 en md */}
             <div className="w-full max-w-md px-6 py-8 text-center">
               <img src="/logo.png" alt="Logo" className="mx-auto w-32 h-32 mb-4" />
               <h2 className="text-2xl font-bold mb-4 text-center">Iniciar sesión</h2>
@@ -52,12 +52,12 @@
         </div>
 
         {showRegister && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded shadow-xl w-96 space-y-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4"> {/* Añadido p-4 para padding en móvil */}
+            <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4"> {/* Ajustado ancho max-w */}
               <h2 className="text-lg font-bold">Registrar nuevo usuario</h2>
               <input className="w-full border p-2 rounded" placeholder="ID de alumno" id="reg-id" />
               <input className="w-full border p-2 rounded" placeholder="Nombre completo" id="reg-name" />
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-center justify-between"> {/* Flex-col en móvil para radios */}
                 <label><input type="radio" name="sexo" value="Hombre" defaultChecked /> Hombre</label>
                 <label><input type="radio" name="sexo" value="Mujer" /> Mujer</label>
               </div>
@@ -83,10 +83,9 @@
           </div>
         )}
 
-        {/* Bloque del modal de recuperación de contraseña (AHORA DENTRO DE LoginScreen) */}
         {showReset && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded shadow-xl w-96 space-y-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4"> {/* Añadido p-4 para padding en móvil */}
+            <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4"> {/* Ajustado ancho max-w */}
               <h2 className="text-lg font-bold text-center">Recuperar contraseña</h2>
               <input className="w-full border p-2 rounded" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
               <button className="bg-blue-600 text-white px-4 py-2 rounded w-full" onClick={handleSendResetCode}>Enviar código</button>
@@ -161,7 +160,7 @@
         setCart({});
         setShowCartModal(false);
         setShowRegister(false);
-        setShowReset(false); // Reinicia también este estado al cerrar sesión
+        setShowReset(false);
         setShowCodeField(false);
         setResetId('');
         setResetCode('');
@@ -238,7 +237,6 @@
         setShowCartModal(false);
       };
 
-      // --- Nuevas funciones para la recuperación de contraseña ---
       const handleSendResetCode = async () => {
         if (!resetId) return alert("Ingresa tu ID.");
         try {
@@ -282,7 +280,6 @@
           alert("Error al actualizar contraseña.");
         }
       };
-      // --- Fin de nuevas funciones ---
 
       return (
         <>
@@ -297,7 +294,6 @@
               setShowRegister={setShowRegister}
               showReset={showReset}
               setShowReset={setShowReset}
-              // Pasando las nuevas props relacionadas con el reseteo de contraseña
               showCodeField={showCodeField}
               setShowCodeField={setShowCodeField}
               resetId={resetId}
@@ -310,35 +306,34 @@
               handleUpdatePassword={handleUpdatePassword}
             />
           ) : (
-            // studentData debe existir para mostrar esta vista
             studentData && (
-              <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4"> {/* AQUI: p-4 en móvil, p-6 en sm, grid-cols-1 en móvil, md:grid-cols-2 en desktop */}
                 <button onClick={handleLogout} className="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-md z-50">X</button>
-                <h2 className="col-span-2 text-3xl font-bold text-center">Hola {studentData.name}</h2>
-                <div className="col-span-1 flex justify-center items-center">
-                  <img src={`/avatars/${studentData.id}.png`} alt="avatar" className="w-[100%] object-contain" />
+                <h2 className="col-span-1 md:col-span-2 text-2xl sm:text-3xl font-bold text-center">Hola {studentData.name}</h2> {/* AQUI: text-2xl en móvil, sm:text-3xl en sm */}
+                <div className="col-span-1 flex justify-center items-start">
+                  <img src={`/avatars/${studentData.id}.png`} alt="avatar" className="w-[80%] sm:w-[100%] object-contain" /> {/* AQUI: Ajuste el ancho de la imagen en móvil */}
                 </div>
                 <div className="col-span-1 flex flex-col justify-center items-center text-center">
-                  <div className="text-lg font-bold space-y-2">
-                    <div className="flex justify-between w-64">
+                  <div className="text-base sm:text-lg font-bold space-y-2 w-full max-w-xs sm:w-64 mx-auto"> {/* AQUI: text-base en móvil, w-full y max-w-xs para centrar y limitar */}
+                    <div className="flex justify-between">
                       <span>Coins</span><span>{studentData.monedas}</span>
                     </div>
-                    <div className="flex justify-between w-64">
+                    <div className="flex justify-between">
                       <span>EXP.</span><span>{studentData.points}/100</span>
                     </div>
-                    <input type="range" readOnly max="100" value={studentData.points % 100} className="w-64 accent-green-600" />
-                    <div className="text-3xl font-extrabold mt-3">Nivel {studentData.level}</div>
-                    <div className="flex justify-between w-64">
+                    <input type="range" readOnly max="100" value={studentData.points % 100} className="w-full accent-green-600" /> {/* AQUI: w-full */}
+                    <div className="text-2xl sm:text-3xl font-extrabold mt-3">Nivel {studentData.level}</div> {/* AQUI: text-2xl en móvil, sm:text-3xl en sm */}
+                    <div className="flex justify-between">
                       <span>Tareas</span><span>{studentData.tareas}</span>
                     </div>
-                    <div className="flex justify-between w-64">
+                    <div className="flex justify-between">
                       <span>Asistencias</span><span>{studentData.asistencias}</span>
                     </div>
-                    <div className="flex justify-between w-64">
+                    <div className="flex justify-between">
                       <span>Badges</span><span>{Object.keys(studentData.purchases || {}).length}</span>
                     </div>
                     {Object.keys(studentData.purchases || {}).length > 0 && (
-                      <div className="mt-4 text-sm w-64">
+                      <div className="mt-4 text-sm w-full"> {/* AQUI: w-full */}
                         <h3 className="font-semibold">Insignias adquiridas:</h3>
                         <ul className="list-disc list-inside">
                           {Object.entries(studentData.purchases).map(([name, qty]) => (
@@ -348,39 +343,39 @@
                       </div>
                     )}
                   </div>
-                  <div className="mt-6 flex justify-start">
-                    <button className="bg-green-600 text-white px-8 py-2 rounded-full shadow-md hover:bg-green-700 transition" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
+                  <div className="mt-6 flex justify-center w-full"> {/* AQUI: justify-center y w-full para centrar botón */}
+                    <button className="bg-green-600 text-white px-6 py-2 rounded-full shadow-md hover:bg-green-700 transition" onClick={() => { fetchBadges(); setShowCartModal(true); }}> {/* AQUI: px-6 para botón más compacto */}
                       Tienda
                     </button>
                   </div>
                 </div>
 
                 {showCartModal && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-xl">
-                      <h3 className="text-xl font-semibold mb-2">Tienda de Insignias</h3>
-                      <p className="mb-2">Monedas disponibles: <strong>{studentData.monedas}</strong></p>
-                      <div className="grid grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4"> {/* AQUI: p-4 para padding en móvil */}
+                    <div className="bg-white p-4 rounded-xl shadow-lg w-11/12 max-w-lg mx-auto sm:p-6 sm:max-w-xl"> {/* AQUI: p-4 en móvil, w-11/12, max-w-lg, mx-auto, sm:p-6, sm:max-w-xl */}
+                      <h3 className="text-lg sm:text-xl font-semibold mb-2">Tienda de Insignias</h3> {/* AQUI: Ajuste de tamaño de texto */}
+                      <p className="mb-2 text-sm sm:text-base">Monedas disponibles: <strong>{studentData.monedas}</strong></p> {/* AQUI: Ajuste de tamaño de texto */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 max-h-96 overflow-y-auto"> {/* AQUI: grid-cols-2 en móvil, sm:grid-cols-3 en sm, gap-3 */}
                         {badges.map((b, i) => (
                           <div key={i} className="border p-2 rounded flex flex-col items-center text-center">
-                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-16 h-16 object-contain mb-2"/>
-                            <strong className="text-sm">{b.name}</strong>
-                            <span className="text-xs">Disponible: {b.quantity}</span>
-                            <span className="text-xs mb-2">Costo: {b.cost} monedas</span>
-                            <div className="flex gap-2 items-center">
-                              <button className="bg-red-300 px-2 rounded" onClick={() => removeFromCart(b.name)}>-</button>
-                              <span>{cart[b.name] || 0}</span>
-                              <button className="bg-green-300 px-2 rounded" onClick={() => addToCart(b.name, b.quantity)}>+</button>
+                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-2"/> {/* AQUI: w-12/h-12 en móvil, sm:w-16/h-16 en sm */}
+                            <strong className="text-xs sm:text-sm">{b.name}</strong> {/* AQUI: text-xs en móvil, sm:text-sm en sm */}
+                            <span className="text-xs">Disp.: {b.quantity}</span> {/* AQUI: texto más corto "Disp." */}
+                            <span className="text-xs mb-2">Costo: {b.cost}</span>
+                            <div className="flex gap-1 sm:gap-2 items-center"> {/* AQUI: gap-1 más pequeño en móvil */}
+                              <button className="bg-red-300 px-1 rounded text-sm" onClick={() => removeFromCart(b.name)}>-</button> {/* AQUI: px-1, text-sm */}
+                              <span className="text-sm">{cart[b.name] || 0}</span> {/* AQUI: text-sm */}
+                              <button className="bg-green-300 px-1 rounded text-sm" onClick={() => addToCart(b.name, b.quantity)}>+</button> {/* AQUI: px-1, text-sm */}
                             </div>
                           </div>
                         ))}
                       </div>
-                      <div className="mt-4">
-                        <p>Total a pagar: <strong>{totalCartCost}</strong> monedas</p>
-                        <button className="bg-blue-600 text-white px-4 py-2 rounded mt-2 disabled:opacity-50" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
+                      <div className="mt-4 text-center"> {/* AQUI: text-center */}
+                        <p className="text-sm sm:text-base">Total a pagar: <strong>{totalCartCost}</strong> monedas</p> {/* AQUI: text-sm en móvil */}
+                        <button className="bg-blue-600 text-white px-3 py-1 sm:px-4 sm:py-2 rounded mt-2 disabled:opacity-50 text-sm sm:text-base" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}> {/* AQUI: px-3/py-1 en móvil, text-sm */}
                           Comprar
                         </button>
-                        <button className="ml-2 bg-gray-400 text-white px-4 py-2 rounded mt-2" onClick={() => setShowCartModal(false)}>
+                        <button className="ml-2 bg-gray-400 text-white px-3 py-1 sm:px-4 sm:py-2 rounded mt-2 text-sm sm:text-base" onClick={() => setShowCartModal(false)}> {/* AQUI: px-3/py-1 en móvil, text-sm */}
                           Cerrar
                         </button>
                       </div>
