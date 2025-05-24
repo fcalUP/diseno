@@ -64,7 +64,7 @@
               <input className="w-full border p-2 rounded" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
               <button className="bg-green-600 text-white px-4 py-2 rounded w-full" onClick={async () => {
                 const sexo = document.querySelector('input[name="sexo"]:checked').value;
-                const res = await fetch('http://localhost:3000/api/register', {
+                const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
