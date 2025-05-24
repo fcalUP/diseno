@@ -13,7 +13,8 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const BACKEND_BASE_URL = 'http://localhost:3000';
+    const BACKEND_BASE_URL = window.location.origin;
+    // const BACKEND_BASE_URL = 'http://localhost:3000'; // Descomentar para pruebas locale
 
     const LoginScreen = ({
       studentId, setStudentId,
