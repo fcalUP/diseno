@@ -312,13 +312,13 @@
           ) : (
             // studentData debe existir para mostrar esta vista
             studentData && (
-              <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 grid grid-cols-2 grid-rows-auto gap-4">
+              <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onClick={handleLogout} className="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-md z-50">X</button>
                 <h2 className="col-span-2 text-3xl font-bold text-center">Hola {studentData.name}</h2>
-                <div className="col-span-1 row-span-1 flex justify-center items-start">
+                <div className="col-span-1 flex justify-center items-center">
                   <img src={`/avatars/${studentData.id}.png`} alt="avatar" className="w-[100%] object-contain" />
                 </div>
-                <div className="col-span-1 row-span-1 flex flex-col justify-center items-center">
+                <div className="col-span-1 flex flex-col justify-center items-center text-center">
                   <div className="text-lg font-bold space-y-2">
                     <div className="flex justify-between w-64">
                       <span>Coins</span><span>{studentData.monedas}</span>
