@@ -93,7 +93,7 @@
               {showCodeField && (
                 <>
                   <input className="w-full border p-2 rounded" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
-                  <input className="w-full border p-2 rounded" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
+                  <input type="password" className="w-full border p-2 rounded" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
                   <button className="bg-yellow-600 text-white px-4 py-2 rounded w-full mt-2" onClick={handleUpdatePassword}>Actualizar contraseña</button>
                 </>
               )}
