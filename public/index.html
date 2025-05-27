@@ -308,9 +308,6 @@
           ) : (
             studentData && (
               <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="col-span-1 md:col-span-2 flex justify-center mt-6">
-                  <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition">Log Out</button>
-                  </div>
                 <h2 className="col-span-1 md:col-span-2 text-2xl sm:text-3xl font-bold text-center">Hola {studentData.name}</h2>
                 <div className="col-span-1 flex justify-center items-start">
                   <img src={`/avatars/${studentData.id}.png`} alt="avatar" className="w-[80%] sm:w-[100%] object-contain" />
@@ -343,12 +340,16 @@
                           ))}
                         </ul>
                       </div>
+                      
                     )}
                   </div>
                   <div className="mt-6 flex justify-center w-full">
                     <button className="bg-green-600 text-white px-6 py-2 rounded-full shadow-md hover:bg-green-700 transition" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
                       Tienda
                     </button>
+                  </div>
+                  <div className="col-span-1 md:col-span-2 flex justify-center mt-6">
+                   <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition">Log Out</button>
                   </div>
                 </div>
 
