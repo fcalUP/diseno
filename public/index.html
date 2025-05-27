@@ -8,9 +8,20 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    /* Asegura que el body y html ocupen toda la altura para el centrado vertical */
+    html, body, #root {
+      height: 100%;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
 </head>
-<body class="bg-gray-200 min-h-screen flex items-center justify-center">
-  <div id="root"></div>
+<body class="bg-gray-200"> {/* Removido min-h-screen flex items-center justify-center del body, se maneja con style tag */}
+  <div id="root" class="w-full h-full flex items-center justify-center"></div>
 
   <script type="text/babel">
     const BACKEND_BASE_URL = window.location.origin;
@@ -31,21 +42,21 @@
     }) => (
       <>
         <div className="flex flex-col md:flex-row w-screen h-screen">
-          <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: "url('/img/side-image.jpg')" }}></div>
+          <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: "url('https://placehold.co/800x600/cccccc/ffffff?text=Imagen+Lateral')" }} onError={(e) => e.target.style.backgroundImage="url('https://placehold.co/800x600/cccccc/ffffff?text=Error+Cargando+Imagen')"}></div>
           <div className="w-full md:w-1/2 flex items-center justify-center bg-white">
             <div className="w-full max-w-md px-6 py-8 text-center">
-              <img src="/logo.png" alt="Logo" className="mx-auto w-32 h-32 mb-4" />
+              <img src="https://placehold.co/128x128/007bff/ffffff?text=Logo" alt="Logo" className="mx-auto w-32 h-32 mb-4 rounded-full" onError={(e) => e.target.src='https://placehold.co/128x128/cccccc/ffffff?text=Logo'} />
               <h2 className="text-2xl font-bold mb-4 text-center">Diseño Digital</h2>
               <input className="w-full p-2 mb-2 border rounded" placeholder="ID de Alumno"
                      value={studentId} onChange={(e) => setStudentId(e.target.value)} />
               <input type="password" className="w-full p-2 mb-4 border rounded" placeholder="Contraseña"
                      value={password} onChange={(e) => setPassword(e.target.value)} />
-              <button className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+              <button className="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700 transition"
                       onClick={handleLogin}>Iniciar sesión</button>
 
               <div className="text-sm mt-4">
-                <button onClick={() => setShowRegister(true)} className="text-blue-600 underline mr-4">Sign in</button>
-                <button onClick={() => setShowReset(true)} className="text-red-500 underline">¿Olvidaste tu contraseña?</button>
+                <button onClick={() => setShowRegister(true)} className="text-blue-600 underline mr-4 hover:text-blue-800">Sign in</button>
+                <button onClick={() => setShowReset(true)} className="text-red-500 underline hover:text-red-700">¿Olvidaste tu contraseña?</button>
               </div>
             </div>
           </div>
@@ -53,16 +64,16 @@
 
         {showRegister && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
-              <h2 className="text-lg font-bold">Registrar nuevo usuario</h2>
+            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
+              <h2 className="text-xl font-bold text-center">Registrar Nuevo Usuario</h2>
               <input className="w-full border p-2 rounded" placeholder="ID de alumno" id="reg-id" />
               <input className="w-full border p-2 rounded" placeholder="Nombre completo" id="reg-name" />
-              <div className="flex flex-col sm:flex-row items-center justify-between">
-                <label><input type="radio" name="sexo" value="Hombre" defaultChecked /> Hombre</label>
-                <label><input type="radio" name="sexo" value="Mujer" /> Mujer</label>
+              <div className="flex flex-col sm:flex-row items-center justify-around py-2">
+                <label className="flex items-center space-x-2"><input type="radio" name="sexo" value="Hombre" defaultChecked className="form-radio"/> <span>Hombre</span></label>
+                <label className="flex items-center space-x-2"><input type="radio" name="sexo" value="Mujer" className="form-radio"/> <span>Mujer</span></label>
               </div>
               <input type="password" className="w-full border p-2 rounded" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
-              <button className="bg-green-600 text-white px-4 py-2 rounded w-full" onClick={async () => {
+              <button className="bg-green-600 text-white px-4 py-2 rounded w-full hover:bg-green-700 transition" onClick={async () => {
                 const sexo = document.querySelector('input[name="sexo"]:checked').value;
                 const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
                   method: 'POST',
@@ -75,30 +86,31 @@
                   })
                 });
                 const data = await res.json();
-                alert(data.message || data.error);
+                // Reemplazar alert con un modal o notificación en una app real
+                console.log(data.message || data.error); // Usar console.log temporalmente
                 setShowRegister(false);
               }}>Registrar</button>
-              <button className="text-sm text-gray-500" onClick={() => setShowRegister(false)}>Cancelar</button>
+              <button className="text-sm text-gray-600 hover:text-gray-800 w-full py-2 rounded border border-gray-300 hover:bg-gray-100 transition" onClick={() => setShowRegister(false)}>Cancelar</button>
             </div>
           </div>
         )}
 
         {showReset && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
-              <h2 className="text-lg font-bold text-center">Recuperar contraseña</h2>
+            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
+              <h2 className="text-xl font-bold text-center">Recuperar Contraseña</h2>
               <input className="w-full border p-2 rounded" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
-              <button className="bg-blue-600 text-white px-4 py-2 rounded w-full" onClick={handleSendResetCode}>Enviar código</button>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700 transition" onClick={handleSendResetCode}>Enviar código</button>
 
               {showCodeField && (
                 <>
-                  <input className="w-full border p-2 rounded" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
-                  <input type="password" className="w-full border p-2 rounded" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
-                  <button className="bg-yellow-600 text-white px-4 py-2 rounded w-full mt-2" onClick={handleUpdatePassword}>Actualizar contraseña</button>
+                  <input className="w-full border p-2 rounded mt-2" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
+                  <input type="password" className="w-full border p-2 rounded mt-2" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
+                  <button className="bg-yellow-500 text-white px-4 py-2 rounded w-full mt-2 hover:bg-yellow-600 transition" onClick={handleUpdatePassword}>Actualizar contraseña</button>
                 </>
               )}
 
-              <button className="text-sm text-gray-500 mt-2" onClick={() => {
+              <button className="text-sm text-gray-600 hover:text-gray-800 w-full py-2 rounded border border-gray-300 hover:bg-gray-100 transition mt-2" onClick={() => {
                 setShowReset(false);
                 setShowCodeField(false);
                 setResetId('');
@@ -126,6 +138,24 @@
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
 
+      // Simulación de datos para pruebas sin backend
+      // React.useEffect(() => {
+      //   if (isLoggedIn && studentId === "TEST001") {
+      //     setStudentData({
+      //       id: "TEST001",
+      //       name: "Estudiante de Prueba",
+      //       monedas: "500",
+      //       points: 60,
+      //       level: calculateLevel(60),
+      //       tareas: "5",
+      //       asistencias: "10",
+      //       purchases: { "Insignia Ejemplo": 1 }
+      //     });
+      //     fetchBadges(); // Cargar badges de prueba
+      //   }
+      // }, [isLoggedIn, studentId]);
+
+
       const calculateLevel = (points) => {
         if (points >= 100) return 5;
         if (points >= 75) return 4;
@@ -136,18 +166,31 @@
       };
 
       const handleLogin = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId, password }),
-        });
-        const data = await response.json();
-        if (data.success) {
-          data.student.level = calculateLevel(data.student.points);
-          setStudentData(data.student);
-          setIsLoggedIn(true);
-        } else {
-          alert(data.error);
+        // Simulación para pruebas sin backend
+        // if (studentId === "TEST001" && password === "TEST") {
+        //   setIsLoggedIn(true);
+        //   return;
+        // }
+
+        try {
+            const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId, password }),
+            });
+            const data = await response.json();
+            if (data.success) {
+            data.student.level = calculateLevel(data.student.points);
+            setStudentData(data.student);
+            setIsLoggedIn(true);
+            fetchBadges(); // Cargar badges reales después del login
+            } else {
+            // Reemplazar alert con un modal o notificación
+            console.error("Error de login:", data.error);
+            }
+        } catch (error) {
+            console.error("Fallo en la solicitud de login:", error);
+            // Manejar error de red, etc.
         }
       };
 
@@ -159,18 +202,26 @@
         setBadges([]);
         setCart({});
         setShowCartModal(false);
-        setShowRegister(false);
-        setShowReset(false);
-        setShowCodeField(false);
-        setResetId('');
-        setResetCode('');
-        setResetPass('');
+        // No es necesario resetear los modales de login aquí si se manejan bien en LoginScreen
       };
 
       const fetchBadges = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/badges`);
-        const data = await response.json();
-        setBadges(data.badges || []);
+        // Simulación para pruebas sin backend
+        // setBadges([
+        //   { name: "Insignia Ejemplo", quantity: 10, cost: 50, image: "insignia_ejemplo.png" },
+        //   { name: "Super Aprendiz", quantity: 5, cost: 100, image: "super_aprendiz.png" },
+        //   { name: "Colaborador Estrella", quantity: 20, cost: 25, image: "colaborador_estrella.png" }
+        // ]);
+        // return;
+
+        try {
+            const response = await fetch(`${BACKEND_BASE_URL}/api/badges`);
+            const data = await response.json();
+            setBadges(data.badges || []);
+        } catch (error) {
+            console.error("Fallo al obtener badges:", error);
+            setBadges([]); // Asegurar que badges sea un array
+        }
       };
 
       const totalCartCost = Object.keys(cart).reduce((total, name) => {
@@ -182,8 +233,13 @@
         const currentQuantity = cart[name] || 0;
         const badge = badges.find(b => b.name === name);
         const newTotal = totalCartCost + (badge?.cost || 0);
+
         if (studentData && currentQuantity < available && newTotal <= parseInt(studentData.monedas)) {
           setCart(prev => ({ ...prev, [name]: currentQuantity + 1 }));
+        } else if (newTotal > parseInt(studentData.monedas)) {
+            console.warn("No tienes suficientes monedas."); // Reemplazar con UI feedback
+        } else if (currentQuantity >= available) {
+            console.warn("No hay más insignias de este tipo disponibles."); // Reemplazar con UI feedback
         }
       };
 
@@ -199,9 +255,9 @@
       };
 
       const handlePurchase = async () => {
-        if (!studentData) return;
+        if (!studentData || Object.keys(cart).length === 0) return;
 
-        const items = Object.keys(cart).map(name => {
+        const itemsToPurchase = Object.keys(cart).map(name => {
           const badge = badges.find(b => b.name === name);
           return {
             itemName: name,
@@ -210,35 +266,48 @@
           };
         });
 
-        for (const item of items) {
-          const response = await fetch(`${BACKEND_BASE_URL}/api/purchase`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              studentId: studentData.id,
-              studentRowIndex: studentData.rowIndex,
-              ...item,
-            }),
-          });
-          const data = await response.json();
-          setStudentData(prev => ({
-            ...prev,
-            monedas: data.newCoins.toString(),
-            purchases: {
-              ...prev.purchases,
-              [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
+        // Aquí se haría un bucle o una sola llamada al backend con todos los items
+        // Por simplicidad, se asume una llamada por item como en el código original
+        for (const item of itemsToPurchase) {
+            try {
+                const response = await fetch(`${BACKEND_BASE_URL}/api/purchase`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                    studentId: studentData.id,
+                    studentRowIndex: studentData.rowIndex, // Asegúrate que rowIndex se envía desde el backend
+                    ...item,
+                    }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    setStudentData(prev => ({
+                    ...prev,
+                    monedas: data.newCoins.toString(), // Asegurar que monedas sea string
+                    purchases: {
+                        ...prev.purchases,
+                        [item.itemName]: (prev.purchases?.[item.itemName] || 0) + item.quantityToBuy
+                    }
+                    }));
+                    setBadges(prevBadges => prevBadges.map(b =>
+                    b.name === item.itemName ? { ...b, quantity: data.newBadgeQuantity } : b
+                    ));
+                } else {
+                    console.error("Error en la compra:", data.error);
+                }
+            } catch (error) {
+                console.error("Fallo en la solicitud de compra:", error);
             }
-          }));
-          setBadges(prevBadges => prevBadges.map(b =>
-            b.name === item.itemName ? { ...b, quantity: data.newBadgeQuantity } : b
-          ));
         }
         setCart({});
         setShowCartModal(false);
       };
-
+      
       const handleSendResetCode = async () => {
-        if (!resetId) return alert("Ingresa tu ID.");
+        if (!resetId) {
+            console.warn("Ingresa tu ID."); // Reemplazar con UI feedback
+            return;
+        }
         try {
           const res = await fetch(`${BACKEND_BASE_URL}/api/send-reset-code`, {
             method: 'POST',
@@ -246,18 +315,17 @@
             body: JSON.stringify({ id: resetId })
           });
           const data = await res.json();
-          alert(data.message || data.error);
+          console.log(data.message || data.error); // Reemplazar con UI feedback
           if (res.ok) setShowCodeField(true);
         } catch (err) {
-          console.error(err);
-          alert("Error al enviar código.");
+          console.error("Error al enviar código de reseteo:", err);
         }
       };
 
       const handleUpdatePassword = async () => {
         const regex = /^[A-Z0-9]{4}$/;
         if (!regex.test(resetPass)) {
-          alert("Contraseña inválida. Usa solo 4 letras/números MAYÚSCULOS.");
+          console.warn("Contraseña inválida. Usa solo 4 letras/números MAYÚSCULOS."); // Reemplazar con UI feedback
           return;
         }
         try {
@@ -267,7 +335,7 @@
             body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass })
           });
           const data = await res.json();
-          alert(data.message || data.error);
+          console.log(data.message || data.error); // Reemplazar con UI feedback
           if (res.ok) {
             setShowReset(false);
             setShowCodeField(false);
@@ -276,10 +344,19 @@
             setResetPass('');
           }
         } catch (err) {
-          console.error(err);
-          alert("Error al actualizar contraseña.");
+          console.error("Error al actualizar contraseña:", err);
         }
       };
+
+
+      // Efecto para cargar badges cuando el componente App se monta por primera vez si el usuario ya está logueado (ej. por token persistente)
+      // Opcional, dependiendo de la lógica de autenticación persistente.
+      // React.useEffect(() => {
+      //  if (isLoggedIn && studentData) {
+      //    fetchBadges();
+      //  }
+      // }, [isLoggedIn, studentData]);
+
 
       return (
         <>
@@ -307,77 +384,122 @@
             />
           ) : (
             studentData && (
-              <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onClick={handleLogout} className="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-md z-50">X</button>
-                <h2 className="col-span-1 md:col-span-2 text-2xl sm:text-3xl font-bold text-center">Hola {studentData.name}</h2>
-                <div className="col-span-1 flex justify-center items-start">
-                  <img src={`/avatars/${studentData.id}.png`} alt="avatar" className="w-[80%] sm:w-[100%] object-contain" />
-                </div>
-                <div className="col-span-1 flex flex-col justify-center items-center text-center">
-                  <div className="text-base sm:text-lg font-bold space-y-2 w-full max-w-xs sm:w-64 mx-auto">
-                    <div className="flex justify-between">
-                      <span>Coins</span><span>{studentData.monedas}</span>
+              // Contenedor principal del perfil, ahora es un flex column
+              <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 flex flex-col mx-auto my-auto" style={{maxHeight: '90vh'}}>
+                
+                {/* Contenido principal que puede crecer */}
+                <div className="flex-grow overflow-y-auto"> {/* Añadido overflow-y-auto por si el contenido es muy largo */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <h2 className="col-span-1 md:col-span-2 text-2xl sm:text-3xl font-bold text-center mb-4">Hola {studentData.name}</h2>
+                    
+                    <div className="col-span-1 flex justify-center items-start">
+                      <img 
+                        src={`https://placehold.co/300x300/E0E0E0/B0B0B0?text=Avatar+${studentData.id}`} 
+                        alt={`Avatar de ${studentData.name}`} 
+                        className="w-[80%] sm:w-[70%] md:w-[250px] lg:w-[300px] object-contain rounded-lg shadow-md"
+                        onError={(e) => e.target.src=`https://placehold.co/300x300/CCCCCC/FFFFFF?text=Avatar+Error`}
+                      />
                     </div>
-                    <div className="flex justify-between">
-                      <span>EXP.</span><span>{studentData.points}/100</span>
-                    </div>
-                    <input type="range" readOnly max="100" value={studentData.points % 100} className="w-full accent-green-600" />
-                    <div className="text-2xl sm:text-3xl font-extrabold mt-3">Nivel {studentData.level}</div>
-                    <div className="flex justify-between">
-                      <span>Tareas</span><span>{studentData.tareas}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Asistencias</span><span>{studentData.asistencias}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Badges</span><span>{Object.keys(studentData.purchases || {}).length}</span>
-                    </div>
-                    {Object.keys(studentData.purchases || {}).length > 0 && (
-                      <div className="mt-4 text-sm w-full text-left"> {/* <--- AQUI: Añadido 'text-left' */}
-                        <h3 className="font-semibold">Insignias adquiridas:</h3>
-                        <ul className="list-disc list-inside">
-                          {Object.entries(studentData.purchases).map(([name, qty]) => (
-                            <li key={name}>{name}: {qty}</li>
-                          ))}
-                        </ul>
+
+                    <div className="col-span-1 flex flex-col justify-start items-center text-center space-y-3"> {/* Cambiado a justify-start y añadido space-y */}
+                      <div className="text-base sm:text-lg font-semibold space-y-2 w-full max-w-xs sm:w-64 mx-auto bg-gray-50 p-4 rounded-lg shadow">
+                        <div className="flex justify-between">
+                          <span>Coins:</span><span className="font-bold text-yellow-500">{studentData.monedas}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>EXP:</span><span className="font-bold text-green-500">{studentData.points}/100</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 my-2">
+                            <div className="bg-green-600 h-2.5 rounded-full" style={{ width: `${studentData.points % 101}%` }}></div>
+                        </div>
+                        <div className="text-2xl sm:text-3xl font-extrabold mt-3 text-blue-600">Nivel {studentData.level}</div>
+                        <hr className="my-2"/>
+                        <div className="flex justify-between">
+                          <span>Tareas:</span><span className="font-bold">{studentData.tareas}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Asistencias:</span><span className="font-bold">{studentData.asistencias}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Badges:</span><span className="font-bold">{Object.keys(studentData.purchases || {}).length}</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="mt-6 flex justify-center w-full">
-                    <button className="bg-green-600 text-white px-6 py-2 rounded-full shadow-md hover:bg-green-700 transition" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
-                      Tienda
-                    </button>
+
+                      {Object.keys(studentData.purchases || {}).length > 0 && (
+                        <div className="mt-4 text-sm w-full max-w-xs sm:w-64 mx-auto text-left bg-gray-50 p-3 rounded-lg shadow">
+                          <h3 className="font-semibold text-md mb-1">Insignias adquiridas:</h3>
+                          <ul className="list-disc list-inside space-y-1 text-gray-700">
+                            {Object.entries(studentData.purchases).map(([name, qty]) => (
+                              <li key={name} className="text-xs sm:text-sm">{name}: {qty}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      <div className="mt-6 flex justify-center w-full">
+                        <button 
+                            className="bg-green-600 text-white px-8 py-3 rounded-full shadow-md hover:bg-green-700 transition-transform transform hover:scale-105 text-lg font-semibold" 
+                            onClick={() => { fetchBadges(); setShowCartModal(true); }}>
+                          Tienda de Insignias
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
+                {/* Botón de Log out centrado en la parte inferior */}
+                <div className="mt-auto pt-6 pb-2 text-center"> {/* mt-auto empuja esto hacia abajo, pt-6 para espacio superior, pb-2 para espacio inferior */}
+                  <button 
+                    onClick={handleLogout} 
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition duration-150 ease-in-out text-lg transform hover:scale-105"
+                  >
+                    Log out
+                  </button>
+                </div>
+
+                {/* Modal de la Tienda */}
                 {showCartModal && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white p-4 rounded-xl shadow-lg w-11/12 max-w-lg mx-auto sm:p-6 sm:max-w-xl">
-                      <h3 className="text-lg sm:text-xl font-semibold mb-2">Tienda de Insignias</h3>
-                      <p className="mb-2 text-sm sm:text-base">Monedas disponibles: <strong>{studentData.monedas}</strong></p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 max-h-96 overflow-y-auto">
-                        {badges.map((b, i) => (
-                          <div key={i} className="border p-2 rounded flex flex-col items-center text-center">
-                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-2"/>
-                            <strong className="text-xs sm:text-sm">{b.name}</strong>
-                            <span className="text-xs">Disp.: {b.quantity}</span>
-                            <span className="text-xs mb-2">Costo: {b.cost}</span>
-                            <div className="flex gap-1 sm:gap-2 items-center">
-                              <button className="bg-red-300 px-1 rounded text-sm" onClick={() => removeFromCart(b.name)}>-</button>
-                              <span className="text-sm">{cart[b.name] || 0}</span>
-                              <button className="bg-green-300 px-1 rounded text-sm" onClick={() => addToCart(b.name, b.quantity)}>+</button>
+                  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] p-4"> {/* Aumentado z-index */}
+                    <div className="bg-white p-4 rounded-xl shadow-2xl w-11/12 max-w-lg mx-auto sm:p-6 sm:max-w-xl flex flex-col" style={{maxHeight: '85vh'}}>
+                      <h3 className="text-xl sm:text-2xl font-semibold mb-3 text-center text-blue-700">Tienda de Insignias</h3>
+                      <p className="mb-3 text-md sm:text-lg text-center">Monedas disponibles: <strong className="text-yellow-600">{studentData.monedas}</strong></p>
+                      
+                      <div className="flex-grow overflow-y-auto p-2 space-y-3 bg-gray-50 rounded-lg mb-3">
+                        {badges.length > 0 ? badges.map((b, i) => (
+                          <div key={i} className="border p-3 rounded-lg shadow-sm bg-white flex flex-col items-center text-center transition-all duration-200 hover:shadow-md">
+                            <img 
+                              src={`https://placehold.co/80x80/F0F0F0/A0A0A0?text=${b.name.substring(0,1)}`} 
+                              alt={b.name} 
+                              className="w-16 h-16 sm:w-20 sm:h-20 object-contain mb-2 rounded-md border"
+                              onError={(e) => e.target.src=`https://placehold.co/80x80/CCCCCC/FFFFFF?text=Img`}
+                            />
+                            <strong className="text-sm sm:text-md mb-1">{b.name}</strong>
+                            <span className="text-xs text-gray-600">Disponibles: {b.quantity}</span>
+                            <span className="text-xs text-gray-600 mb-2">Costo: <span className="font-bold text-yellow-500">{b.cost}</span></span>
+                            <div className="flex gap-2 items-center mt-1">
+                              <button className="bg-red-400 hover:bg-red-500 text-white w-7 h-7 rounded-md text-lg flex items-center justify-center transition" onClick={() => removeFromCart(b.name)}>-</button>
+                              <span className="text-md font-semibold w-8 text-center">{cart[b.name] || 0}</span>
+                              <button className="bg-green-400 hover:bg-green-500 text-white w-7 h-7 rounded-md text-lg flex items-center justify-center transition" onClick={() => addToCart(b.name, b.quantity)}>+</button>
                             </div>
                           </div>
-                        ))}
+                        )) : <p className="text-center text-gray-500 py-4">No hay insignias disponibles en este momento.</p>}
                       </div>
-                      <div className="mt-4 text-center">
-                        <p className="text-sm sm:text-base">Total a pagar: <strong>{totalCartCost}</strong> monedas</p>
-                        <button className="bg-blue-600 text-white px-3 py-1 sm:px-4 sm:py-2 rounded mt-2 disabled:opacity-50 text-sm sm:text-base" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
-                          Comprar
-                        </button>
-                        <button className="ml-2 bg-gray-400 text-white px-3 py-1 sm:px-4 sm:py-2 rounded mt-2 text-sm sm:text-base" onClick={() => setShowCartModal(false)}>
-                          Cerrar
-                        </button>
+                      
+                      <div className="mt-auto pt-4 text-center border-t border-gray-200">
+                        <p className="text-md sm:text-lg mb-2">Total a pagar: <strong className="text-green-600">{totalCartCost}</strong> monedas</p>
+                        <div className="flex flex-col sm:flex-row justify-center gap-2">
+                            <button 
+                                className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base" 
+                                disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} 
+                                onClick={handlePurchase}>
+                            Comprar
+                            </button>
+                            <button 
+                                className="bg-gray-400 text-white px-6 py-2 rounded-lg shadow hover:bg-gray-500 transition text-sm sm:text-base" 
+                                onClick={() => setShowCartModal(false)}>
+                            Cerrar
+                            </button>
+                        </div>
                       </div>
                     </div>
                   </div>
