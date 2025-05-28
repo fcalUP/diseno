@@ -311,14 +311,17 @@
                 <h2 className="col-span-1 md:col-span-2 text-2xl sm:text-3xl font-bold text-center">Hola {studentData.name}</h2>
                 <div className="col-span-1 flex justify-center items-start">
                   <img
-                    src={`/avatars/${studentData.id}.png`}
+                    src={`/avatars/${studentData.id}${studentData.level}.png`}
                     onError={(e) => {
-                      e.target.onerror = null; // Evita bucles infinitos en caso de que tampoco exista DefaultH/F
-                      e.target.src = studentData.sexo === 'Hombre' ? '/avatars/DefaultH.png' : '/avatars/DefaultF.png';
+                      e.target.onerror = null;
+                      e.target.src = studentData.sexo === 'Hombre'
+                        ? `/avatars/DefaultH${studentData.level}.png`
+                        : `/avatars/DefaultF${studentData.level}.png`;
                     }}
                     alt="avatar"
                     className="w-[30%] sm:w-[80%] object-contain"
                   />
+
                 </div>
                 <div className="col-span-1 flex flex-col justify-center items-center text-center">
                   <div className="text-base sm:text-lg font-bold space-y-2 w-full max-w-xs sm:w-64 mx-auto">
