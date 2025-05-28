@@ -60,6 +60,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
+    // Asegúrate de que el rango cubra la columna del sexo (columna C o índice 2)
     const range = 'Sheet1!A:K';
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
@@ -75,6 +76,8 @@ app.post('/api/login', async (req, res) => {
 
     const studentData = rows[studentRowIndex];
     const studentName = studentData[1] || 'N/A';
+    // Obtén el sexo de la columna 3 (índice 2)
+    const sexo = studentData[2] || 'N/A';
     const tareas = studentData[5] || '0';
     const asistencias = studentData[7] || '0';
     const monedas = studentData[6] || '0';
@@ -103,6 +106,7 @@ app.post('/api/login', async (req, res) => {
       student: {
         id: studentId,
         name: studentName,
+        sexo: sexo, // Incluye la propiedad 'sexo' en la respuesta
         tareas,
         asistencias,
         monedas,
@@ -270,6 +274,7 @@ app.post('/api/register', async (req, res) => {
       range: 'Sheet1!A:E',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
+        // Asegúrate de que 'sexo' se guarde en la columna correcta (índice 2)
         values: [[id, name, sexo, new Date().toLocaleString(), password]]
       }
     });
