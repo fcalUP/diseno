@@ -310,7 +310,13 @@
               <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <h2 className="col-span-1 md:col-span-2 text-2xl sm:text-3xl font-bold text-center">Hola {studentData.name}</h2>
                 <div className="col-span-1 flex justify-center items-start">
-                  <img src={`/avatars/${studentData.id}.png`} alt="avatar" className="w-[80%] sm:w-[100%] object-contain" />
+                  <img src={`/avatars/${studentData.id}.png`}
+                  onError={(e) => {
+                    e.target.onerror = null; // Evita bucles infinitos en caso de que tampoco exista DefaultH/F
+                    e.target.src = studentData.sexo === 'Hombre' ? '/avatars/DefaultH.png' : '/avatars/DefaultF.png';
+                  }}
+                  alt="avatar" className="w-[80%] sm:w-[100%] object-contain"
+                  />
                 </div>
                 <div className="col-span-1 flex flex-col justify-center items-center text-center">
                   <div className="text-base sm:text-lg font-bold space-y-2 w-full max-w-xs sm:w-64 mx-auto">
