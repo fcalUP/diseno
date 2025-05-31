@@ -125,6 +125,7 @@
       const [resetId, setResetId] = React.useState('');
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
+      const [showLevelUpGif, setShowLevelUpGif] = React.useState(false); // New state for GIF
 
       const calculateLevel = (points) => {
         if (points >= 100) return 5;
@@ -134,6 +135,23 @@
         if (points >= 10) return 1;
         return 0;
       };
+
+      // Effect to check for level up on studentData change after login
+      React.useEffect(() => {
+        if (studentData) {
+          const lastSeenLevel = localStorage.getItem(`lastLevel_${studentData.id}`);
+          if (lastSeenLevel && parseInt(lastSeenLevel) < studentData.level) {
+            setShowLevelUpGif(true);
+            localStorage.setItem(`lastLevel_${studentData.id}`, studentData.level);
+            setTimeout(() => {
+              setShowLevelUpGif(false);
+            }, 4000); // GIF displays for 4 seconds
+          } else if (!lastSeenLevel) {
+            // If no last seen level, set current level to localStorage for future checks
+            localStorage.setItem(`lastLevel_${studentData.id}`, studentData.level);
+          }
+        }
+      }, [studentData]);
 
       const handleLogin = async () => {
         const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
@@ -165,6 +183,7 @@
         setResetId('');
         setResetCode('');
         setResetPass('');
+        setShowLevelUpGif(false); // Reset GIF state on logout
       };
 
       const fetchBadges = async () => {
@@ -393,6 +412,13 @@
                         </button>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Level Up GIF Modal */}
+                {showLevelUpGif && (
+                  <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
+                    <img src="/gifs/levelup.gif" alt="Level Up!" className="w-full h-full object-contain" />
                   </div>
                 )}
               </div>
