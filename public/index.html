@@ -390,7 +390,7 @@
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 max-h-96 overflow-y-auto">
                         {badges.map((b, i) => (
                           <div key={i} className="border p-2 rounded flex flex-col items-center text-center">
-                            <img src={`public/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-2"/>
+                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-2"/>
                             <strong className="text-xs sm:text-sm">{b.name}</strong>
                             <span className="text-xs">Disp.: {b.quantity}</span>
                             <span className="text-xs mb-2">Costo: {b.cost}</span>
