@@ -102,6 +102,7 @@ app.post('/api/login', async (req, res) => {
     const homeworks = studentData[5] || '0'; // Homeworks
     const monedas = studentData[6] || '0'; // Coins
     const asistencias = studentData[7] || '0'; // Attendance
+    const badgesString = studentData[8] || '0'; // Badges (como cadena)
     const exp = parseInt(studentData[9]) || 0; // EXP
 
     // Obtener lastLoginLevel. Si está vacío o es undefined (primera carga), se inicializa a 0
@@ -135,6 +136,7 @@ app.post('/api/login', async (req, res) => {
       return acc;
     }, {});
 
+
     res.json({
       success: true,
       student: {
@@ -147,7 +149,7 @@ app.post('/api/login', async (req, res) => {
         asistencias: asistencias,
         exp: exp,
         level: currentLevel, // Nivel actual
-        purchases: badgesMap,
+        purchases: badgesMap, // Usar el mapa de compras reales
         rowIndex: studentRowIndex + 1 // Fila en el Sheets (para futuras actualizaciones)
       },
       // Indicador para el frontend
@@ -293,7 +295,7 @@ app.post('/api/reset-password-with-code', async (req, res) => {
       return res.status(404).json({ error: 'ID no encontrado.' });
     }
 
-    const rowNumber = index + 1; // Ajustar a número de fila de Sheets
+    const rowNumber = index + 1;
     const newPassword = password; // Almacenando como texto plano
 
     await sheets.spreadsheets.values.update({
@@ -465,8 +467,7 @@ app.post('/api/add-exp', async (req, res) => {
       values: [[newExp]]
     }];
 
-    // Actualizar LAST_LOGIN_LEVEL solo si el nuevo nivel es mayor y no ha sido reflejado
-    // O si estaba vacío.
+    // Actualizar LAST_LOGIN_LEVEL solo si el nuevo nivel es mayor o si estaba vacío
     if (newLevel > currentLastLoginLevel || isNaN(parseInt(rows[index][10]))) {
         updates.push({
             range: `Sheet1!K${rowNumber}`, // Columna K: LAST_LOGIN_LEVEL
