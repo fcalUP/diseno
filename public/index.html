@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,6 +10,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
+
 <body class="bg-gray-200 min-h-screen flex items-center justify-center">
   <div id="root"></div>
 
@@ -37,11 +39,11 @@
               <img src="logo.png" alt="Logo" className="mx-auto w-32 h-32 mb-4" />
               <h2 className="text-2xl font-bold mb-4 text-center">Diseño Digital</h2>
               <input className="w-full p-2 mb-2 border rounded" placeholder="ID de Alumno"
-                     value={studentId} onChange={(e) => setStudentId(e.target.value)} />
+                value={studentId} onChange={(e) => setStudentId(e.target.value)} />
               <input type="password" className="w-full p-2 mb-4 border rounded" placeholder="Contraseña"
-                     value={password} onChange={(e) => setPassword(e.target.value)} />
+                value={password} onChange={(e) => setPassword(e.target.value)} />
               <button className="bg-blue-600 text-white px-4 py-2 rounded w-full"
-                      onClick={handleLogin}>Iniciar sesión</button>
+                onClick={handleLogin}>Iniciar sesión</button>
 
               <div className="text-sm mt-4">
                 <button onClick={() => setShowRegister(true)} className="text-blue-600 underline mr-4">Sign in</button>
@@ -130,32 +132,49 @@
       // Nuevo estado para almacenar el nivel previo del alumno (usando useRef)
       const prevLevelRef = React.useRef(null);
 
-      const calculateLevel = (points) => {
-        if (points >= 100) return 5;
-        if (points >= 75) return 4;
-        if (points >= 50) return 3;
-        if (points >= 25) return 2;
-        if (points >= 10) return 1;
+      // Renombrado de 'points' a 'exp' para mayor claridad
+      const calculateLevel = (exp) => {
+        if (exp >= 100) return 5;
+        if (exp >= 75) return 4;
+        if (exp >= 50) return 3;
+        if (exp >= 25) return 2;
+        if (exp >= 10) return 1;
         return 0;
       };
 
       // Effect para verificar el cambio de nivel y disparar la animación
       React.useEffect(() => {
+        // console.log('>>> useEffect se ejecutó <<<'); // Debugging
         if (studentData) {
           const currentLevel = studentData.level;
           const prevLevel = prevLevelRef.current;
 
+          // console.log('Estado actual de studentData:', studentData); // Debugging
+          // console.log('currentLevel:', currentLevel); // Debugging
+          // console.log('prevLevelRef.current (antes de actualizar):', prevLevel); // Debugging
+
           // Si el nivel actual es diferente al nivel anterior (y no es la primera carga)
           // y el nivel actual es mayor que el anterior (para un "level up")
           if (prevLevel !== null && currentLevel > prevLevel) {
+            alert(`¡Felicidades, has subido de nivel!
+                    Nivel anterior: ${prevLevel}
+                    Nivel actual: ${currentLevel}`);
             setShowLevelUpGif(true);
             setTimeout(() => {
               setShowLevelUpGif(false);
+              // console.log('GIF oculto.'); // Debugging
             }, 4000); // GIF se muestra por 4 segundos
+          } else if (prevLevel === null) {
+            // console.log('Primera carga de datos del alumno. prevLevel es null.'); // Debugging
+          } else if (currentLevel <= prevLevel) {
+            // console.log('Nivel no subió (o bajó/permaneció igual). No se activa el GIF.'); // Debugging
           }
 
           // Actualiza el nivel previo para la próxima renderización
           prevLevelRef.current = currentLevel;
+          // console.log('prevLevelRef.current (después de actualizar para prox. ciclo):', prevLevelRef.current); // Debugging
+        } else {
+          // console.log('studentData es null (alumno no logueado).'); // Debugging
         }
       }, [studentData]); // Se dispara cuando studentData cambia
 
@@ -167,10 +186,11 @@
         });
         const data = await response.json();
         if (data.success) {
-          data.student.level = calculateLevel(data.student.points);
+          // Usar 'exp' en lugar de 'points' aquí
+          data.student.level = calculateLevel(data.student.exp); // Asumiendo que el backend ahora envía 'exp'
           setStudentData(data.student);
           setIsLoggedIn(true);
-          // Al iniciar sesión, inicializa el nivel previo
+          // Al iniciar sesión, inicializa el nivel previo con el 'exp' inicial
           prevLevelRef.current = data.student.level;
         } else {
           alert(data.error);
@@ -250,7 +270,8 @@
           });
           const data = await response.json();
 
-          // Actualiza studentData y recalcula el nivel
+          // NO SE AFECTAN LOS PUNTOS/EXP. AL COMPRAR.
+          // Solo se actualizan las monedas y las compras de insignias.
           setStudentData(prev => {
             const updatedStudent = {
               ...prev,
@@ -259,9 +280,10 @@
                 ...prev.purchases,
                 [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
               }
+              // studentData.exp NO se modifica aquí por una compra.
             };
-            // Recalcula el nivel aquí para que el useEffect lo detecte
-            updatedStudent.level = calculateLevel(updatedStudent.points);
+            // Recalcula el nivel usando la EXP. ACTUAL del studentData.
+            updatedStudent.level = calculateLevel(updatedStudent.exp);
             return updatedStudent;
           });
 
@@ -365,9 +387,9 @@
                       <span>Coins</span><span>{studentData.monedas}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>EXP.</span><span>{studentData.points}/100</span>
+                      <span>EXP.</span><span>{studentData.exp}/100</span> {/* CAMBIADO: 'points' a 'exp' */}
                     </div>
-                    <input type="range" readOnly max="100" value={studentData.points % 100} className="w-full accent-green-600" />
+                    <input type="range" readOnly max="100" value={studentData.exp % 100} className="w-full accent-green-600" /> {/* CAMBIADO: 'points' a 'exp' */}
                     <div className="text-2xl sm:text-3xl font-extrabold mt-3">Nivel {studentData.level}</div>
                     <div className="flex justify-between">
                       <span>Tareas</span><span>{studentData.tareas}</span>
@@ -395,7 +417,7 @@
                     </button>
                   </div>
                   <div className="col-span-1 md:col-span-2 flex justify-center mt-6">
-                   <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition">Log Out</button>
+                    <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition">Log Out</button>
                   </div>
                 </div>
 
@@ -407,7 +429,7 @@
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 max-h-96 overflow-y-auto">
                         {badges.map((b, i) => (
                           <div key={i} className="border p-2 rounded flex flex-col items-center text-center">
-                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-2"/>
+                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-2" />
                             <strong className="text-xs sm:text-sm">{b.name}</strong>
                             <span className="text-xs">Disp.: {b.quantity}</span>
                             <span className="text-xs mb-2">Costo: {b.cost}</span>
@@ -449,4 +471,5 @@
     root.render(<App />);
   </script>
 </body>
+
 </html>
