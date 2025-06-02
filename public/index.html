@@ -141,31 +141,41 @@
 
       // Effect para verificar el cambio de nivel y disparar la animación
       React.useEffect(() => {
+        console.log('>>> useEffect se ejecutó <<<');
         if (studentData) {
           const currentLevel = studentData.level;
           const prevLevel = prevLevelRef.current;
 
+          console.log('Estado actual de studentData:', studentData);
+          console.log('currentLevel:', currentLevel);
+          console.log('prevLevelRef.current (antes de actualizar):', prevLevel);
+
           // Si el nivel actual es diferente al nivel anterior (y no es la primera carga)
           // y el nivel actual es mayor que el anterior (para un "level up")
           if (prevLevel !== null && currentLevel > prevLevel) {
-            // --- AQUÍ VA EL ALERT ---
             alert(`¡Felicidades, has subido de nivel!
-                  Nivel anterior: ${prevLevel}
-                  Nivel actual: ${currentLevel}`);
-            // -----------------------
-
+                Nivel anterior: ${prevLevel}
+                Nivel actual: ${currentLevel}`);
             setShowLevelUpGif(true);
             setTimeout(() => {
               setShowLevelUpGif(false);
-            }, 4000); // GIF se muestra por 4 segundos
+              console.log('GIF oculto.');
+            }, 4000);
+          } else if (prevLevel === null) {
+            console.log('Primera carga de datos del alumno. prevLevel es null.');
+          } else if (currentLevel <= prevLevel) {
+            console.log('Nivel no subió (o bajó/permaneció igual). No se activa el GIF.');
           }
 
           // Actualiza el nivel previo para la próxima renderización
           prevLevelRef.current = currentLevel;
+          console.log('prevLevelRef.current (después de actualizar para prox. ciclo):', prevLevelRef.current);
+        } else {
+          console.log('studentData es null (alumno no logueado).');
         }
-    }, [studentData]); // Se dispara cuando studentData cambia
+      }, [studentData]); // Se dispara cuando studentData cambia
 
-      const handleLogin = async () => {
+    const handleLogin = async () => {
         const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -173,11 +183,14 @@
         });
         const data = await response.json();
         if (data.success) {
-          data.student.level = calculateLevel(data.student.points);
-          setStudentData(data.student);
+          const calculatedLevel = calculateLevel(data.student.points);
+          const studentWithLevel = { ...data.student, level: calculatedLevel };
+          setStudentData(studentWithLevel);
           setIsLoggedIn(true);
-          // Al iniciar sesión, inicializa el nivel previo
-          prevLevelRef.current = data.student.level;
+          prevLevelRef.current = calculatedLevel; // Inicializar prevLevelRef
+          console.log('--- LOGIN EXITOSO ---');
+          console.log('studentData inicial:', studentWithLevel);
+          console.log('prevLevelRef (después de login):', prevLevelRef.current);
         } else {
           alert(data.error);
         }
@@ -266,9 +279,9 @@
                 [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
               }
             };
-            // Recalcula el nivel aquí para que el useEffect lo detecte
+            /* Recalcula el nivel aquí para que el useEffect lo detecte
             updatedStudent.level = calculateLevel(updatedStudent.points);
-            return updatedStudent;
+            return updatedStudent;*/
           });
 
           setBadges(prevBadges => prevBadges.map(b =>
