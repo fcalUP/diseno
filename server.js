@@ -23,6 +23,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuración de Google Sheets
 const SPREADSHEET_ID = '1I6pVLSBav-U7c86FLavh0tikPghLDVrWCFuru-qwQ4Y'; // Tu ID de Spreadsheet
+
 const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
 const auth = new google.auth.GoogleAuth({
   credentials: serviceAccount,
@@ -46,7 +47,6 @@ initializeGoogleSheetsClient();
 const resetCodes = {};
 
 // Función para calcular el nivel basada en la EXP.
-// Renombrado de 'points' a 'exp' para consistencia semántica
 function calculateLevel(exp) {
   if (exp >= 100) return 5;
   if (exp >= 75) return 4;
@@ -79,8 +79,8 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
-    // Rango ajustado para incluir todas las columnas relevantes hasta la EXP. (Columna J)
-    const range = 'Sheet1!A:J';
+    // Rango ajustado para incluir hasta la nueva columna K (LAST_LOGIN_LEVEL)
+    const range = 'Sheet1!A:K'; // Ahora leemos hasta la columna K
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
 
@@ -95,17 +95,25 @@ app.post('/api/login', async (req, res) => {
     }
 
     const studentData = rows[studentRowIndex]; // Datos de la fila encontrada
-    // Mapear datos del alumno a un objeto más legible usando los índices correctos según tu Sheet
-    const id = studentData[0];
-    const name = studentData[1] || 'N/A';
-    const sexo = studentData[2] || 'N/A';
-    const email = studentData[3] || ''; // Columna D: CORREO
-    const homeworks = studentData[5] || '0'; // Columna F: Homeworks
-    const monedas = studentData[6] || '0'; // Columna G: Coins
-    const asistencias = studentData[7] || '0'; // Columna H: Attendance
-    // Columna I (Badges) en Sheet1 no se usa directamente para compras, sino la hoja 'Purchases'
-    const exp = parseInt(studentData[9]) || 0; // Columna J: EXP
-    const level = calculateLevel(exp); // Nivel calculado
+    const id = studentData[0]; // ID
+    const name = studentData[1] || 'N/A'; // NOMBRE
+    const sexo = studentData[2] || 'N/A'; // Sexo
+    const email = studentData[3] || ''; // CORREO
+    const homeworks = studentData[5] || '0'; // Homeworks
+    const monedas = studentData[6] || '0'; // Coins
+    const asistencias = studentData[7] || '0'; // Attendance
+    const exp = parseInt(studentData[9]) || 0; // EXP
+
+    // Obtener lastLoginLevel. Si está vacío o es undefined (primera carga), se inicializa a 0
+    let lastLoginLevel = parseInt(studentData[10]);
+    if (isNaN(lastLoginLevel)) { // Si no es un número (es decir, está vacío en la hoja)
+        lastLoginLevel = 0; // Considera el nivel en el último login como 0 inicialmente
+    }
+
+    const currentLevel = calculateLevel(exp); // Nivel actual calculado
+
+    // Determinar si hay una subida de nivel desde el último login
+    const levelUpOccurred = currentLevel > lastLoginLevel;
 
     // Obtener las compras de la hoja 'Purchases'
     const purchasesResponse = await sheets.spreadsheets.values.get({
@@ -133,16 +141,30 @@ app.post('/api/login', async (req, res) => {
         id: id,
         name: name,
         sexo: sexo,
-        email: email, // Incluye el email
+        email: email,
         monedas: monedas,
-        tareas: homeworks, // 'tareas' ahora mapea a 'Homeworks'
+        tareas: homeworks,
         asistencias: asistencias,
-        exp: exp, // Renombrado de 'points' a 'exp'
-        level: level,
-        purchases: badgesMap, // Usa el mapa de compras reales
+        exp: exp,
+        level: currentLevel, // Nivel actual
+        purchases: badgesMap,
         rowIndex: studentRowIndex + 1 // Fila en el Sheets (para futuras actualizaciones)
-      }
+      },
+      // Indicador para el frontend
+      levelUpOccurred: levelUpOccurred
     });
+
+    // ¡Importante! Actualizar el LAST_LOGIN_LEVEL en Google Sheets después del login exitoso
+    // Esto asegura que la animación no se dispare en el próximo inicio de sesión si no hay cambio de nivel real.
+    // Y también inicializa el valor si estaba vacío.
+    if (currentLevel !== lastLoginLevel || isNaN(parseInt(studentData[10]))) { // Actualiza si hay cambio de nivel O si estaba vacío
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `Sheet1!K${studentRowIndex + 1}`, // Columna K para LAST_LOGIN_LEVEL
+        valueInputOption: 'RAW',
+        requestBody: { values: [[currentLevel]] }
+      });
+    }
 
   } catch (error) {
     console.error('Error en el login:', error);
@@ -168,8 +190,7 @@ app.post('/api/register', async (req, res) => {
       return res.status(409).json({ error: 'El ID de alumno ya existe.' });
     }
 
-    // Hash de la contraseña (descomentar y usar 'await bcrypt.hash(password, 10);' si lo reintroduces)
-    const storedPassword = password; // Almacenando como texto plano según tu captura de Sheets
+    const storedPassword = password; // Almacenando como texto plano
 
     const newRow = [
       id,                  // Columna A: ID
@@ -180,8 +201,9 @@ app.post('/api/register', async (req, res) => {
       '0',                 // Columna F: Homeworks (0 por defecto)
       '0',                 // Columna G: Coins (0 por defecto)
       '0',                 // Columna H: Attendance (0 por defecto)
-      '0',                 // Columna I: Badges (inicializado con '0' según tu indicación)
-      '0'                  // Columna J: EXP (0 por defecto)
+      '0',                 // Columna I: Badges (inicializado con '0')
+      '0',                 // Columna J: EXP (0 por defecto)
+      '0'                  // Columna K: LAST_LOGIN_LEVEL (0 por defecto para nuevos usuarios)
     ];
 
     await sheets.spreadsheets.values.append({
@@ -227,7 +249,7 @@ app.post('/api/send-reset-code', async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: studentEmail,
+      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'], // Ajusta los destinatarios según tu necesidad
       subject: 'Código de restablecimiento de contraseña',
       text: `Tu código de restablecimiento de contraseña es: ${code}\nEste código expirará en 10 minutos.`
     };
@@ -253,7 +275,6 @@ app.post('/api/reset-password-with-code', async (req, res) => {
   const { id, code, password } = req.body;
   console.log({ id, code, realCode: resetCodes[id] });
 
-  // Validación de la nueva contraseña (4 HEX mayúsculas)
   if (!id || !code || !password || !/^[A-Z0-9]{4}$/.test(password)) {
     return res.status(400).json({ error: 'Datos inválidos. Asegúrate de usar un código y contraseña válidos (4 HEX mayúsculas).' });
   }
@@ -273,7 +294,6 @@ app.post('/api/reset-password-with-code', async (req, res) => {
     }
 
     const rowNumber = index + 1; // Ajustar a número de fila de Sheets
-    // const hashedPassword = await bcrypt.hash(password, 10); // Descomentar si usas bcrypt
     const newPassword = password; // Almacenando como texto plano
 
     await sheets.spreadsheets.values.update({
@@ -328,8 +348,7 @@ app.post('/api/purchase', async (req, res) => {
   const totalCost = quantityToBuy * itemCost;
 
   try {
-    // Rango de studentCoinsRange debe ser la Columna G (Coins)
-    const studentCoinsRange = `Sheet1!G${studentRowIndex}`;
+    const studentCoinsRange = `Sheet1!G${studentRowIndex}`; // Columna G: Coins
     const badgeDataRange = 'Badges!A:C'; // Nombre, Cantidad, Costo de insignias
 
     const [coinsResponse, badgesResponse] = await Promise.all([
@@ -354,8 +373,6 @@ app.post('/api/purchase', async (req, res) => {
     const newCoins = currentCoins - totalCost;
     const newQty = currentQty - quantityToBuy;
 
-    // Actualizar Google Sheet (Monedas del Alumno y Cantidad de Insignia)
-    // *** IMPORTANTE: NO SE AFECTA LA COLUMNA DE EXP. (J) AQUÍ ***
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
       requestBody: {
@@ -382,10 +399,9 @@ app.post('/api/purchase', async (req, res) => {
       }
     });
 
-    // Envío de correo electrónico (mantengo esta parte ya que estaba en tu código)
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'],
+      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'], // Ajusta los destinatarios según tu necesidad
       subject: 'Confirmación de compra de insignia',
       text: `Hola,
 
@@ -405,21 +421,17 @@ Gracias.`
 
     res.json({
       success: true,
-      newCoins: newCoins,
+      newCoins,
       newBadgeQuantity: newQty,
       message: `Compra de ${quantityToBuy} ${itemName} realizada. Monedas restantes: ${newCoins}`
     });
-
   } catch (error) {
     console.error('Error en la compra:', error);
-    res.status(500).json({ error: 'Error interno del servidor durante la compra.', details: error.message });
+    res.status(500).json({ error: 'Error en la compra', details: error.message });
   }
 });
 
-// Endpoint para añadir EXP. (¡Mismo endpoint de antes, ajustado a tu columna EXP.)
-// Este endpoint es un EJEMPLO de cómo se podría implementar una forma de ganar EXP.
-// En un entorno real, necesitarías una forma segura (admin panel, etc.)
-// para usarlo.
+// Endpoint para añadir EXP.
 app.post('/api/add-exp', async (req, res) => {
   const { studentId, expToAdd } = req.body;
 
@@ -428,7 +440,7 @@ app.post('/api/add-exp', async (req, res) => {
   }
 
   try {
-    const range = 'Sheet1!A:J'; // Necesitamos ID y la columna J (EXP.)
+    const range = 'Sheet1!A:K'; // Necesitamos ID, EXP. (J) y LAST_LOGIN_LEVEL (K)
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
 
@@ -439,16 +451,36 @@ app.post('/api/add-exp', async (req, res) => {
 
     const rowNumber = index + 1;
     const currentExp = parseInt(rows[index][9]) || 0; // Columna J (índice 9) es EXP.
+    let currentLastLoginLevel = parseInt(rows[index][10]); // Columna K (índice 10) es LAST_LOGIN_LEVEL
+
+    if (isNaN(currentLastLoginLevel)) { // Si está vacío, inicialízalo a 0
+        currentLastLoginLevel = 0;
+    }
+
     const newExp = currentExp + expToAdd;
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `Sheet1!J${rowNumber}`, // Columna J: EXP.
-      valueInputOption: 'RAW',
-      requestBody: { values: [[newExp]] }
-    });
-
     const newLevel = calculateLevel(newExp);
+
+    const updates = [{
+      range: `Sheet1!J${rowNumber}`, // Columna J: EXP.
+      values: [[newExp]]
+    }];
+
+    // Actualizar LAST_LOGIN_LEVEL solo si el nuevo nivel es mayor y no ha sido reflejado
+    // O si estaba vacío.
+    if (newLevel > currentLastLoginLevel || isNaN(parseInt(rows[index][10]))) {
+        updates.push({
+            range: `Sheet1!K${rowNumber}`, // Columna K: LAST_LOGIN_LEVEL
+            values: [[newLevel]]
+        });
+    }
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        data: updates,
+        valueInputOption: 'RAW'
+      }
+    });
 
     res.json({
       success: true,
