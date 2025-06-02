@@ -125,7 +125,10 @@
       const [resetId, setResetId] = React.useState('');
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
-      const [showLevelUpGif, setShowLevelUpGif] = React.useState(false); // New state for GIF
+      const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
+
+      // Nuevo estado para almacenar el nivel previo del alumno (usando useRef)
+      const prevLevelRef = React.useRef(null);
 
       const calculateLevel = (points) => {
         if (points >= 100) return 5;
@@ -136,22 +139,25 @@
         return 0;
       };
 
-      // Effect to check for level up on studentData change after login
+      // Effect para verificar el cambio de nivel y disparar la animación
       React.useEffect(() => {
         if (studentData) {
-          const lastSeenLevel = localStorage.getItem(`lastLevel_${studentData.id}`);
-          if (lastSeenLevel && parseInt(lastSeenLevel) < studentData.level) {
+          const currentLevel = studentData.level;
+          const prevLevel = prevLevelRef.current;
+
+          // Si el nivel actual es diferente al nivel anterior (y no es la primera carga)
+          // y el nivel actual es mayor que el anterior (para un "level up")
+          if (prevLevel !== null && currentLevel > prevLevel) {
             setShowLevelUpGif(true);
-            localStorage.setItem(`lastLevel_${studentData.id}`, studentData.level);
             setTimeout(() => {
               setShowLevelUpGif(false);
-            }, 4000); // GIF displays for 4 seconds
-          } else if (!lastSeenLevel) {
-            // If no last seen level, set current level to localStorage for future checks
-            localStorage.setItem(`lastLevel_${studentData.id}`, studentData.level);
+            }, 4000); // GIF se muestra por 4 segundos
           }
+
+          // Actualiza el nivel previo para la próxima renderización
+          prevLevelRef.current = currentLevel;
         }
-      }, [studentData]);
+      }, [studentData]); // Se dispara cuando studentData cambia
 
       const handleLogin = async () => {
         const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
@@ -164,6 +170,8 @@
           data.student.level = calculateLevel(data.student.points);
           setStudentData(data.student);
           setIsLoggedIn(true);
+          // Al iniciar sesión, inicializa el nivel previo
+          prevLevelRef.current = data.student.level;
         } else {
           alert(data.error);
         }
@@ -184,6 +192,7 @@
         setResetCode('');
         setResetPass('');
         setShowLevelUpGif(false); // Reset GIF state on logout
+        prevLevelRef.current = null; // Resetear el nivel previo al cerrar sesión
       };
 
       const fetchBadges = async () => {
@@ -240,14 +249,22 @@
             }),
           });
           const data = await response.json();
-          setStudentData(prev => ({
-            ...prev,
-            monedas: data.newCoins.toString(),
-            purchases: {
-              ...prev.purchases,
-              [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
-            }
-          }));
+
+          // Actualiza studentData y recalcula el nivel
+          setStudentData(prev => {
+            const updatedStudent = {
+              ...prev,
+              monedas: data.newCoins.toString(),
+              purchases: {
+                ...prev.purchases,
+                [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
+              }
+            };
+            // Recalcula el nivel aquí para que el useEffect lo detecte
+            updatedStudent.level = calculateLevel(updatedStudent.points);
+            return updatedStudent;
+          });
+
           setBadges(prevBadges => prevBadges.map(b =>
             b.name === item.itemName ? { ...b, quantity: data.newBadgeQuantity } : b
           ));
