@@ -191,7 +191,16 @@
           setStudentData(data.student);
           setIsLoggedIn(true);
           // Al iniciar sesión, inicializa el nivel previo con el 'exp' inicial
-          prevLevelRef.current = data.student.level;
+          prevLevelRef.current = data.student.level; // Esto es crucial para la primera vez que se loguea.
+
+          // Si el backend indica un levelUpOccurred al iniciar sesión, mostrar el GIF
+          if (data.levelUpOccurred) {
+            setShowLevelUpGif(true);
+            setTimeout(() => {
+              setShowLevelUpGif(false);
+            }, 4000);
+          }
+
         } else {
           alert(data.error);
         }
