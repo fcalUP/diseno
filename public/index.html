@@ -148,6 +148,12 @@
           // Si el nivel actual es diferente al nivel anterior (y no es la primera carga)
           // y el nivel actual es mayor que el anterior (para un "level up")
           if (prevLevel !== null && currentLevel > prevLevel) {
+            // --- AQUÍ VA EL ALERT ---
+            alert(`¡Felicidades, has subido de nivel!
+                  Nivel anterior: ${prevLevel}
+                  Nivel actual: ${currentLevel}`);
+            // -----------------------
+
             setShowLevelUpGif(true);
             setTimeout(() => {
               setShowLevelUpGif(false);
@@ -157,7 +163,7 @@
           // Actualiza el nivel previo para la próxima renderización
           prevLevelRef.current = currentLevel;
         }
-      }, [studentData]); // Se dispara cuando studentData cambia
+    }, [studentData]); // Se dispara cuando studentData cambia
 
       const handleLogin = async () => {
         const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
