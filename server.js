@@ -198,7 +198,7 @@ app.post('/api/register', async (req, res) => {
       id,                  // Columna A: ID
       name,                // Columna B: NOMBRE
       sexo,                // Columna C: Sexo
-      '',                  // Columna D: CORREO (vacío por defecto)
+      id+'@up.edu.mx',     // Columna D: CORREO (vacío por defecto)
       storedPassword,      // Columna E: PAS (Contraseña)
       '0',                 // Columna F: Homeworks (0 por defecto)
       '0',                 // Columna G: Coins (0 por defecto)
