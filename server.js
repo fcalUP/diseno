@@ -231,43 +231,46 @@ app.post('/api/send-reset-code', async (req, res) => {
   }
 
   try {
-    // Rango para obtener ID y Email (Columna D)
-    const range = 'Sheet1!A:D';
+    const range = 'Sheet1!A:A'; // Solo necesitas verificar la existencia del ID
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
-    const rows = response.data.values;
+    const rows = response.data.values || []; // Asegura que rows sea un array incluso si no hay datos
 
-    const studentRow = rows.find((row, i) => i > 0 && row[0] === id); // Buscar por ID
-    if (!studentRow) {
+    // Buscar el alumno por ID para confirmar que existe en la hoja (ignorando la fila de encabezado)
+    const studentExists = rows.some((row, i) => i > 0 && row[0] === id);
+    if (!studentExists) {
       return res.status(404).json({ error: 'ID de alumno no encontrado.' });
     }
 
-    const studentEmail = studentRow[3]; // Columna D para el correo electrónico
-    if (!studentEmail || studentEmail.trim() === '') {
-      return res.status(400).json({ error: 'Este alumno no tiene un correo electrónico registrado para restablecer la contraseña.' });
-    }
+    // === Lógica clave: Construir el correo electrónico con el ID ===
+    const studentEmailToUse = `${id}@up.edu.mx`; // Misma lógica que la compra de insignias
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString(); // Código de 6 dígitos
-    resetCodes[id] = code; // Almacena el código temporalmente
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    resetCodes[id] = code;
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'], // Ajusta los destinatarios según tu necesidad
+      to: [studentEmailToUse, 'fcal@up.edu.mx'],
       subject: 'Código de restablecimiento de contraseña',
       text: `Tu código de restablecimiento de contraseña es: ${code}\nEste código expirará en 10 minutos.`
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log(`Código de restablecimiento enviado a ${studentEmail} para ID ${id}`);
+    // === Añadir logs detallados aquí para ver si Nodemailer se ejecuta y qué devuelve ===
+    console.log(`Intentando enviar código a: ${studentEmailToUse}`);
+    console.log("Opciones de correo (mailOptions):", mailOptions);
 
-    // Limpia el código después de 10 minutos
+    await transporter.sendMail(mailOptions);
+    console.log(`Código de restablecimiento enviado a ${studentEmailToUse} para ID ${id}`);
+
     setTimeout(() => {
       delete resetCodes[id];
       console.log(`Código de restablecimiento para ID ${id} expirado.`);
-    }, 10 * 60 * 1000); // 10 minutos
+    }, 10 * 60 * 1000);
 
     res.json({ message: 'Código de restablecimiento enviado a tu correo electrónico.' });
+
   } catch (error) {
-    console.error('Error al enviar el código de restablecimiento:', error);
+    // === Este es el lugar CRÍTICO para ver el error si no es de Nodemailer ===
+    console.error('Error al enviar el código de restablecimiento (catch general):', error);
     res.status(500).json({ error: 'Error al enviar el código de restablecimiento.', details: error.message });
   }
 });
