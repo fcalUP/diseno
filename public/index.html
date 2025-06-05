@@ -30,104 +30,125 @@
       resetPass, setResetPass,
       handleSendResetCode,
       handleUpdatePassword,
-      selectedCareer, setSelectedCareer // Nuevo prop para la carrera seleccionada
-    }) => (
-      <>
-        <div className="flex flex-col md:flex-row w-screen h-screen">
-          <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: "url('/img/side-image.jpg')" }}></div>
-          <div className="w-full md:w-1/2 flex items-center justify-center bg-white">
-            <div className="w-full max-w-md px-6 py-8 text-center">
-              {/* Logo dinámico */}
-              <img src={selectedCareer === 'Diseno Digital' ? "logo.png" : "/img/Com.png"} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
-              <h2 className="text-2xl font-bold mb-4 text-center">
-                {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}
-              </h2>
+      selectedCareer, setSelectedCareer // Mantenemos este prop para el combobox principal
+    }) => {
+      // Nuevo estado local para la carrera seleccionada dentro del modal de registro
+      const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
 
-              {/* Combobox para la carrera */}
-              <select
-                className="w-full p-2 mb-4 border rounded"
-                value={selectedCareer}
-                onChange={(e) => setSelectedCareer(e.target.value)}
-              >
-                <option value="Diseno Digital">Diseño Digital</option>
-                <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
-              </select>
+      // Sincronizar el estado del modal con el del combobox principal cuando se abre
+      React.useEffect(() => {
+        setRegisterCareer(selectedCareer);
+      }, [showRegister, selectedCareer]);
 
-              <input className="w-full p-2 mb-2 border rounded" placeholder="ID de Alumno"
-                value={studentId} onChange={(e) => setStudentId(e.target.value)} />
-              <input type="password" className="w-full p-2 mb-4 border rounded" placeholder="Contraseña"
-                value={password} onChange={(e) => setPassword(e.target.value)} />
-              <button className="bg-blue-600 text-white px-4 py-2 rounded w-full"
-                onClick={handleLogin}>Iniciar sesión</button>
+      return (
+        <>
+          <div className="flex flex-col md:flex-row w-screen h-screen">
+            <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: "url('/img/side-image.jpg')" }}></div>
+            <div className="w-full md:w-1/2 flex items-center justify-center bg-white">
+              <div className="w-full max-w-md px-6 py-8 text-center">
+                {/* Logo dinámico */}
+                <img src={selectedCareer === 'Diseno Digital' ? "logo.png" : "/img/Com.png"} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
+                <h2 className="text-2xl font-bold mb-4 text-center">
+                  {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}
+                </h2>
 
-              <div className="text-sm mt-4">
-                <button onClick={() => setShowRegister(true)} className="text-blue-600 underline mr-4">Sign in</button>
-                <button onClick={() => setShowReset(true)} className="text-red-500 underline">¿Olvidaste tu contraseña?</button>
+                {/* Combobox para la carrera en el Login Principal */}
+                <select
+                  className="w-full p-2 mb-4 border rounded"
+                  value={selectedCareer}
+                  onChange={(e) => setSelectedCareer(e.target.value)}
+                >
+                  <option value="Diseno Digital">Diseño Digital</option>
+                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                </select>
+
+                <input className="w-full p-2 mb-2 border rounded" placeholder="ID de Alumno"
+                  value={studentId} onChange={(e) => setStudentId(e.target.value)} />
+                <input type="password" className="w-full p-2 mb-4 border rounded" placeholder="Contraseña"
+                  value={password} onChange={(e) => setPassword(e.target.value)} />
+                <button className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+                  onClick={handleLogin}>Iniciar sesión</button>
+
+                <div className="text-sm mt-4">
+                  <button onClick={() => setShowRegister(true)} className="text-blue-600 underline mr-4">Sign in</button>
+                  <button onClick={() => setShowReset(true)} className="text-red-500 underline">¿Olvidaste tu contraseña?</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {showRegister && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
-              <h2 className="text-lg font-bold">Registrar nuevo usuario</h2>
-              <input className="w-full border p-2 rounded" placeholder="ID de alumno" id="reg-id" />
-              <input className="w-full border p-2 rounded" placeholder="Nombre completo" id="reg-name" />
-              <div className="flex flex-col sm:flex-row items-center justify-between">
-                <label><input type="radio" name="sexo" value="Hombre" defaultChecked /> Hombre</label>
-                <label><input type="radio" name="sexo" value="Mujer" /> Mujer</label>
+          {showRegister && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+              <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
+                <h2 className="text-lg font-bold">Registrar nuevo usuario</h2>
+                <input className="w-full border p-2 rounded" placeholder="ID de alumno" id="reg-id" />
+                <input className="w-full border p-2 rounded" placeholder="Nombre completo" id="reg-name" />
+                <div className="flex flex-col sm:flex-row items-center justify-between">
+                  <label><input type="radio" name="sexo" value="Hombre" defaultChecked /> Hombre</label>
+                  <label><input type="radio" name="sexo" value="Mujer" /> Mujer</label>
+                </div>
+
+                {/* Nuevo combobox de selección de materia/carrera en el modal de registro */}
+                <select
+                  className="w-full p-2 border rounded"
+                  value={registerCareer}
+                  onChange={(e) => setRegisterCareer(e.target.value)}
+                >
+                  <option value="Diseno Digital">Diseño Digital</option>
+                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                </select>
+
+                <input type="password" className="w-full border p-2 rounded" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
+                <button className="bg-green-600 text-white px-4 py-2 rounded w-full" onClick={async () => {
+                  const sexo = document.querySelector('input[name="sexo"]:checked').value;
+                  const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      id: document.getElementById('reg-id').value,
+                      name: document.getElementById('reg-name').value,
+                      sexo,
+                      password: document.getElementById('reg-pass').value,
+                      career: registerCareer // <--- ¡Ahora se usa el estado local del modal!
+                    })
+                  });
+                  const data = await res.json();
+                  alert(data.message || data.error);
+                  setShowRegister(false);
+                }}>Registrar</button>
+                <button className="text-sm text-gray-500" onClick={() => setShowRegister(false)}>Cancelar</button>
               </div>
-              <input type="password" className="w-full border p-2 rounded" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
-              <button className="bg-green-600 text-white px-4 py-2 rounded w-full" onClick={async () => {
-                const sexo = document.querySelector('input[name="sexo"]:checked').value;
-                const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    id: document.getElementById('reg-id').value,
-                    name: document.getElementById('reg-name').value,
-                    sexo,
-                    password: document.getElementById('reg-pass').value,
-                    career: selectedCareer // Enviar la carrera al registro
-                  })
-                });
-                const data = await res.json();
-                alert(data.message || data.error);
-                setShowRegister(false);
-              }}>Registrar</button>
-              <button className="text-sm text-gray-500" onClick={() => setShowRegister(false)}>Cancelar</button>
             </div>
-          </div>
-        )}
+          )}
 
-        {showReset && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
-              <h2 className="text-lg font-bold text-center">Recuperar contraseña</h2>
-              <input className="w-full border p-2 rounded" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
-              <button className="bg-blue-600 text-white px-4 py-2 rounded w-full" onClick={handleSendResetCode}>Enviar código</button>
+          {showReset && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+              <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
+                <h2 className="text-lg font-bold text-center">Recuperar contraseña</h2>
+                <input className="w-full border p-2 rounded" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
+                <button className="bg-blue-600 text-white px-4 py-2 rounded w-full" onClick={handleSendResetCode}>Enviar código</button>
 
-              {showCodeField && (
-                <>
-                  <input className="w-full border p-2 rounded" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
-                  <input type="password" className="w-full border p-2 rounded" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
-                  <button className="bg-yellow-600 text-white px-4 py-2 rounded w-full mt-2" onClick={handleUpdatePassword}>Actualizar contraseña</button>
-                </>
-              )}
+                {showCodeField && (
+                  <>
+                    <input className="w-full border p-2 rounded" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
+                    <input type="password" className="w-full border p-2 rounded" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
+                    <button className="bg-yellow-600 text-white px-4 py-2 rounded w-full mt-2" onClick={handleUpdatePassword}>Actualizar contraseña</button>
+                  </>
+                )}
 
-              <button className="text-sm text-gray-500 mt-2" onClick={() => {
-                setShowReset(false);
-                setShowCodeField(false);
-                setResetId('');
-                setResetCode('');
-                setResetPass('');
-              }}>Cancelar</button>
+                <button className="text-sm text-gray-500 mt-2" onClick={() => {
+                  setShowReset(false);
+                  setShowCodeField(false);
+                  setResetId('');
+                  setResetCode('');
+                  setResetPass('');
+                }}>Cancelar</button>
+              </div>
             </div>
-          </div>
-        )}
-      </>
-    );
+          )}
+        </>
+      );
+    };
 
     const App = () => {
       const [isLoggedIn, setIsLoggedIn] = React.useState(false);
@@ -144,7 +165,7 @@
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
-      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital'); // Nuevo estado para la carrera seleccionada
+      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital'); // Estado para la carrera seleccionada globalmente
 
       // Nuevo estado para almacenar el nivel previo del alumno (usando useRef)
       const prevLevelRef = React.useRef(null);
@@ -390,7 +411,7 @@
               setResetPass={setResetPass}
               handleSendResetCode={handleSendResetCode}
               handleUpdatePassword={handleUpdatePassword}
-              selectedCareer={selectedCareer} // Pasar el estado y el setter
+              selectedCareer={selectedCareer}
               setSelectedCareer={setSelectedCareer}
             />
           ) : (
