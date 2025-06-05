@@ -7,8 +7,8 @@
   <title>Perfil del Alumno</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 
 <body class="bg-gray-200 min-h-screen flex items-center justify-center">
@@ -29,15 +29,30 @@
       resetCode, setResetCode,
       resetPass, setResetPass,
       handleSendResetCode,
-      handleUpdatePassword
+      handleUpdatePassword,
+      selectedCareer, setSelectedCareer // Nuevo prop para la carrera seleccionada
     }) => (
       <>
         <div className="flex flex-col md:flex-row w-screen h-screen">
           <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: "url('/img/side-image.jpg')" }}></div>
           <div className="w-full md:w-1/2 flex items-center justify-center bg-white">
             <div className="w-full max-w-md px-6 py-8 text-center">
-              <img src="logo.png" alt="Logo" className="mx-auto w-32 h-32 mb-4" />
-              <h2 className="text-2xl font-bold mb-4 text-center">Diseño Digital</h2>
+              {/* Logo dinámico */}
+              <img src={selectedCareer === 'Diseno Digital' ? "logo.png" : "/img/Com.png"} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
+              <h2 className="text-2xl font-bold mb-4 text-center">
+                {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}
+              </h2>
+
+              {/* Combobox para la carrera */}
+              <select
+                className="w-full p-2 mb-4 border rounded"
+                value={selectedCareer}
+                onChange={(e) => setSelectedCareer(e.target.value)}
+              >
+                <option value="Diseno Digital">Diseño Digital</option>
+                <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+              </select>
+
               <input className="w-full p-2 mb-2 border rounded" placeholder="ID de Alumno"
                 value={studentId} onChange={(e) => setStudentId(e.target.value)} />
               <input type="password" className="w-full p-2 mb-4 border rounded" placeholder="Contraseña"
@@ -73,7 +88,8 @@
                     id: document.getElementById('reg-id').value,
                     name: document.getElementById('reg-name').value,
                     sexo,
-                    password: document.getElementById('reg-pass').value
+                    password: document.getElementById('reg-pass').value,
+                    career: selectedCareer // Enviar la carrera al registro
                   })
                 });
                 const data = await res.json();
@@ -128,6 +144,7 @@
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
+      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital'); // Nuevo estado para la carrera seleccionada
 
       // Nuevo estado para almacenar el nivel previo del alumno (usando useRef)
       const prevLevelRef = React.useRef(null);
@@ -182,7 +199,7 @@
         const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId, password }),
+          body: JSON.stringify({ studentId, password, career: selectedCareer }), // Enviar la carrera
         });
         const data = await response.json();
         if (data.success) {
@@ -222,10 +239,11 @@
         setResetPass('');
         setShowLevelUpGif(false); // Reset GIF state on logout
         prevLevelRef.current = null; // Resetear el nivel previo al cerrar sesión
+        setSelectedCareer('Diseno Digital'); // Resetear la carrera seleccionada
       };
 
       const fetchBadges = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/badges`);
+        const response = await fetch(`${BACKEND_BASE_URL}/api/badges?career=${selectedCareer}`); // Enviar la carrera
         const data = await response.json();
         setBadges(data.badges || []);
       };
@@ -275,6 +293,7 @@
               studentId: studentData.id,
               studentRowIndex: studentData.rowIndex,
               ...item,
+              career: selectedCareer // Enviar la carrera a la compra
             }),
           });
           const data = await response.json();
@@ -310,7 +329,7 @@
           const res = await fetch(`${BACKEND_BASE_URL}/api/send-reset-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: resetId })
+            body: JSON.stringify({ id: resetId, career: selectedCareer }) // Enviar la carrera al reset de código
           });
           const data = await res.json();
           alert(data.message || data.error);
@@ -331,7 +350,7 @@
           const res = await fetch(`${BACKEND_BASE_URL}/api/reset-password-with-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass })
+            body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass, career: selectedCareer }) // Enviar la carrera al update de contraseña
           });
           const data = await res.json();
           alert(data.message || data.error);
@@ -371,6 +390,8 @@
               setResetPass={setResetPass}
               handleSendResetCode={handleSendResetCode}
               handleUpdatePassword={handleUpdatePassword}
+              selectedCareer={selectedCareer} // Pasar el estado y el setter
+              setSelectedCareer={setSelectedCareer}
             />
           ) : (
             studentData && (
