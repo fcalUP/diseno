@@ -18,6 +18,7 @@
     const BACKEND_BASE_URL = window.location.origin;
     // const BACKEND_BASE_URL = 'http://localhost:3000'; // Descomentar para pruebas locales
 
+    // Componente LoginScreen (mantiene el código existente)
     const LoginScreen = ({
       studentId, setStudentId,
       password, setPassword,
@@ -30,17 +31,14 @@
       resetPass, setResetPass,
       handleSendResetCode,
       handleUpdatePassword,
-      selectedCareer, setSelectedCareer // Mantenemos este prop para el combobox principal
+      selectedCareer, setSelectedCareer
     }) => {
-      // Nuevo estado local para la carrera seleccionada dentro del modal de registro
       const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
 
-      // Sincronizar el estado del modal con el del combobox principal cuando se abre
       React.useEffect(() => {
         setRegisterCareer(selectedCareer);
       }, [showRegister, selectedCareer]);
 
-      // Determinar la imagen de fondo basada en la carrera seleccionada
       const sideImage = selectedCareer === 'Diseno Digital' ? '/img/side-image.jpg' : '/img/comuni.png';
 
       return (
@@ -49,13 +47,11 @@
             <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: `url('${sideImage}')` }}></div>
             <div className="w-full md:w-1/2 flex items-center justify-center bg-white">
               <div className="w-full max-w-md px-6 py-8 text-center">
-                {/* Logo dinámico */}
                 <img src={selectedCareer === 'Diseno Digital' ? "logo.png" : "/img/Com.png"} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
                 <h2 className="text-2xl font-bold mb-4 text-center">
                   {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}
                 </h2>
 
-                {/* Combobox para la carrera en el Login Principal */}
                 <select
                   className="w-full p-2 mb-4 border rounded"
                   value={selectedCareer}
@@ -91,7 +87,6 @@
                   <label><input type="radio" name="sexo" value="Mujer" /> Mujer</label>
                 </div>
 
-                {/* Nuevo combobox de selección de materia/carrera en el modal de registro */}
                 <select
                   className="w-full p-2 border rounded"
                   value={registerCareer}
@@ -112,7 +107,7 @@
                       name: document.getElementById('reg-name').value,
                       sexo,
                       password: document.getElementById('reg-pass').value,
-                      career: registerCareer // <--- ¡Ahora se usa el estado local del modal!
+                      career: registerCareer
                     })
                   });
                   const data = await res.json();
@@ -153,6 +148,87 @@
       );
     };
 
+    // --- NUEVO COMPONENTE: LeaderboardModal ---
+    const LeaderboardModal = ({ show, onClose, career }) => {
+      const [leaderboard, setLeaderboard] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+      const [error, setError] = React.useState(null);
+
+      React.useEffect(() => {
+        if (show && career) {
+          const fetchLeaderboard = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+              const response = await fetch(`${BACKEND_BASE_URL}/api/leaderboard?career=${encodeURIComponent(career)}`);
+              const data = await response.json();
+              if (response.ok) {
+                setLeaderboard(data.leaderboard);
+              } else {
+                setError(data.error || 'Error al cargar el leaderboard.');
+              }
+            } catch (err) {
+              console.error('Error fetching leaderboard:', err);
+              setError('Error de red o servidor.');
+            } finally {
+              setLoading(false);
+            }
+          };
+          fetchLeaderboard();
+        }
+      }, [show, career]);
+
+      if (!show) return null;
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md sm:max-w-lg space-y-4">
+            <h2 className="text-2xl font-bold text-center mb-4">Leaderboard de {career}</h2>
+            {loading && <p className="text-center">Cargando leaderboard...</p>}
+            {error && <p className="text-center text-red-600">{error}</p>}
+            {!loading && !error && leaderboard.length === 0 && (
+              <p className="text-center">No hay alumnos en esta clase aún.</p>
+            )}
+            {!loading && !error && leaderboard.length > 0 && (
+              <ul className="space-y-3 max-h-96 overflow-y-auto">
+                {leaderboard.map((student, index) => (
+                  <li key={student.id} className="flex items-center p-2 bg-gray-50 rounded-lg shadow-sm">
+                    <span className="font-bold text-lg w-8 text-center mr-2">{index + 1}.</span>
+                    <img
+                      src={`/avatars/${student.id}${student.level}.png`}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        // <-- MODIFICACIÓN AQUÍ: Usar student.sexo para el fallback
+                        e.target.src = student.sexo === 'Hombre'
+                          ? `/avatars/DefaultH${student.level}.png`
+                          : `/avatars/DefaultF${student.level}.png`;
+                      }}
+                      alt={student.name}
+                      className="w-10 h-10 rounded-full object-cover mr-4 ring-2 ring-blue-500" // Círculo de 32x32px
+                    />
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">{student.name}</p>
+                      <p className="text-sm text-gray-600">EXP: {student.exp}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="text-center mt-4">
+              <button
+                className="bg-red-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition"
+                onClick={onClose}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Componente App (modificaciones para el leaderboard)
     const App = () => {
       const [isLoggedIn, setIsLoggedIn] = React.useState(false);
       const [studentId, setStudentId] = React.useState('');
@@ -168,12 +244,13 @@
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
-      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital'); // Estado para la carrera seleccionada globalmente
+      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital');
+      // --- NUEVO ESTADO PARA EL LEADERBOARD ---
+      const [showLeaderboardModal, setShowLeaderboardModal] = React.useState(false);
 
-      // Nuevo estado para almacenar el nivel previo del alumno (usando useRef)
+
       const prevLevelRef = React.useRef(null);
 
-      // Renombrado de 'points' a 'exp' para mayor claridad
       const calculateLevel = (exp) => {
         if (exp >= 100) return 5;
         if (exp >= 75) return 4;
@@ -183,19 +260,11 @@
         return 0;
       };
 
-      // Effect para verificar el cambio de nivel y disparar la animación
       React.useEffect(() => {
-        // console.log('>>> useEffect se ejecutó <<<'); // Debugging
         if (studentData) {
           const currentLevel = studentData.level;
           const prevLevel = prevLevelRef.current;
 
-          // console.log('Estado actual de studentData:', studentData); // Debugging
-          // console.log('currentLevel:', currentLevel); // Debugging
-          // console.log('prevLevelRef.current (antes de actualizar):', prevLevel); // Debugging
-
-          // Si el nivel actual es diferente al nivel anterior (y no es la primera carga)
-          // y el nivel actual es mayor que el anterior (para un "level up")
           if (prevLevel !== null && currentLevel > prevLevel) {
             alert(`¡Felicidades, has subido de nivel!
                     Nivel anterior: ${prevLevel}
@@ -203,38 +272,29 @@
             setShowLevelUpGif(true);
             setTimeout(() => {
               setShowLevelUpGif(false);
-              // console.log('GIF oculto.'); // Debugging
-            }, 4000); // GIF se muestra por 4 segundos
+            }, 4000);
           } else if (prevLevel === null) {
-            // console.log('Primera carga de datos del alumno. prevLevel es null.'); // Debugging
           } else if (currentLevel <= prevLevel) {
-            // console.log('Nivel no subió (o bajó/permaneció igual). No se activa el GIF.'); // Debugging
           }
 
-          // Actualiza el nivel previo para la próxima renderización
           prevLevelRef.current = currentLevel;
-          // console.log('prevLevelRef.current (después de actualizar para prox. ciclo):', prevLevelRef.current); // Debugging
         } else {
-          // console.log('studentData es null (alumno no logueado).'); // Debugging
         }
-      }, [studentData]); // Se dispara cuando studentData cambia
+      }, [studentData]);
 
       const handleLogin = async () => {
         const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId, password, career: selectedCareer }), // Enviar la carrera
+          body: JSON.stringify({ studentId, password, career: selectedCareer }),
         });
         const data = await response.json();
         if (data.success) {
-          // Usar 'exp' en lugar de 'points' aquí
-          data.student.level = calculateLevel(data.student.exp); // Asumiendo que el backend ahora envía 'exp'
+          data.student.level = calculateLevel(data.student.exp);
           setStudentData(data.student);
           setIsLoggedIn(true);
-          // Al iniciar sesión, inicializa el nivel previo con el 'exp' inicial
-          prevLevelRef.current = data.student.level; // Esto es crucial para la primera vez que se loguea.
+          prevLevelRef.current = data.student.level;
 
-          // Si el backend indica un levelUpOccurred al iniciar sesión, mostrar el GIF
           if (data.levelUpOccurred) {
             setShowLevelUpGif(true);
             setTimeout(() => {
@@ -261,13 +321,14 @@
         setResetId('');
         setResetCode('');
         setResetPass('');
-        setShowLevelUpGif(false); // Reset GIF state on logout
-        prevLevelRef.current = null; // Resetear el nivel previo al cerrar sesión
-        setSelectedCareer('Diseno Digital'); // Resetear la carrera seleccionada
+        setShowLevelUpGif(false);
+        prevLevelRef.current = null;
+        setSelectedCareer('Diseno Digital');
+        setShowLeaderboardModal(false); // Reset leaderboard state on logout
       };
 
       const fetchBadges = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/badges?career=${selectedCareer}`); // Enviar la carrera
+        const response = await fetch(`${BACKEND_BASE_URL}/api/badges?career=${selectedCareer}`);
         const data = await response.json();
         setBadges(data.badges || []);
       };
@@ -317,13 +378,11 @@
               studentId: studentData.id,
               studentRowIndex: studentData.rowIndex,
               ...item,
-              career: selectedCareer // Enviar la carrera a la compra
+              career: selectedCareer
             }),
           });
           const data = await response.json();
 
-          // NO SE AFECTAN LOS PUNTOS/EXP. AL COMPRAR.
-          // Solo se actualizan las monedas y las compras de insignias.
           setStudentData(prev => {
             const updatedStudent = {
               ...prev,
@@ -332,9 +391,7 @@
                 ...prev.purchases,
                 [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
               }
-              // studentData.exp NO se modifica aquí por una compra.
             };
-            // Recalcula el nivel usando la EXP. ACTUAL del studentData.
             updatedStudent.level = calculateLevel(updatedStudent.exp);
             return updatedStudent;
           });
@@ -353,7 +410,7 @@
           const res = await fetch(`${BACKEND_BASE_URL}/api/send-reset-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: resetId, career: selectedCareer }) // Enviar la carrera al reset de código
+            body: JSON.stringify({ id: resetId, career: selectedCareer })
           });
           const data = await res.json();
           alert(data.message || data.error);
@@ -374,7 +431,7 @@
           const res = await fetch(`${BACKEND_BASE_URL}/api/reset-password-with-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass, career: selectedCareer }) // Enviar la carrera al update de contraseña
+            body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass, career: selectedCareer })
           });
           const data = await res.json();
           alert(data.message || data.error);
@@ -441,9 +498,9 @@
                       <span>Coins</span><span>{studentData.monedas}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>EXP.</span><span>{studentData.exp}/100</span> {/* CAMBIADO: 'points' a 'exp' */}
+                      <span>EXP.</span><span>{studentData.exp}/100</span>
                     </div>
-                    <input type="range" readOnly max="100" value={studentData.exp % 100} className="w-full accent-green-600" /> {/* CAMBIADO: 'points' a 'exp' */}
+                    <input type="range" readOnly max="100" value={studentData.exp % 100} className="w-full accent-green-600" />
                     <div className="text-2xl sm:text-3xl font-extrabold mt-3">Nivel {studentData.level}</div>
                     <div className="flex justify-between">
                       <span>Tareas</span><span>{studentData.tareas}</span>
@@ -468,6 +525,10 @@
                   <div className="mt-6 flex justify-center w-full">
                     <button className="bg-green-600 text-white px-6 py-2 rounded-full shadow-md hover:bg-green-700 transition" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
                       Tienda
+                    </button>
+                    {/* --- NUEVO BOTÓN PARA EL LEADERBOARD --- */}
+                    <button className="ml-4 bg-purple-600 text-white px-6 py-2 rounded-full shadow-md hover:bg-purple-700 transition" onClick={() => setShowLeaderboardModal(true)}>
+                      Leaderboard
                     </button>
                   </div>
                   <div className="col-span-1 md:col-span-2 flex justify-center mt-6">
@@ -514,6 +575,13 @@
                     <img src="/gifs/levelup.gif" alt="Level Up!" className="w-full h-full object-contain" />
                   </div>
                 )}
+
+                {/* --- RENDERIZAR EL LEADERBOARD MODAL --- */}
+                <LeaderboardModal
+                  show={showLeaderboardModal}
+                  onClose={() => setShowLeaderboardModal(false)}
+                  career={studentData.career} // Pasar la carrera del alumno logueado
+                />
               </div>
             )
           )}
