@@ -60,7 +60,7 @@
                 </h2>
 
                 <select
-                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
                   value={selectedCareer}
                   onChange={(e) => setSelectedCareer(e.target.value)}
                 >
@@ -68,15 +68,15 @@
                   <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
                 </select>
 
-                <input className="w-full p-3 mb-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="ID de Alumno"
+                <input className="w-full p-3 mb-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de Alumno"
                   value={studentId} onChange={(e) => setStudentId(e.target.value)} />
-                <input type="password" className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Contraseña"
+                <input type="password" className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña"
                   value={password} onChange={(e) => setPassword(e.target.value)} />
-                <button className="bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 w-full font-semibold"
+                <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold"
                   onClick={handleLogin}>Iniciar sesión</button>
 
                 <div className="text-sm mt-6">
-                  <button onClick={() => setShowRegister(true)} className="text-blue-600 hover:underline mr-4 transition-colors duration-300">Sign in</button>
+                  <button onClick={() => setShowRegister(true)} className="text-purple-600 hover:underline mr-4 transition-colors duration-300">Sign in</button>
                   <button onClick={() => setShowReset(true)} className="text-red-500 hover:underline transition-colors duration-300">¿Olvidaste tu contraseña?</button>
                 </div>
               </div>
@@ -87,15 +87,15 @@
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
               <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
                 <h2 className="text-2xl font-bold text-gray-800">Registrar nuevo usuario</h2>
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="ID de alumno" id="reg-id" />
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Nombre completo" id="reg-name" />
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de alumno" id="reg-id" />
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Nombre completo" id="reg-name" />
                 <div className="flex items-center justify-around text-gray-700">
                   <label className="flex items-center"><input type="radio" name="sexo" value="Hombre" defaultChecked className="mr-2" /> Hombre</label>
                   <label className="flex items-center"><input type="radio" name="sexo" value="Mujer" className="mr-2" /> Mujer</label>
                 </div>
 
                 <select
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
                   value={registerCareer}
                   onChange={(e) => setRegisterCareer(e.target.value)}
                 >
@@ -103,8 +103,8 @@
                   <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
                 </select>
 
-                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
-                <button className="bg-green-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-green-700 transition-all duration-300 w-full font-semibold" onClick={async () => {
+                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
+                <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold" onClick={async () => {
                   const sexo = document.querySelector('input[name="sexo"]:checked').value;
                   const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
                     method: 'POST',
@@ -130,14 +130,14 @@
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
               <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
                 <h2 className="text-2xl font-bold text-center text-gray-800">Recuperar contraseña</h2>
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
-                <button className="bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 w-full font-semibold" onClick={handleSendResetCode}>Enviar código</button>
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
+                <button className="bg-purple-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 w-full font-semibold" onClick={handleSendResetCode}>Enviar código</button>
 
                 {showCodeField && (
                   <>
-                    <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
-                    <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
-                    <button className="bg-yellow-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-yellow-600 transition-all duration-300 w-full mt-2 font-semibold" onClick={handleUpdatePassword}>Actualizar contraseña</button>
+                    <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
+                    <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
+                    <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full mt-2 font-semibold" onClick={handleUpdatePassword}>Actualizar contraseña</button>
                   </>
                 )}
 
@@ -174,6 +174,8 @@
 
       const prevLevelRef = React.useRef(null);
 
+      const levelThresholds = { 0: 0, 1: 10, 2: 25, 3: 50, 4: 75, 5: 100 };
+
       const calculateLevel = (exp) => {
         if (exp >= 100) return 5;
         if (exp >= 75) return 4;
@@ -181,6 +183,19 @@
         if (exp >= 25) return 2;
         if (exp >= 10) return 1;
         return 0;
+      };
+
+      const getLevelProgress = (exp, level) => {
+        const currentLevelExp = levelThresholds[level];
+        const nextLevelExp = levelThresholds[level + 1] === undefined ? 100 : levelThresholds[level + 1];
+        const expInLevel = exp - currentLevelExp;
+        const expForNextLevel = nextLevelExp - currentLevelExp;
+        const percentage = (expInLevel / expForNextLevel) * 100;
+        return {
+          percentage: isNaN(percentage) ? 0 : percentage,
+          currentExp: exp,
+          requiredExp: nextLevelExp
+        };
       };
 
       React.useEffect(() => {
@@ -359,6 +374,8 @@
         }
       };
 
+      const progress = studentData ? getLevelProgress(studentData.exp, studentData.level) : { percentage: 0, currentExp: 0, requiredExp: 10 };
+
       return (
         <>
           {!isLoggedIn ? (
@@ -387,7 +404,7 @@
             />
           ) : (
             studentData && (
-              <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl p-8 grid grid-cols-1 md:grid-cols-2 gap-8 transform transition-transform duration-500 scale-95 hover:scale-100">
+              <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl p-8 grid grid-cols-1 md:grid-cols-2 gap-8 transform transition-transform duration-500">
                 <h2 className="col-span-1 md:col-span-2 text-4xl font-bold text-center text-gray-800">Hola, {studentData.name}</h2>
                 <div className="col-span-1 flex justify-center items-center">
                   <img
@@ -402,18 +419,30 @@
                     className="w-48 h-48 sm:w-64 sm:h-64 object-contain rounded-full shadow-lg"
                   />
                 </div>
-                <div className="col-span-1 flex flex-col justify-center items-center text-center">
-                  <div className="text-lg font-semibold space-y-4 w-full max-w-xs mx-auto text-gray-700">
-                    <div className="flex justify-between items-center">
+                <div className="col-span-1 flex flex-col justify-center items-center text-center space-y-6">
+
+                  {/* Bloque 1: Monedas y Experiencia */}
+                  <div className="w-full max-w-xs p-4 bg-gray-50 rounded-xl shadow">
+                    <div className="flex justify-between items-center text-lg font-semibold text-gray-700">
                       <span>Coins</span><span className="font-bold text-yellow-500">{studentData.monedas}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span>EXP.</span><span className="font-bold">{studentData.exp}/100</span>
+                    <div className="mt-4">
+                      <div className="flex justify-between items-center text-sm font-semibold text-gray-700 mb-1">
+                        <span>EXP.</span><span>{progress.currentExp}/{progress.requiredExp}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div className="bg-orange-500 h-4 rounded-full" style={{ width: `${progress.percentage}%` }}></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-4">
-                      <div className="bg-green-500 h-4 rounded-full" style={{ width: `${studentData.exp}%` }}></div>
-                    </div>
-                    <div className="text-4xl font-extrabold mt-4 text-gray-800">Nivel {studentData.level}</div>
+                  </div>
+
+                  {/* Bloque 2: Nivel */}
+                  <div className="w-full max-w-xs p-4 bg-gray-50 rounded-xl shadow text-center">
+                    <div className="text-5xl font-extrabold text-gray-800">Nivel {studentData.level}</div>
+                  </div>
+
+                  {/* Bloque 3: Tareas, Asistencias y Badges */}
+                  <div className="w-full max-w-xs p-4 bg-gray-50 rounded-xl shadow text-lg font-semibold text-gray-700 space-y-2">
                     <div className="flex justify-between items-center">
                       <span>Tareas</span><span className="font-bold">{studentData.tareas}</span>
                     </div>
@@ -423,28 +452,30 @@
                     <div className="flex justify-between items-center">
                       <span>Badges</span><span className="font-bold">{Object.keys(studentData.purchases || {}).length}</span>
                     </div>
-                    {Object.keys(studentData.purchases || {}).length > 0 && (
-                      <div className="mt-6 text-sm w-full text-left">
-                        <h3 className="font-bold text-gray-800">Insignias adquiridas:</h3>
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          {Object.entries(studentData.purchases).map(([name, qty]) => (
-                            <li key={name}>{name}: {qty}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
-                  <div className="mt-8 flex justify-center w-full space-x-4">
-                    <button className="bg-green-600 text-white px-8 py-3 rounded-full shadow-lg hover:bg-green-700 transition-all duration-300 font-semibold" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
+
+                  {Object.keys(studentData.purchases || {}).length > 0 && (
+                    <div className="mt-4 text-sm w-full max-w-xs text-left">
+                      <h3 className="font-bold text-gray-800">Insignias adquiridas:</h3>
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        {Object.entries(studentData.purchases).map(([name, qty]) => (
+                          <li key={name}>{name}: {qty}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex justify-center w-full space-x-4">
+                    <button className="bg-orange-500 text-white px-8 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 font-semibold" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
                       Tienda
                     </button>
-                    <button onClick={handleLogout} className="bg-red-600 text-white px-8 py-3 rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 font-semibold">Log Out</button>
+                    <button onClick={handleLogout} className="bg-purple-600 text-white px-8 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 font-semibold">Log Out</button>
                   </div>
                 </div>
 
                 {showCartModal && (
                   <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
-                    <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform transition-transform duration-300 scale-95 hover:scale-100">
+                    <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform transition-transform duration-300">
                       <h3 className="text-2xl font-bold mb-4 text-gray-800">Tienda de Insignias</h3>
                       <p className="mb-4 text-lg">Monedas disponibles: <strong className="text-yellow-500">{studentData.monedas}</strong></p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-2">
@@ -464,7 +495,7 @@
                       </div>
                       <div className="mt-6 text-center">
                         <p className="text-lg">Total a pagar: <strong className="text-yellow-500">{totalCartCost}</strong> monedas</p>
-                        <button className="bg-blue-600 text-white px-6 py-3 rounded-full mt-4 disabled:opacity-50 transition-all duration-300 font-semibold" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
+                        <button className="bg-orange-500 text-white px-6 py-3 rounded-full mt-4 disabled:opacity-50 transition-all duration-300 font-semibold" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
                           Comprar
                         </button>
                         <button className="ml-4 bg-gray-400 text-white px-6 py-3 rounded-full mt-4 transition-all duration-300 font-semibold" onClick={() => setShowCartModal(false)}>
