@@ -114,7 +114,8 @@
 
       return (
         <>
-          <div className="flex flex-col md:flex-row w-full max-w-7xl h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up">
+          {/* Adjusted these classes to make the login window fill the available space */}
+          <div className="flex flex-col md:flex-row w-full min-h-screen bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up">
             <div className="hidden md:block md:w-1/2 bg-cover bg-center transition-all duration-500 ease-in-out" style={{ backgroundImage: `url('${sideImage}')` }}></div>
             <div className="w-full md:w-1/2 flex items-center justify-center bg-gray-50 p-6 sm:p-10">
               <div className="w-full max-w-sm px-6 py-8 text-center bg-white rounded-2xl shadow-xl border border-gray-100 transform transition-all duration-300 hover:scale-[1.01]">
