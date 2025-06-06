@@ -35,453 +35,541 @@ async function initializeGoogleSheetsClient() {
   try {
     const authClient = await auth.getClient();
     sheets = google.sheets({ version: 'v4', auth: authClient });
-    console.log('Cliente de Google Sheets inicializado correctamente.');
+    console.log('Google Sheets client initialized.');
   } catch (error) {
-    console.error('Error al inicializar Google Sheets:', error);
-    process.exit(1); // Sale del proceso si no se puede inicializar el cliente
+    console.error('Error initializing Google Sheets client:', error);
+    process.exit(1); // Salir si no se puede inicializar
   }
 }
+
+// Función auxiliar para obtener el nombre de la hoja según la carrera
+function getSheetName(career) {
+    if (career === 'Diseno Digital') {
+        return 'Sheets1';
+    } else if (career === 'Diseno de la Comunicacion') {
+        return 'Com';
+    } else {
+        throw new Error('Carrera no válida');
+    }
+}
+
+// Función para calcular el nivel basada en la EXP
+function calculateLevel(exp) {
+    if (exp >= 100) return 5;
+    if (exp >= 75) return 4;
+    if (exp >= 50) return 3;
+    if (exp >= 25) return 2;
+    if (exp >= 10) return 1;
+    return 0;
+}
+
+// Inicializar el cliente de Google Sheets al inicio de la aplicación
 initializeGoogleSheetsClient();
 
-// Almacenamiento temporal para códigos de restablecimiento de contraseña
-const resetCodes = {};
+// ===============================================
+// === ENDPOINTS DE LA API ===
+// ===============================================
 
-// Función para calcular el nivel basada en la EXP.
-function calculateLevel(exp) {
-  if (exp >= 100) return 5;
-  if (exp >= 75) return 4;
-  if (exp >= 50) return 3;
-  if (exp >= 25) return 2;
-  if (exp >= 10) return 1;
-  return 0;
-}
-
-// Helper para obtener el nombre de la hoja según la carrera
-function getSheetName(career) {
-  return career === 'Diseno de la Comunicacion' ? 'Com' : 'Sheet1';
-}
-
-// Configuración de Nodemailer para el envío de correos
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // Puedes usar otro servicio o configuración SMTP
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-// ===================================
-// ENDPOINTS DE API
-// ===================================
-
-// Endpoint de Inicio de Sesión
+// Endpoint para el login
 app.post('/api/login', async (req, res) => {
-  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
-  const { studentId, password, career } = req.body; // Recibe la carrera
+    if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+    const { studentId, password, career } = req.body;
 
-  if (!studentId || !password || !career) {
-    return res.status(400).json({ error: 'ID, contraseña y carrera requeridos.' });
-  }
-
-  const sheetName = getSheetName(career);
-
-  try {
-    // Rango ajustado para incluir hasta la nueva columna K (LAST_LOGIN_LEVEL)
-    const range = `${sheetName}!A:K`; // Ahora leemos hasta la columna K
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
-    const rows = response.data.values;
-
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: 'No se encontraron datos de alumnos.' });
+    if (!studentId || !password || !career) {
+        return res.status(400).json({ error: 'ID de alumno, contraseña y carrera son requeridos.' });
     }
 
-    // Buscar el alumno por ID y Contraseña. La contraseña está en Columna E (índice 4)
-    const studentRowIndex = rows.findIndex((row, index) => index > 0 && row[0] === studentId && row[4] === password);
-    if (studentRowIndex === -1) {
-      return res.status(401).json({ error: 'Credenciales inválidas.' });
+    const sheetName = getSheetName(career);
+
+    try {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!A:L`, // Obtener todas las columnas relevantes
+        });
+        const rows = response.data.values;
+
+        if (!rows || rows.length === 0) {
+            return res.status(404).json({ error: 'No se encontraron alumnos en esta carrera.' });
+        }
+
+        let studentFound = null;
+        let studentRowIndex = -1;
+        let levelUpOccurred = false;
+
+        for (let i = 1; i < rows.length; i++) { // Empezar desde la fila 1 (índice 1) para omitir el encabezado
+            const row = rows[i];
+            const currentId = row[0]; // Columna A
+            const currentPassword = row[8]; // Columna I
+            
+            // Reemplaza esto con bcrypt.compare si usas hashing
+            // const passwordMatch = await bcrypt.compare(password, currentPassword);
+            const passwordMatch = (password === currentPassword); // Comparación simple para tu formato actual
+
+            if (currentId === studentId && passwordMatch) {
+                const name = row[1]; // Columna B
+                const sexo = row[2]; // Columna C
+                const monedas = parseInt(row[3]) || 0; // Columna D
+                const tareas = parseInt(row[4]) || 0; // Columna E
+                const asistencias = parseInt(row[5]) || 0; // Columna F
+                const comprasString = row[6] || '{}'; // Columna G
+                const exp = parseInt(row[9]) || 0; // Columna J
+                let lastLoginLevel = parseInt(row[10]) || 0; // Columna K (LAST_LOGIN_LEVEL)
+                const studentLevel = calculateLevel(exp);
+
+                let purchases = {};
+                try {
+                    purchases = JSON.parse(comprasString);
+                } catch (e) {
+                    console.error('Error al parsear compras:', e);
+                }
+
+                // Verificar si hay un "level up" desde el último login
+                if (studentLevel > lastLoginLevel) {
+                    levelUpOccurred = true;
+                    // Actualizar LAST_LOGIN_LEVEL en la hoja de cálculo
+                    const rowNumber = i + 1; // Fila en Sheets (base 1)
+                    await sheets.spreadsheets.values.update({
+                        spreadsheetId: SPREADSHEET_ID,
+                        range: `${sheetName}!K${rowNumber}`, // Columna K
+                        valueInputOption: 'RAW',
+                        requestBody: {
+                            values: [[studentLevel]],
+                        },
+                    });
+                    console.log(`Nivel de ${studentId} actualizado a ${studentLevel} en LAST_LOGIN_LEVEL.`);
+                }
+
+                studentFound = {
+                    id: studentId,
+                    name,
+                    sexo,
+                    monedas,
+                    tareas,
+                    asistencias,
+                    purchases,
+                    exp,
+                    level: studentLevel,
+                    rowIndex: i, // Guardar el índice de la fila para futuras actualizaciones
+                };
+                studentRowIndex = i; // Guardar el índice de la fila para update
+                break;
+            }
+        }
+
+        if (studentFound) {
+            res.json({ success: true, student: studentFound, levelUpOccurred });
+        } else {
+            res.status(401).json({ success: false, error: 'ID o contraseña incorrectos.' });
+        }
+
+    } catch (error) {
+        console.error('Error al iniciar sesión:', error);
+        res.status(500).json({ error: 'Error interno del servidor.' });
     }
-
-    const studentData = rows[studentRowIndex]; // Datos de la fila encontrada
-    const id = studentData[0]; // ID
-    const name = studentData[1] || 'N/A'; // NOMBRE
-    const sexo = studentData[2] || 'N/A'; // Sexo
-    const email = studentData[3] || ''; // CORREO
-    const homeworks = studentData[5] || '0'; // Homeworks
-    const monedas = studentData[6] || '0'; // Coins
-    const asistencias = studentData[7] || '0'; // Attendance
-    const badgesString = studentData[8] || '0'; // Badges (como cadena)
-    const exp = parseInt(studentData[9]) || 0; // EXP
-
-    // Obtener lastLoginLevel. Si está vacío o es undefined (primera carga), se inicializa a 0
-    let lastLoginLevel = parseInt(studentData[10]);
-    if (isNaN(lastLoginLevel)) { // Si no es un número (es decir, está vacío en la hoja)
-        lastLoginLevel = 0; // Considera el nivel en el último login como 0 inicialmente
-    }
-
-    const currentLevel = calculateLevel(exp); // Nivel actual calculado
-
-    // Determinar si hay una subida de nivel desde el último login
-    const levelUpOccurred = currentLevel > lastLoginLevel;
-
-    // Obtener las compras de la hoja 'Purchases' (asume que Purchases es global o por carrera si lo necesitas)
-    const purchasesResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'Purchases!A:D' // Mantendremos una sola hoja de Purchases por simplicidad
-    });
-
-    const purchaseRows = purchasesResponse.data.values;
-    // Filtrar las compras para este studentId
-    const studentPurchases = purchaseRows?.length > 1
-      ? purchaseRows.slice(1).filter(row => row[1] === id) // row[1] es studentId en Purchases
-      : [];
-
-    // Reducir las compras a un mapa de insignias y cantidades
-    const badgesMap = studentPurchases.reduce((acc, row) => {
-      const badgeName = row[2]; // Columna C es el nombre de la insignia en Purchases
-      const quantity = parseInt(row[3]) || 0; // Columna D es la cantidad en Purchases
-      acc[badgeName] = (acc[badgeName] || 0) + quantity;
-      return acc;
-    }, {});
-
-
-    res.json({
-      success: true,
-      student: {
-        id: id,
-        name: name,
-        sexo: sexo,
-        email: email,
-        monedas: monedas,
-        tareas: homeworks,
-        asistencias: asistencias,
-        exp: exp,
-        level: currentLevel, // Nivel actual
-        purchases: badgesMap, // Usar el mapa de compras reales
-        rowIndex: studentRowIndex + 1 // Fila en el Sheets (para futuras actualizaciones)
-      },
-      // Indicador para el frontend
-      levelUpOccurred: levelUpOccurred
-    });
-
-    // ¡Importante! Actualizar el LAST_LOGIN_LEVEL en Google Sheets después del login exitoso
-    // Esto asegura que la animación no se dispare en el próximo inicio de sesión si no hay cambio de nivel real.
-    // Y también inicializa el valor si estaba vacío.
-    if (currentLevel !== lastLoginLevel || isNaN(parseInt(studentData[10]))) { // Actualiza si hay cambio de nivel O si estaba vacío
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${sheetName}!K${studentRowIndex + 1}`, // Columna K para LAST_LOGIN_LEVEL
-        valueInputOption: 'RAW',
-        requestBody: { values: [[currentLevel]] }
-      });
-    }
-
-  } catch (error) {
-    console.error('Error en el login:', error);
-    res.status(500).json({ error: 'Error interno del servidor durante el login.', details: error.message });
-  }
 });
 
-// Endpoint de Registro
+// Endpoint para registrar nuevo usuario
 app.post('/api/register', async (req, res) => {
-  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+    if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+    const { id, name, sexo, password, career } = req.body;
 
-  const { id, name, sexo, password, career } = req.body; // Recibe la carrera
-  if (!id || !name || !sexo || !password || !/^[A-Z0-9]{4}$/.test(password) || !career) {
-    return res.status(400).json({ error: 'Datos inválidos o incompletos. Contraseña debe ser 4 HEX mayúsculas y carrera requerida.' });
-  }
-
-  const sheetName = getSheetName(career);
-
-  try {
-    const range = `${sheetName}!A:A`;
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
-    const existingIds = response.data.values ? response.data.values.flat() : [];
-
-    if (existingIds.includes(id)) {
-      return res.status(409).json({ error: 'El ID de alumno ya existe.' });
+    if (!id || !name || !sexo || !password || !career) {
+        return res.status(400).json({ error: 'Todos los campos son requeridos.' });
     }
 
-    const storedPassword = password; // Almacenando como texto plano
+    const sheetName = getSheetName(career);
 
-    const newRow = [
-      id,                  // Columna A: ID
-      name,                // Columna B: NOMBRE
-      sexo,                // Columna C: Sexo
-      id+'@up.edu.mx',     // Columna D: CORREO (vacío por defecto)
-      storedPassword,      // Columna E: PAS (Contraseña)
-      '0',                 // Columna F: Homeworks (0 por defecto)
-      '0',                 // Columna G: Coins (0 por defecto)
-      '0',                 // Columna H: Attendance (0 por defecto)
-      '0',                 // Columna I: Badges (inicializado con '0')
-      '0',                 // Columna J: EXP (0 por defecto)
-      '0'                  // Columna K: LAST_LOGIN_LEVEL (0 por defecto para nuevos usuarios)
-    ];
+    // Validar formato de contraseña (4 caracteres HEX mayúsculas)
+    const passwordRegex = /^[A-F0-9]{4}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ error: 'La contraseña debe ser de 4 caracteres (letras A-F o números 0-9) en MAYÚSCULAS.' });
+    }
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A1`, // Se agrega al final de la hoja de la carrera seleccionada
-      valueInputOption: 'RAW',
-      requestBody: { values: [newRow] }
-    });
+    try {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!A:A`, // Solo leer la columna de IDs
+        });
+        const rows = response.data.values;
 
-    res.status(201).json({ message: 'Alumno registrado exitosamente.' });
-  } catch (error) {
-    console.error('Error en el registro:', error);
-    res.status(500).json({ error: 'Error interno del servidor durante el registro.', details: error.message });
-  }
+        if (rows && rows.some(row => row[0] === id)) {
+            return res.status(409).json({ error: 'El ID de alumno ya existe.' });
+        }
+
+        // Si usas bcrypt:
+        // const hashedPassword = await bcrypt.hash(password, 10);
+        // const newUserRow = [id, name, sexo, 0, 0, 0, '{}', '', hashedPassword, 0, 0, '']; // ID, Nombre, Sexo, Monedas, Tareas, Asistencias, Compras, Código, Contraseña, EXP, Last_Login_Level, Recovery_Code
+        
+        // Para tu formato actual (contraseña en claro)
+        const newUserRow = [id, name, sexo, 0, 0, 0, '{}', '', password, 0, 0, '']; // ID, Nombre, Sexo, Monedas, Tareas, Asistencias, Compras, Código, Contraseña, EXP, Last_Login_Level, Recovery_Code
+
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!A:L`, // Rango de columnas a las que se añadirán datos
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            requestBody: {
+                values: [newUserRow],
+            },
+        });
+
+        res.status(201).json({ success: true, message: 'Usuario registrado exitosamente.' });
+
+    } catch (error) {
+        console.error('Error al registrar usuario:', error);
+        res.status(500).json({ error: 'Error interno del servidor.' });
+    }
 });
 
-
-// Endpoint para enviar código de restablecimiento
+// Endpoint para enviar código de reseteo de contraseña
 app.post('/api/send-reset-code', async (req, res) => {
-  const { id, career } = req.body; // Recibe la carrera
-  if (!id || !career) {
-    return res.status(400).json({ error: 'ID de alumno y carrera son requeridos.' });
-  }
+    if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+    const { id, career } = req.body;
 
-  const sheetName = getSheetName(career);
-
-  try {
-    const range = `${sheetName}!A:A`; // Solo necesitas verificar la existencia del ID en la hoja de la carrera
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
-    const rows = response.data.values || []; // Asegura que rows sea un array incluso si no hay datos
-
-    // Buscar el alumno por ID para confirmar que existe en la hoja (ignorando la fila de encabezado)
-    const studentExists = rows.some((row, i) => i > 0 && row[0] === id);
-    if (!studentExists) {
-      return res.status(404).json({ error: 'ID de alumno no encontrado en la carrera seleccionada.' });
+    if (!id || !career) {
+        return res.status(400).json({ error: 'ID de alumno y carrera son requeridos.' });
     }
 
-    // === Lógica clave: Construir el correo electrónico con el ID ===
-    const studentEmailToUse = `${id}@up.edu.mx`; // Misma lógica que la compra de insignias
+    const sheetName = getSheetName(career);
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    // Almacena el código con el ID y la carrera para evitar conflictos entre carreras
-    resetCodes[`${id}-${career}`] = code;
+    try {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!A:L`, // Columna A (ID) y K (Recovery_Code)
+        });
+        const rows = response.data.values;
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: [studentEmailToUse, 'fcal@up.edu.mx'],
-      subject: 'Código de restablecimiento de contraseña',
-      text: `Tu código de restablecimiento de contraseña es: ${code}\nEste código expirará en 10 minutos.`
-    };
+        if (!rows) {
+            return res.status(404).json({ error: 'No se encontraron alumnos en esta carrera.' });
+        }
 
-    // === Añadir logs detallados aquí para ver si Nodemailer se ejecuta y qué devuelve ===
-    console.log(`Intentando enviar código a: ${studentEmailToUse} para carrera: ${career}`);
-    console.log("Opciones de correo (mailOptions):", mailOptions);
+        let studentRowIndex = -1;
+        let studentEmail = null; // Asumiendo que hay una columna para el email si lo necesitas
 
-    await transporter.sendMail(mailOptions);
-    console.log(`Código de restablecimiento enviado a ${studentEmailToUse} para ID ${id} y carrera ${career}`);
+        for (let i = 1; i < rows.length; i++) {
+            if (rows[i][0] === id) { // Columna A es el ID
+                studentRowIndex = i + 1; // Número de fila en Sheets (base 1)
+                studentEmail = rows[i][7]; // Columna H (si tienes email allí)
+                break;
+            }
+        }
 
-    setTimeout(() => {
-      delete resetCodes[`${id}-${career}`]; // Eliminar el código usando la clave combinada
-      console.log(`Código de restablecimiento para ID ${id} y carrera ${career} expirado.`);
-    }, 10 * 60 * 1000);
+        if (studentRowIndex === -1) {
+            return res.status(404).json({ error: 'ID de alumno no encontrado en la carrera seleccionada.' });
+        }
 
-    res.json({ message: 'Código de restablecimiento enviado a tu correo electrónico.' });
+        // Generar un código de recuperación (ej. 6 dígitos)
+        const recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-  } catch (error) {
-    // === Este es el lugar CRÍTICO para ver el error si no es de Nodemailer ===
-    console.error('Error al enviar el código de restablecimiento (catch general):', error);
-    res.status(500).json({ error: 'Error al enviar el código de restablecimiento.', details: error.message });
-  }
+        // Guardar el código en la hoja de cálculo (Columna L)
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!L${studentRowIndex}`, // Columna L (Recovery_Code)
+            valueInputOption: 'RAW',
+            requestBody: {
+                values: [[recoveryCode]],
+            },
+        });
+
+        // Enviar el código por correo electrónico (o mostrarlo en la consola para desarrollo)
+        // Necesitas configurar Nodemailer con tus credenciales de correo
+        const transporter = nodemailer.createTransport({
+            service: 'gmail', // O tu servicio de correo
+            auth: {
+                user: 'tu_correo@gmail.com', // Tu correo
+                pass: 'tu_contraseña_app_o_pass' // Contraseña de aplicación si usas Gmail
+            }
+        });
+
+        const mailOptions = {
+            from: 'tu_correo@gmail.com',
+            to: 'correo_destino_del_alumno@ejemplo.com', // Esto debe ser dinámico (desde la hoja de cálculo) o simplemente un dummy
+            subject: 'Código de Recuperación de Contraseña',
+            text: `Tu código de recuperación es: ${recoveryCode}. Este código expirará en 10 minutos.`
+        };
+
+        // En producción, probablemente no querrías enviar correos a IDs aleatorios.
+        // Asegúrate de que `studentEmail` contenga el correo real del alumno.
+        // Por ahora, solo lo imprimiremos en consola:
+        console.log(`Código de recuperación para ${id}: ${recoveryCode}`);
+        console.log(`Enviado (simulado) a: ${studentEmail || 'correo_del_alumno@ejemplo.com'}`);
+
+
+        // Comentar la siguiente línea si no tienes un servicio de correo configurado
+        /*
+        await transporter.sendMail(mailOptions);
+        */
+
+        res.json({ success: true, message: 'Código de recuperación enviado. Revisa tu correo o consúltalo en consola (solo desarrollo).' });
+
+    } catch (error) {
+        console.error('Error al enviar código de recuperación:', error);
+        res.status(500).json({ error: 'Error interno del servidor al enviar código.' });
+    }
 });
 
-// Endpoint para restablecer contraseña con código
+// Endpoint para resetear contraseña con código
 app.post('/api/reset-password-with-code', async (req, res) => {
-  const { id, code, password, career } = req.body; // Recibe la carrera
-  console.log({ id, code, realCode: resetCodes[`${id}-${career}`], career }); // Log con la clave combinada
+    if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+    const { id, code, password, career } = req.body;
 
-  if (!id || !code || !password || !/^[A-Z0-9]{4}$/.test(password) || !career) {
-    return res.status(400).json({ error: 'Datos inválidos. Asegúrate de usar un código, contraseña válida (4 HEX mayúsculas) y carrera.' });
-  }
-
-  const sheetName = getSheetName(career);
-
-  try {
-    if (!resetCodes[`${id}-${career}`] || resetCodes[`${id}-${career}`] !== code) {
-      return res.status(401).json({ error: 'Código incorrecto o no solicitado.' });
+    if (!id || !code || !password || !career) {
+        return res.status(400).json({ error: 'ID de alumno, código y nueva contraseña son requeridos.' });
     }
 
-    const range = `${sheetName}!A:A`; // Solo necesitamos la columna A para encontrar la fila en la hoja correcta
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
-    const rows = response.data.values;
+    const sheetName = getSheetName(career);
 
-    const index = rows.findIndex((row, i) => i > 0 && row[0] === id); // Buscar por ID
-    if (index === -1) {
-      return res.status(404).json({ error: 'ID no encontrado en la carrera seleccionada.' });
+    // Validar formato de nueva contraseña (4 caracteres HEX mayúsculas)
+    const passwordRegex = /^[A-F0-9]{4}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ error: 'La nueva contraseña debe ser de 4 caracteres (letras A-F o números 0-9) en MAYÚSCULAS.' });
     }
 
-    const rowNumber = index + 1;
-    const newPassword = password; // Almacenando como texto plano
+    try {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!A:L`, // Columna A (ID), I (Contraseña), L (Recovery_Code)
+        });
+        const rows = response.data.values;
 
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!E${rowNumber}`, // Columna E para la contraseña (PAS) en la hoja correcta
-      valueInputOption: 'RAW',
-      requestBody: { values: [[newPassword]] }
-    });
+        if (!rows) {
+            return res.status(404).json({ error: 'No se encontraron alumnos en esta carrera.' });
+        }
 
-    delete resetCodes[`${id}-${career}`]; // Eliminar el código después de usarlo, usando la clave combinada
-    res.json({ message: 'Contraseña actualizada correctamente.' });
-  } catch (error) {
-    console.error('Error al actualizar contraseña:', error);
-    res.status(500).json({ error: 'Error al actualizar contraseña.', details: error.message });
-  }
+        let studentRowIndex = -1;
+        let storedCode = null;
+
+        for (let i = 1; i < rows.length; i++) {
+            if (rows[i][0] === id) { // Columna A es el ID
+                studentRowIndex = i + 1; // Número de fila en Sheets (base 1)
+                storedCode = rows[i][11]; // Columna L es el Recovery_Code
+                break;
+            }
+        }
+
+        if (studentRowIndex === -1) {
+            return res.status(404).json({ error: 'ID de alumno no encontrado en la carrera seleccionada.' });
+        }
+
+        if (code !== storedCode) {
+            return res.status(401).json({ error: 'Código de recuperación incorrecto.' });
+        }
+
+        // Si usas bcrypt:
+        // const hashedPassword = await bcrypt.hash(password, 10);
+        // const updates = [
+        //     [`${sheetName}!I${studentRowIndex}`, hashedPassword], // Columna I: Contraseña
+        //     [`${sheetName}!L${studentRowIndex}`, ''] // Borrar el código de recuperación
+        // ];
+
+        // Para tu formato actual (contraseña en claro)
+        const updates = [
+            [`${sheetName}!I${studentRowIndex}`, password], // Columna I: Contraseña
+            [`${sheetName}!L${studentRowIndex}`, ''] // Borrar el código de recuperación
+        ];
+
+        // Ejecutar las actualizaciones
+        await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            requestBody: {
+                data: updates.map(([range, value]) => ({
+                    range: range,
+                    values: [[value]]
+                })),
+                valueInputOption: 'RAW'
+            }
+        });
+
+        res.json({ success: true, message: 'Contraseña actualizada exitosamente.' });
+
+    } catch (error) {
+        console.error('Error al resetear contraseña con código:', error);
+        res.status(500).json({ error: 'Error interno del servidor al resetear contraseña.' });
+    }
 });
+
 
 // Endpoint para obtener insignias
 app.get('/api/badges', async (req, res) => {
-  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
-  const { career } = req.query; // Recibe la carrera como query parameter
+    if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+    const { career } = req.query; // Recibe la carrera como query parameter
 
-  // Asumiendo que las insignias son las mismas para ambas carreras y se encuentran en la hoja 'Badges'
-  // Si las insignias fueran diferentes por carrera, necesitarías otra lógica aquí.
-  const badgesSheetName = 'Badges'; // O podrías tener 'Badges_DD' y 'Badges_Com'
-
-  try {
-    const range = `${badgesSheetName}!A:C`; // Suponiendo Insignia, Cantidad, Costo
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
-    const rows = response.data.values;
-
-    if (!rows || rows.length < 2) { // Asume que la primera fila es el encabezado
-      return res.status(404).json({ error: 'No se encontraron insignias o formato incorrecto.' });
+    if (!career) {
+        return res.status(400).json({ error: 'Carrera requerida para obtener insignias.' });
     }
 
-    const badges = rows.slice(1).map(row => ({ // Ignorar encabezado
-      name: row[0],     // Columna A: Nombre de la Insignia
-      quantity: parseInt(row[1]) || 0, // Columna B: Cantidad disponible
-      cost: parseInt(row[2]) || 0      // Columna C: Costo
-    }));
+    const sheetName = getSheetName(career);
 
-    res.json({ success: true, badges });
-  } catch (error) {
-    console.error('Error al obtener insignias:', error);
-    res.status(500).json({ error: 'Error al obtener insignias', details: error.message });
-  }
+    try {
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!M:N`, // Columna M: Nombre de insignia, Columna N: Cantidad disponible
+        });
+        const rows = response.data.values;
+
+        if (!rows || rows.length < 2) { // Asume que la primera fila es el encabezado
+            return res.status(200).json({ badges: [] });
+        }
+
+        // Asumiendo que la columna M tiene el nombre de la insignia y la N tiene la cantidad y el costo
+        // Ejemplo de formato en celda N: "10 (50)" donde 10 es cantidad y 50 es costo
+        const badges = rows.slice(1).map(row => {
+            const name = row[0]; // Columna M
+            const quantityAndCostString = row[1] || '0 (0)'; // Columna N
+            const match = quantityAndCostString.match(/(\d+)\s*\((\d+)\)/);
+            let quantity = 0;
+            let cost = 0;
+            if (match) {
+                quantity = parseInt(match[1]);
+                cost = parseInt(match[2]);
+            }
+            return { name, quantity, cost };
+        });
+
+        res.json({ success: true, badges });
+    } catch (error) {
+        console.error('Error al obtener insignias:', error);
+        res.status(500).json({ error: 'Error al obtener insignias', details: error.message });
+    }
 });
 
-// Endpoint para realizar una compra
+// Endpoint para la compra de insignias
 app.post('/api/purchase', async (req, res) => {
-  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+    if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+    const { studentId, studentRowIndex, itemName, quantityToBuy, itemCost, career } = req.body;
 
-  const { studentId, studentRowIndex, itemName, quantityToBuy, itemCost, career } = req.body; // Recibe la carrera
-  if (!studentId || !studentRowIndex || !itemName || typeof quantityToBuy !== 'number' || typeof itemCost !== 'number' || !career) {
-    return res.status(400).json({ error: 'Datos inválidos o incompletos para la compra' });
-  }
-
-  const sheetName = getSheetName(career);
-  const totalCost = quantityToBuy * itemCost;
-
-  try {
-    const studentCoinsRange = `${sheetName}!G${studentRowIndex}`; // Columna G: Coins en la hoja correcta
-    const badgeDataRange = 'Badges!A:C'; // Nombre, Cantidad, Costo de insignias (asume hoja Badges global)
-
-    const [coinsResponse, badgesResponse] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: studentCoinsRange }),
-      sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: badgeDataRange })
-    ]);
-
-    const currentCoins = parseInt(coinsResponse.data.values?.[0]?.[0]) || 0;
-    if (currentCoins < totalCost) {
-      return res.status(400).json({ error: 'Monedas insuficientes' });
+    if (!studentId || studentRowIndex === undefined || !itemName || quantityToBuy === undefined || itemCost === undefined || !career) {
+        return res.status(400).json({ error: 'Datos de compra incompletos.' });
     }
 
-    const badgeRows = badgesResponse.data.values;
-    const badgeRowIndex = badgeRows.findIndex((row, i) => i > 0 && row[0] === itemName);
-    if (badgeRowIndex === -1) return res.status(404).json({ error: 'Insignia no encontrada' });
+    const sheetName = getSheetName(career);
 
-    const currentQty = parseInt(badgeRows[badgeRowIndex][1]) || 0; // Cantidad disponible de la insignia
-    if (currentQty < quantityToBuy) {
-      return res.status(400).json({ error: `Sólo quedan ${currentQty} unidades de ${itemName}` });
+    try {
+        // 1. Obtener datos actuales del alumno y de la insignia
+        const studentResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!D${studentRowIndex + 1}:G${studentRowIndex + 1}`, // Monedas (D) y Compras (G)
+        });
+        const studentData = studentResponse.data.values[0];
+        let currentCoins = parseInt(studentData[0]) || 0; // Columna D (índice 0 en el rango)
+        let currentPurchasesString = studentData[3] || '{}'; // Columna G (índice 3 en el rango)
+        let currentPurchases = {};
+        try {
+            currentPurchases = JSON.parse(currentPurchasesString);
+        } catch (e) {
+            console.error('Error al parsear compras actuales:', e);
+        }
+
+        const badgesResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!M:N`, // Columna M: Nombre de insignia, Columna N: Cantidad disponible
+        });
+        const badgeRows = badgesResponse.data.values;
+        const badgeHeader = badgeRows[0];
+        const badgeItemIndex = badgeRows.findIndex(row => row[0] === itemName);
+        
+        if (badgeItemIndex === -1) {
+            return res.status(404).json({ error: 'Insignia no encontrada.' });
+        }
+        
+        const badgeRow = badgeRows[badgeItemIndex];
+        const currentQuantityAndCostString = badgeRow[1] || '0 (0)';
+        const match = currentQuantityAndCostString.match(/(\d+)\s*\((\d+)\)/);
+        let currentBadgeQuantity = 0;
+        // let actualItemCost = 0; // Podrías validar que itemCost coincida con este
+
+        if (match) {
+            currentBadgeQuantity = parseInt(match[1]);
+            // actualItemCost = parseInt(match[2]);
+        }
+
+        // 2. Validaciones
+        const totalCost = quantityToBuy * itemCost;
+        if (currentCoins < totalCost) {
+            return res.status(400).json({ error: 'Monedas insuficientes.' });
+        }
+        if (currentBadgeQuantity < quantityToBuy) {
+            return res.status(400).json({ error: 'No hay suficientes insignias disponibles.' });
+        }
+
+        // 3. Actualizar datos
+        const newCoins = currentCoins - totalCost;
+        const newBadgeQuantity = currentBadgeQuantity - quantityToBuy;
+        currentPurchases[itemName] = (currentPurchases[itemName] || 0) + quantityToBuy;
+        const newPurchasesString = JSON.stringify(currentPurchases);
+
+        // Actualizar hoja de cálculo
+        const updates = [
+            {
+                range: `${sheetName}!D${studentRowIndex + 1}`, // Columna D: Monedas
+                values: [[newCoins]],
+            },
+            {
+                range: `${sheetName}!G${studentRowIndex + 1}`, // Columna G: Compras
+                values: [[newPurchasesString]],
+            },
+            {
+                range: `${sheetName}!N${badgeItemIndex + 1}`, // Columna N: Cantidad de insignia disponible
+                values: [[`${newBadgeQuantity} (${itemCost})`]], // Mantener el formato "cantidad (costo)"
+            },
+        ];
+
+        await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            requestBody: {
+                data: updates,
+                valueInputOption: 'RAW',
+            },
+        });
+
+        res.json({ success: true, message: 'Compra exitosa.', newCoins, newBadgeQuantity });
+
+    } catch (error) {
+        console.error('Error al procesar la compra:', error);
+        res.status(500).json({ error: 'Error interno del servidor al procesar la compra.' });
     }
-
-    const newCoins = currentCoins - totalCost;
-    const newQty = currentQty - quantityToBuy;
-
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      requestBody: {
-        data: [
-          { range: studentCoinsRange, values: [[newCoins]] }, // Columna G: Monedas en la hoja correcta
-          { range: `Badges!B${badgeRowIndex + 1}`, values: [[newQty]] } // Columna B de la hoja Badges
-        ],
-        valueInputOption: 'RAW' // RAW para valores directos
-      }
-    });
-
-    // Registrar la compra en la hoja 'Purchases'
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'Purchases!A:E', // Agregamos una columna para la carrera
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [[
-          new Date().toLocaleString(),
-          studentId,
-          itemName,
-          quantityToBuy,
-          career // Registrar la carrera
-        ]]
-      }
-    });
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'], // Ajusta los destinatarios según tu necesidad
-      subject: 'Confirmación de compra de insignia',
-      text: `Hola,
-
-Se ha realizado una compra de insignia:
-
-- Alumno: ${studentId}@up.edu.mx
-- Carrera: ${career}
-- Insignia: ${itemName}
-- Cantidad: ${quantityToBuy}
-- Costo total: ${totalCost} monedas
-- Monedas anteriores: ${currentCoins}
-- Monedas restantes: ${newCoins}
-
-Gracias.`
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    res.json({
-      success: true,
-      newCoins,
-      newBadgeQuantity: newQty,
-      message: `Compra de ${quantityToBuy} ${itemName} realizada. Monedas restantes: ${newCoins}`
-    });
-  } catch (error) {
-    console.error('Error en la compra:', error);
-    res.status(500).json({ error: 'Error en la compra', details: error.message });
-  }
 });
 
 // Endpoint para añadir EXP.
 app.post('/api/add-exp', async (req, res) => {
-  const { studentId, expToAdd, career } = req.body; // Recibe la carrera
+  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+  const { studentId, expToAdd, career } = req.body;
 
-  if (!studentId || expToAdd === undefined || isNaN(expToAdd) || expToAdd <= 0 || !career) {
-    return res.status(400).json({ error: 'ID de alumno, cantidad de EXP. válida y carrera son requeridos.' });
+  if (!studentId || expToAdd === undefined || expToAdd < 0 || !career) {
+    return res.status(400).json({ error: 'ID de alumno, EXP. a añadir y carrera son requeridos y la EXP. debe ser positiva.' });
   }
 
   const sheetName = getSheetName(career);
 
   try {
-    const range = `${sheetName}!A:K`; // Necesitamos ID, EXP. (J) y LAST_LOGIN_LEVEL (K) en la hoja correcta
-    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!A:K`, // Leer hasta la columna K para obtener ID, EXP. y LAST_LOGIN_LEVEL
+    });
     const rows = response.data.values;
 
-    const index = rows.findIndex((row, i) => i > 0 && row[0] === studentId); // Buscar por ID
-    if (index === -1) {
-      return res.status(404).json({ error: 'ID de alumno no encontrado en la carrera seleccionada.' });
+    if (!rows || rows.length < 2) {
+      return res.status(404).json({ error: 'No se encontraron alumnos en esta carrera.' });
     }
 
-    const rowNumber = index + 1;
-    const currentExp = parseInt(rows[index][9]) || 0; // Columna J (índice 9) es EXP.
-    let currentLastLoginLevel = parseInt(rows[index][10]); // Columna K (índice 10) es LAST_LOGIN_LEVEL
+    let studentRow = null;
+    let index = -1;
+
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === studentId) { // Columna A es el ID
+        studentRow = rows[i];
+        index = i; // Índice de la fila en el array (no en Sheets)
+        break;
+      }
+    }
+
+    if (!studentRow) {
+      return res.status(404).json({ error: 'Alumno no encontrado en la carrera seleccionada.' });
+    }
+
+    const rowNumber = index + 1; // Número de fila en Sheets (base 1)
+    const currentExp = parseInt(studentRow[9]) || 0; // Columna J (índice 9) es EXP.
+    let currentLastLoginLevel = parseInt(studentRow[10]); // Columna K (índice 10) es LAST_LOGIN_LEVEL
 
     if (isNaN(currentLastLoginLevel)) { // Si está vacío, inicialízalo a 0
         currentLastLoginLevel = 0;
@@ -496,7 +584,7 @@ app.post('/api/add-exp', async (req, res) => {
     }];
 
     // Actualizar LAST_LOGIN_LEVEL solo si el nuevo nivel es mayor o si estaba vacío
-    if (newLevel > currentLastLoginLevel || isNaN(parseInt(rows[index][10]))) {
+    if (newLevel > currentLastLoginLevel || isNaN(parseInt(studentRow[10]))) {
         updates.push({
             range: `${sheetName}!K${rowNumber}`, // Columna K: LAST_LOGIN_LEVEL en la hoja correcta
             values: [[newLevel]]
@@ -513,9 +601,7 @@ app.post('/api/add-exp', async (req, res) => {
 
     res.json({
       success: true,
-      message: `EXP. de ${studentId} actualizada. Nueva EXP.: ${newExp}, Nuevo Nivel: ${newLevel}.`,
-      newExp: newExp,
-      newLevel: newLevel
+      message: `EXP. de ${studentId} actualizada. Nueva EXP.: ${newExp}, Nuevo Nivel: ${newLevel}.`
     });
 
   } catch (error) {
@@ -524,8 +610,48 @@ app.post('/api/add-exp', async (req, res) => {
   }
 });
 
+// Endpoint para el Leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
+  const { career } = req.query; // Recibe la carrera como query parameter
 
-// ----------------- INICIAR SERVIDOR -----------------
+  if (!career) {
+    return res.status(400).json({ error: 'Carrera requerida para el leaderboard.' });
+  }
+
+  const sheetName = getSheetName(career);
+
+  try {
+    const range = `${sheetName}!A:J`; // Columnas A (ID), B (NOMBRE), J (EXP)
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+    const rows = response.data.values;
+
+    if (!rows || rows.length < 2) { // Asume que la primera fila es el encabezado
+      return res.status(200).json({ leaderboard: [] }); // Retorna array vacío si no hay datos
+    }
+
+    // Mapear los datos a un formato más manejable y calcular el nivel
+    const leaderboardData = rows.slice(1).map(row => ({
+      id: row[0], // Columna A
+      name: row[1] || 'N/A', // Columna B (necesario para el avatar por defecto)
+      sexo: row[2] || 'N/A', // Columna C (necesario para el avatar por defecto)
+      exp: parseInt(row[9]) || 0, // Columna J es EXP
+      level: calculateLevel(parseInt(row[9]) || 0) // Calcular el nivel para el avatar
+    }));
+
+    // Ordenar por EXP (puntos) de mayor a menor
+    leaderboardData.sort((a, b) => b.exp - a.exp);
+
+    res.json({ success: true, leaderboard: leaderboardData });
+  } catch (error) {
+    console.error('Error al obtener el leaderboard:', error);
+    res.status(500).json({ error: 'Error al obtener el leaderboard', details: error.message });
+  }
+});
+
+// ===============================================
+// === INICIAR EL SERVIDOR ===
+// ===============================================
 app.listen(PORT, () => {
-  console.log(`Servidor backend escuchando en http://localhost:${PORT}`);
+  console.log(`Servidor Express corriendo en el puerto ${PORT}`);
 });
