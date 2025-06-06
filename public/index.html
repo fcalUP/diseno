@@ -6,12 +6,81 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Perfil del Alumno</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts - Inter for a modern look -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      /* Apply Inter font globally */
+    }
+
+    /* Custom scrollbar for better aesthetics */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f0f0f0;
+      border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #a0a0a0;
+      border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #888;
+    }
+
+    /* Style for the range input for EXP */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #10B981;
+      /* Green-600 */
+      cursor: pointer;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3);
+      /* Subtle glow */
+      transition: background .2s ease-in-out;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #10B981;
+      /* Green-600 */
+      cursor: pointer;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3);
+      transition: background .2s ease-in-out;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 8px;
+      background: #E5E7EB;
+      /* Gray-200 */
+      border-radius: 5px;
+    }
+
+    input[type="range"]::-moz-range-track {
+      width: 100%;
+      height: 8px;
+      background: #E5E7EB;
+      /* Gray-200 */
+      border-radius: 5px;
+    }
+  </style>
 </head>
 
-<body class="bg-gray-200 min-h-screen flex items-center justify-center">
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
   <div id="root"></div>
 
   <script type="text/babel">
@@ -30,123 +99,143 @@
       resetPass, setResetPass,
       handleSendResetCode,
       handleUpdatePassword,
-      selectedCareer, setSelectedCareer // Mantenemos este prop para el combobox principal
+      selectedCareer, setSelectedCareer
     }) => {
-      // Nuevo estado local para la carrera seleccionada dentro del modal de registro
       const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
 
-      // Sincronizar el estado del modal con el del combobox principal cuando se abre
       React.useEffect(() => {
         setRegisterCareer(selectedCareer);
       }, [showRegister, selectedCareer]);
 
-      // Determinar la imagen de fondo basada en la carrera seleccionada
       const sideImage = selectedCareer === 'Diseno Digital' ? '/img/side-image.jpg' : '/img/comuni.png';
+      const logoImage = selectedCareer === 'Diseno Digital' ? "logo.png" : "/img/Com.png";
+      const careerTitle = selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación';
+
 
       return (
         <>
-          <div className="flex flex-col md:flex-row w-screen h-screen">
-            <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: `url('${sideImage}')` }}></div>
-            <div className="w-full md:w-1/2 flex items-center justify-center bg-white">
-              <div className="w-full max-w-md px-6 py-8 text-center">
-                {/* Logo dinámico */}
-                <img src={selectedCareer === 'Diseno Digital' ? "logo.png" : "/img/Com.png"} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
-                <h2 className="text-2xl font-bold mb-4 text-center">
-                  {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}
+          <div className="flex flex-col md:flex-row w-full max-w-7xl h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up">
+            <div className="hidden md:block md:w-1/2 bg-cover bg-center transition-all duration-500 ease-in-out" style={{ backgroundImage: `url('${sideImage}')` }}></div>
+            <div className="w-full md:w-1/2 flex items-center justify-center bg-gray-50 p-6 sm:p-10">
+              <div className="w-full max-w-sm px-6 py-8 text-center bg-white rounded-2xl shadow-xl border border-gray-100 transform transition-all duration-300 hover:scale-[1.01]">
+                <img src={logoImage} alt="Logo" className="mx-auto w-36 h-36 mb-6 transform hover:scale-105 transition-transform duration-300" />
+                <h2 className="text-3xl font-extrabold mb-6 text-gray-800 tracking-tight">
+                  {careerTitle}
                 </h2>
 
-                {/* Combobox para la carrera en el Login Principal */}
-                <select
-                  className="w-full p-2 mb-4 border rounded"
-                  value={selectedCareer}
-                  onChange={(e) => setSelectedCareer(e.target.value)}
-                >
-                  <option value="Diseno Digital">Diseño Digital</option>
-                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
-                </select>
+                <div className="relative mb-4">
+                  <select
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 text-gray-700 appearance-none bg-white pr-8"
+                    value={selectedCareer}
+                    onChange={(e) => setSelectedCareer(e.target.value)}
+                  >
+                    <option value="Diseno Digital">Diseño Digital</option>
+                    <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
+                  </div>
+                </div>
 
-                <input className="w-full p-2 mb-2 border rounded" placeholder="ID de Alumno"
+
+                <input className="w-full p-3 mb-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 placeholder-gray-500" placeholder="ID de Alumno"
                   value={studentId} onChange={(e) => setStudentId(e.target.value)} />
-                <input type="password" className="w-full p-2 mb-4 border rounded" placeholder="Contraseña"
+                <input type="password" className="w-full p-3 mb-6 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 placeholder-gray-500" placeholder="Contraseña"
                   value={password} onChange={(e) => setPassword(e.target.value)} />
-                <button className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+
+                <button className="bg-blue-600 text-white px-6 py-3 rounded-xl w-full text-lg font-semibold shadow-md hover:bg-blue-700 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
                   onClick={handleLogin}>Iniciar sesión</button>
 
-                <div className="text-sm mt-4">
-                  <button onClick={() => setShowRegister(true)} className="text-blue-600 underline mr-4">Sign in</button>
-                  <button onClick={() => setShowReset(true)} className="text-red-500 underline">¿Olvidaste tu contraseña?</button>
+                <div className="text-sm mt-6 flex justify-center space-x-6">
+                  <button onClick={() => setShowRegister(true)} className="text-blue-600 font-medium hover:text-blue-800 transition duration-200 hover:underline">Registrarse</button>
+                  <button onClick={() => setShowReset(true)} className="text-red-500 font-medium hover:text-red-700 transition duration-200 hover:underline">¿Olvidaste tu contraseña?</button>
                 </div>
               </div>
             </div>
           </div>
 
-          {showRegister && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-              <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
-                <h2 className="text-lg font-bold">Registrar nuevo usuario</h2>
-                <input className="w-full border p-2 rounded" placeholder="ID de alumno" id="reg-id" />
-                <input className="w-full border p-2 rounded" placeholder="Nombre completo" id="reg-name" />
-                <div className="flex flex-col sm:flex-row items-center justify-between">
-                  <label><input type="radio" name="sexo" value="Hombre" defaultChecked /> Hombre</label>
-                  <label><input type="radio" name="sexo" value="Mujer" /> Mujer</label>
+          {/* Modal Overlay for all modals */}
+          {(showRegister || showReset) && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300 ease-out animate-fade-in">
+              {showRegister && (
+                <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-5 transform scale-95 opacity-0 animate-scale-in">
+                  <h2 className="text-2xl font-bold text-gray-800 text-center mb-4">Registrar Nuevo Usuario</h2>
+                  <input className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 placeholder-gray-500" placeholder="ID de alumno" id="reg-id" />
+                  <input className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 placeholder-gray-500" placeholder="Nombre completo" id="reg-name" />
+                  <div className="flex justify-around items-center text-gray-700 font-medium">
+                    <label className="inline-flex items-center">
+                      <input type="radio" name="sexo" value="Hombre" defaultChecked className="form-radio text-blue-600 h-5 w-5" />
+                      <span className="ml-2">Hombre</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input type="radio" name="sexo" value="Mujer" className="form-radio text-pink-600 h-5 w-5" />
+                      <span className="ml-2">Mujer</span>
+                    </label>
+                  </div>
+
+                  <div className="relative">
+                    <select
+                      className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 text-gray-700 appearance-none bg-white pr-8"
+                      value={registerCareer}
+                      onChange={(e) => setRegisterCareer(e.target.value)}
+                    >
+                      <option value="Diseno Digital">Diseño Digital</option>
+                      <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <input type="password" className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 placeholder-gray-500" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
+                  <button className="bg-green-600 text-white px-6 py-3 rounded-xl w-full text-lg font-semibold shadow-md hover:bg-green-700 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1" onClick={async () => {
+                    const sexo = document.querySelector('input[name="sexo"]:checked').value;
+                    const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        id: document.getElementById('reg-id').value,
+                        name: document.getElementById('reg-name').value,
+                        sexo,
+                        password: document.getElementById('reg-pass').value,
+                        career: registerCareer
+                      })
+                    });
+                    const data = await res.json();
+                    alert(data.message || data.error);
+                    setShowRegister(false);
+                  }}>Registrar</button>
+                  <button className="text-sm text-gray-600 mt-3 hover:underline" onClick={() => setShowRegister(false)}>Cancelar</button>
                 </div>
+              )}
 
-                {/* Nuevo combobox de selección de materia/carrera en el modal de registro */}
-                <select
-                  className="w-full p-2 border rounded"
-                  value={registerCareer}
-                  onChange={(e) => setRegisterCareer(e.target.value)}
-                >
-                  <option value="Diseno Digital">Diseño Digital</option>
-                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
-                </select>
+              {showReset && (
+                <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-5 transform scale-95 opacity-0 animate-scale-in">
+                  <h2 className="text-2xl font-bold text-gray-800 text-center mb-4">Recuperar Contraseña</h2>
+                  <input className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 placeholder-gray-500" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
+                  <button className="bg-blue-600 text-white px-6 py-3 rounded-xl w-full text-lg font-semibold shadow-md hover:bg-blue-700 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1" onClick={handleSendResetCode}>Enviar Código</button>
 
-                <input type="password" className="w-full border p-2 rounded" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
-                <button className="bg-green-600 text-white px-4 py-2 rounded w-full" onClick={async () => {
-                  const sexo = document.querySelector('input[name="sexo"]:checked').value;
-                  const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      id: document.getElementById('reg-id').value,
-                      name: document.getElementById('reg-name').value,
-                      sexo,
-                      password: document.getElementById('reg-pass').value,
-                      career: registerCareer // <--- ¡Ahora se usa el estado local del modal!
-                    })
-                  });
-                  const data = await res.json();
-                  alert(data.message || data.error);
-                  setShowRegister(false);
-                }}>Registrar</button>
-                <button className="text-sm text-gray-500" onClick={() => setShowRegister(false)}>Cancelar</button>
-              </div>
-            </div>
-          )}
+                  {showCodeField && (
+                    <>
+                      <input className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 placeholder-gray-500" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
+                      <input type="password" className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 placeholder-gray-500" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
+                      <button className="bg-yellow-500 text-white px-6 py-3 rounded-xl w-full text-lg font-semibold shadow-md hover:bg-yellow-600 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 mt-2" onClick={handleUpdatePassword}>Actualizar Contraseña</button>
+                    </>
+                  )}
 
-          {showReset && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-              <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
-                <h2 className="text-lg font-bold text-center">Recuperar contraseña</h2>
-                <input className="w-full border p-2 rounded" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
-                <button className="bg-blue-600 text-white px-4 py-2 rounded w-full" onClick={handleSendResetCode}>Enviar código</button>
-
-                {showCodeField && (
-                  <>
-                    <input className="w-full border p-2 rounded" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
-                    <input type="password" className="w-full border p-2 rounded" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
-                    <button className="bg-yellow-600 text-white px-4 py-2 rounded w-full mt-2" onClick={handleUpdatePassword}>Actualizar contraseña</button>
-                  </>
-                )}
-
-                <button className="text-sm text-gray-500 mt-2" onClick={() => {
-                  setShowReset(false);
-                  setShowCodeField(false);
-                  setResetId('');
-                  setResetCode('');
-                  setResetPass('');
-                }}>Cancelar</button>
-              </div>
+                  <button className="text-sm text-gray-600 mt-3 hover:underline" onClick={() => {
+                    setShowReset(false);
+                    setShowCodeField(false);
+                    setResetId('');
+                    setResetCode('');
+                    setResetPass('');
+                  }}>Cancelar</button>
+                </div>
+              )}
             </div>
           )}
         </>
@@ -168,12 +257,10 @@
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
-      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital'); // Estado para la carrera seleccionada globalmente
+      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital');
 
-      // Nuevo estado para almacenar el nivel previo del alumno (usando useRef)
       const prevLevelRef = React.useRef(null);
 
-      // Renombrado de 'points' a 'exp' para mayor claridad
       const calculateLevel = (exp) => {
         if (exp >= 100) return 5;
         if (exp >= 75) return 4;
@@ -183,19 +270,11 @@
         return 0;
       };
 
-      // Effect para verificar el cambio de nivel y disparar la animación
       React.useEffect(() => {
-        // console.log('>>> useEffect se ejecutó <<<'); // Debugging
         if (studentData) {
           const currentLevel = studentData.level;
           const prevLevel = prevLevelRef.current;
 
-          // console.log('Estado actual de studentData:', studentData); // Debugging
-          // console.log('currentLevel:', currentLevel); // Debugging
-          // console.log('prevLevelRef.current (antes de actualizar):', prevLevel); // Debugging
-
-          // Si el nivel actual es diferente al nivel anterior (y no es la primera carga)
-          // y el nivel actual es mayor que el anterior (para un "level up")
           if (prevLevel !== null && currentLevel > prevLevel) {
             alert(`¡Felicidades, has subido de nivel!
                     Nivel anterior: ${prevLevel}
@@ -203,45 +282,31 @@
             setShowLevelUpGif(true);
             setTimeout(() => {
               setShowLevelUpGif(false);
-              // console.log('GIF oculto.'); // Debugging
-            }, 4000); // GIF se muestra por 4 segundos
-          } else if (prevLevel === null) {
-            // console.log('Primera carga de datos del alumno. prevLevel es null.'); // Debugging
-          } else if (currentLevel <= prevLevel) {
-            // console.log('Nivel no subió (o bajó/permaneció igual). No se activa el GIF.'); // Debugging
+            }, 4000);
           }
-
-          // Actualiza el nivel previo para la próxima renderización
           prevLevelRef.current = currentLevel;
-          // console.log('prevLevelRef.current (después de actualizar para prox. ciclo):', prevLevelRef.current); // Debugging
-        } else {
-          // console.log('studentData es null (alumno no logueado).'); // Debugging
         }
-      }, [studentData]); // Se dispara cuando studentData cambia
+      }, [studentData]);
 
       const handleLogin = async () => {
         const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId, password, career: selectedCareer }), // Enviar la carrera
+          body: JSON.stringify({ studentId, password, career: selectedCareer }),
         });
         const data = await response.json();
         if (data.success) {
-          // Usar 'exp' en lugar de 'points' aquí
-          data.student.level = calculateLevel(data.student.exp); // Asumiendo que el backend ahora envía 'exp'
+          data.student.level = calculateLevel(data.student.exp);
           setStudentData(data.student);
           setIsLoggedIn(true);
-          // Al iniciar sesión, inicializa el nivel previo con el 'exp' inicial
-          prevLevelRef.current = data.student.level; // Esto es crucial para la primera vez que se loguea.
+          prevLevelRef.current = data.student.level;
 
-          // Si el backend indica un levelUpOccurred al iniciar sesión, mostrar el GIF
           if (data.levelUpOccurred) {
             setShowLevelUpGif(true);
             setTimeout(() => {
               setShowLevelUpGif(false);
             }, 4000);
           }
-
         } else {
           alert(data.error);
         }
@@ -261,13 +326,13 @@
         setResetId('');
         setResetCode('');
         setResetPass('');
-        setShowLevelUpGif(false); // Reset GIF state on logout
-        prevLevelRef.current = null; // Resetear el nivel previo al cerrar sesión
-        setSelectedCareer('Diseno Digital'); // Resetear la carrera seleccionada
+        setShowLevelUpGif(false);
+        prevLevelRef.current = null;
+        setSelectedCareer('Diseno Digital');
       };
 
       const fetchBadges = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/badges?career=${selectedCareer}`); // Enviar la carrera
+        const response = await fetch(`${BACKEND_BASE_URL}/api/badges?career=${selectedCareer}`);
         const data = await response.json();
         setBadges(data.badges || []);
       };
@@ -317,13 +382,11 @@
               studentId: studentData.id,
               studentRowIndex: studentData.rowIndex,
               ...item,
-              career: selectedCareer // Enviar la carrera a la compra
+              career: selectedCareer
             }),
           });
           const data = await response.json();
 
-          // NO SE AFECTAN LOS PUNTOS/EXP. AL COMPRAR.
-          // Solo se actualizan las monedas y las compras de insignias.
           setStudentData(prev => {
             const updatedStudent = {
               ...prev,
@@ -332,9 +395,7 @@
                 ...prev.purchases,
                 [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
               }
-              // studentData.exp NO se modifica aquí por una compra.
             };
-            // Recalcula el nivel usando la EXP. ACTUAL del studentData.
             updatedStudent.level = calculateLevel(updatedStudent.exp);
             return updatedStudent;
           });
@@ -353,7 +414,7 @@
           const res = await fetch(`${BACKEND_BASE_URL}/api/send-reset-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: resetId, career: selectedCareer }) // Enviar la carrera al reset de código
+            body: JSON.stringify({ id: resetId, career: selectedCareer })
           });
           const data = await res.json();
           alert(data.message || data.error);
@@ -374,7 +435,7 @@
           const res = await fetch(`${BACKEND_BASE_URL}/api/reset-password-with-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass, career: selectedCareer }) // Enviar la carrera al update de contraseña
+            body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass, career: selectedCareer })
           });
           const data = await res.json();
           alert(data.message || data.error);
@@ -419,89 +480,98 @@
             />
           ) : (
             studentData && (
-              <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <h2 className="col-span-1 md:col-span-2 text-2xl sm:text-3xl font-bold text-center">Hola {studentData.name}</h2>
-                <div className="col-span-1 flex justify-center items-start">
-                  <img
-                    src={`/avatars/${studentData.id}${studentData.level}.png`}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = studentData.sexo === 'Hombre'
-                        ? `/avatars/DefaultH${studentData.level}.png`
-                        : `/avatars/DefaultF${studentData.level}.png`;
-                    }}
-                    alt="avatar"
-                    className="w-[30%] sm:w-[80%] object-contain"
-                  />
+              <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 transform scale-95 opacity-0 animate-scale-in-delay-300">
+                <h2 className="col-span-1 md:col-span-2 text-3xl sm:text-4xl font-extrabold text-gray-900 text-center mb-4">
+                  Hola <span className="text-blue-600">{studentData.name}</span>!
+                </h2>
 
+                <div className="col-span-1 flex flex-col items-center justify-center p-4">
+                  <div className="relative w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center shadow-lg mb-6 transform hover:scale-105 transition-transform duration-300 ease-in-out">
+                    <img
+                      src={`/avatars/${studentData.id}${studentData.level}.png`}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = studentData.sexo === 'Hombre'
+                          ? `/avatars/DefaultH${studentData.level}.png`
+                          : `/avatars/DefaultF${studentData.level}.png`;
+                      }}
+                      alt="avatar"
+                      className="w-[90%] h-[90%] object-contain rounded-full border-4 border-white shadow-md"
+                    />
+                  </div>
+                  <div className="text-xl sm:text-2xl font-extrabold text-blue-700 mt-2 tracking-wide">Nivel {studentData.level}</div>
+                  <div className="text-sm text-gray-500 italic">¡Sigue subiendo!</div>
                 </div>
-                <div className="col-span-1 flex flex-col justify-center items-center text-center">
-                  <div className="text-base sm:text-lg font-bold space-y-2 w-full max-w-xs sm:w-64 mx-auto">
-                    <div className="flex justify-between">
-                      <span>Coins</span><span>{studentData.monedas}</span>
+
+                <div className="col-span-1 flex flex-col justify-center items-center text-center p-4">
+                  <div className="text-base sm:text-lg font-medium space-y-3 w-full max-w-sm mx-auto text-gray-700">
+                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
+                      <span>Coins:</span><span className="font-semibold text-green-600">{studentData.monedas}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>EXP.</span><span>{studentData.exp}/100</span> {/* CAMBIADO: 'points' a 'exp' */}
+                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
+                      <span>EXP.:</span><span className="font-semibold text-purple-600">{studentData.exp}/100</span>
                     </div>
-                    <input type="range" readOnly max="100" value={studentData.exp % 100} className="w-full accent-green-600" /> {/* CAMBIADO: 'points' a 'exp' */}
-                    <div className="text-2xl sm:text-3xl font-extrabold mt-3">Nivel {studentData.level}</div>
-                    <div className="flex justify-between">
-                      <span>Tareas</span><span>{studentData.tareas}</span>
+                    <input type="range" readOnly max="100" value={studentData.exp % 100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500" />
+                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
+                      <span>Tareas:</span><span className="font-semibold">{studentData.tareas}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Asistencias</span><span>{studentData.asistencias}</span>
+                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
+                      <span>Asistencias:</span><span className="font-semibold">{studentData.asistencias}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Badges</span><span>{Object.keys(studentData.purchases || {}).length}</span>
+                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
+                      <span>Badges:</span><span className="font-semibold">{Object.keys(studentData.purchases || {}).length}</span>
                     </div>
                     {Object.keys(studentData.purchases || {}).length > 0 && (
-                      <div className="mt-4 text-sm w-full text-left">
-                        <h3 className="font-semibold">Insignias adquiridas:</h3>
-                        <ul className="list-disc list-inside">
+                      <div className="mt-5 text-sm w-full text-left bg-gray-50 p-4 rounded-lg shadow-sm">
+                        <h3 className="font-semibold text-gray-800 mb-2 border-b pb-1 border-gray-200">Insignias Adquiridas:</h3>
+                        <ul className="list-disc list-inside text-gray-700 space-y-1 custom-scrollbar max-h-24 overflow-y-auto">
                           {Object.entries(studentData.purchases).map(([name, qty]) => (
-                            <li key={name}>{name}: {qty}</li>
+                            <li key={name} className="flex justify-between items-center">
+                              <span>{name}</span><span className="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">{qty}</span>
+                            </li>
                           ))}
                         </ul>
                       </div>
                     )}
                   </div>
-                  <div className="mt-6 flex justify-center w-full">
-                    <button className="bg-green-600 text-white px-6 py-2 rounded-full shadow-md hover:bg-green-700 transition" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
-                      Tienda
+                  <div className="mt-8 flex justify-center w-full">
+                    <button className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-8 py-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 transform font-bold text-lg tracking-wide" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
+                      <span className="relative z-10">🛍️ Tienda</span>
                     </button>
-                  </div>
-                  <div className="col-span-1 md:col-span-2 flex justify-center mt-6">
-                    <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition">Log Out</button>
                   </div>
                 </div>
 
+                <div className="col-span-1 md:col-span-2 flex justify-center mt-6">
+                  <button onClick={handleLogout} className="bg-gray-200 text-gray-700 px-8 py-3 rounded-full font-semibold hover:bg-gray-300 hover:shadow-md transition-all duration-300 text-lg">Cerrar Sesión</button>
+                </div>
+
                 {showCartModal && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white p-4 rounded-xl shadow-lg w-11/12 max-w-lg mx-auto sm:p-6 sm:max-w-xl">
-                      <h3 className="text-lg sm:text-xl font-semibold mb-2">Tienda de Insignias</h3>
-                      <p className="mb-2 text-sm sm:text-base">Monedas disponibles: <strong>{studentData.monedas}</strong></p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 max-h-96 overflow-y-auto">
+                  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-out animate-fade-in">
+                    <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform scale-95 opacity-0 animate-scale-in">
+                      <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center border-b pb-2 border-gray-200">Tienda de Insignias</h3>
+                      <p className="mb-4 text-base text-gray-700 text-center">Monedas disponibles: <strong className="text-green-600">{studentData.monedas}</strong></p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-80 overflow-y-auto custom-scrollbar p-2">
                         {badges.map((b, i) => (
-                          <div key={i} className="border p-2 rounded flex flex-col items-center text-center">
-                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-2" />
-                            <strong className="text-xs sm:text-sm">{b.name}</strong>
-                            <span className="text-xs">Disp.: {b.quantity}</span>
-                            <span className="text-xs mb-2">Costo: {b.cost}</span>
-                            <div className="flex gap-1 sm:gap-2 items-center">
-                              <button className="bg-red-300 px-1 rounded text-sm" onClick={() => removeFromCart(b.name)}>-</button>
-                              <span className="text-sm">{cart[b.name] || 0}</span>
-                              <button className="bg-green-300 px-1 rounded text-sm" onClick={() => addToCart(b.name, b.quantity)}>+</button>
+                          <div key={i} className="border border-gray-200 p-3 rounded-lg flex flex-col items-center text-center bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer transform hover:scale-[1.02]">
+                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-16 h-16 sm:w-20 sm:h-20 object-contain mb-3" />
+                            <strong className="text-sm sm:text-base text-gray-800">{b.name}</strong>
+                            <span className="text-xs text-gray-500 mt-1">Disp.: {b.quantity}</span>
+                            <span className="text-sm font-semibold text-blue-600 mb-3">Costo: {b.cost} 🪙</span>
+                            <div className="flex gap-2 items-center w-full justify-center">
+                              <button className="bg-red-200 text-red-700 px-3 py-1 rounded-full text-lg font-bold hover:bg-red-300 transition-colors disabled:opacity-50" onClick={() => removeFromCart(b.name)}>-</button>
+                              <span className="text-base font-semibold text-gray-800">{cart[b.name] || 0}</span>
+                              <button className="bg-green-200 text-green-700 px-3 py-1 rounded-full text-lg font-bold hover:bg-green-300 transition-colors disabled:opacity-50" onClick={() => addToCart(b.name, b.quantity)}>+</button>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <div className="mt-4 text-center">
-                        <p className="text-sm sm:text-base">Total a pagar: <strong>{totalCartCost}</strong> monedas</p>
-                        <button className="bg-blue-600 text-white px-3 py-1 sm:px-4 sm:py-2 rounded mt-2 disabled:opacity-50 text-sm sm:text-base" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
-                          Comprar
+                      <div className="mt-6 text-center border-t pt-4 border-gray-200">
+                        <p className="text-lg font-semibold text-gray-800 mb-3">Total a pagar: <strong className="text-blue-700">{totalCartCost}</strong> monedas</p>
+                        <button className="bg-blue-600 text-white px-6 py-3 rounded-xl shadow-md hover:bg-blue-700 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 disabled:opacity-40 disabled:cursor-not-allowed text-lg font-semibold" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
+                          Comprar Insignias
                         </button>
-                        <button className="ml-2 bg-gray-400 text-white px-3 py-1 sm:px-4 sm:py-2 rounded mt-2 text-sm sm:text-base" onClick={() => setShowCartModal(false)}>
-                          Cerrar
+                        <button className="ml-4 bg-gray-400 text-white px-6 py-3 rounded-xl shadow-md hover:bg-gray-500 hover:shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 text-lg font-semibold" onClick={() => setShowCartModal(false)}>
+                          Cerrar Tienda
                         </button>
                       </div>
                     </div>
@@ -510,8 +580,8 @@
 
                 {/* Level Up GIF Modal */}
                 {showLevelUpGif && (
-                  <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
-                    <img src="/gifs/levelup.gif" alt="Level Up!" className="w-full h-full object-contain" />
+                  <div className="fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-50 animate-fade-in">
+                    <img src="/gifs/levelup.gif" alt="Level Up!" className="w-full h-full object-contain rounded-lg shadow-2xl" />
                   </div>
                 )}
               </div>
@@ -524,6 +594,61 @@
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
+
+  <style>
+    /* Keyframe animations for a dynamic look */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    .animate-fade-in-up {
+      animation: fadeInUp 0.5s ease-out forwards;
+    }
+
+    .animate-scale-in {
+      animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      /* Cubic Bezier for bouncy effect */
+    }
+
+    .animate-scale-in-delay-300 {
+      animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: 0.3s;
+    }
+  </style>
 </body>
 
 </html>
