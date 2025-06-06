@@ -57,7 +57,7 @@
 
                 {/* Combobox para la carrera en el Login Principal */}
                 <select
-                  className="w-full p-2 mb-4 border rounded"
+                  className="w-full p-2 mb-4 border rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition"
                   value={selectedCareer}
                   onChange={(e) => setSelectedCareer(e.target.value)}
                 >
@@ -65,11 +65,11 @@
                   <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
                 </select>
 
-                <input className="w-full p-2 mb-2 border rounded" placeholder="ID de Alumno"
+                <input className="w-full p-2 mb-2 border rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition" placeholder="ID de Alumno"
                   value={studentId} onChange={(e) => setStudentId(e.target.value)} />
-                <input type="password" className="w-full p-2 mb-4 border rounded" placeholder="Contraseña"
+                <input type="password" className="w-full p-2 mb-4 border rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition" placeholder="Contraseña"
                   value={password} onChange={(e) => setPassword(e.target.value)} />
-                <button className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+                <button className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:brightness-110 transition w-full"
                   onClick={handleLogin}>Iniciar sesión</button>
 
                 <div className="text-sm mt-4">
@@ -84,8 +84,8 @@
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
               <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
                 <h2 className="text-lg font-bold">Registrar nuevo usuario</h2>
-                <input className="w-full border p-2 rounded" placeholder="ID de alumno" id="reg-id" />
-                <input className="w-full border p-2 rounded" placeholder="Nombre completo" id="reg-name" />
+                <input className="w-full border p-2 rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition" placeholder="ID de alumno" id="reg-id" />
+                <input className="w-full border p-2 rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition" placeholder="Nombre completo" id="reg-name" />
                 <div className="flex flex-col sm:flex-row items-center justify-between">
                   <label><input type="radio" name="sexo" value="Hombre" defaultChecked /> Hombre</label>
                   <label><input type="radio" name="sexo" value="Mujer" /> Mujer</label>
@@ -101,8 +101,8 @@
                   <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
                 </select>
 
-                <input type="password" className="w-full border p-2 rounded" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
-                <button className="bg-green-600 text-white px-4 py-2 rounded w-full" onClick={async () => {
+                <input type="password" className="w-full border p-2 rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
+                <button className="bg-green-600 text-white px-4 py-2 rounded-full shadow-lg hover:brightness-110 transition w-full" onClick={async () => {
                   const sexo = document.querySelector('input[name="sexo"]:checked').value;
                   const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
                     method: 'POST',
@@ -128,14 +128,14 @@
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
               <div className="bg-white p-6 rounded shadow-xl w-full max-w-sm sm:max-w-md space-y-4">
                 <h2 className="text-lg font-bold text-center">Recuperar contraseña</h2>
-                <input className="w-full border p-2 rounded" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
-                <button className="bg-blue-600 text-white px-4 py-2 rounded w-full" onClick={handleSendResetCode}>Enviar código</button>
+                <input className="w-full border p-2 rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
+                <button className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:brightness-110 transition w-full" onClick={handleSendResetCode}>Enviar código</button>
 
                 {showCodeField && (
                   <>
-                    <input className="w-full border p-2 rounded" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
-                    <input type="password" className="w-full border p-2 rounded" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
-                    <button className="bg-yellow-600 text-white px-4 py-2 rounded w-full mt-2" onClick={handleUpdatePassword}>Actualizar contraseña</button>
+                    <input className="w-full border p-2 rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
+                    <input type="password" className="w-full border p-2 rounded-lg shadow-sm focus:ring focus:ring-blue-300 transition" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
+                    <button className="bg-yellow-600 text-white px-4 py-2 rounded-full shadow-lg hover:brightness-110 transition w-full mt-2" onClick={handleUpdatePassword}>Actualizar contraseña</button>
                   </>
                 )}
 
@@ -466,12 +466,12 @@
                     )}
                   </div>
                   <div className="mt-6 flex justify-center w-full">
-                    <button className="bg-green-600 text-white px-6 py-2 rounded-full shadow-md hover:bg-green-700 transition" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
+                    <button className="bg-green-600 text-white px-6 py-2 rounded-full shadow-lg hover:bg-green-700 transition shadow-md hover:bg-green-700 transition" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
                       Tienda
                     </button>
                   </div>
                   <div className="col-span-1 md:col-span-2 flex justify-center mt-6">
-                    <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition">Log Out</button>
+                    <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-full shadow-lg hover:bg-red-700 transition font-semibold hover:bg-red-700 transition">Log Out</button>
                   </div>
                 </div>
 
