@@ -74,6 +74,41 @@ const transporter = nodemailer.createTransport({
 // ENDPOINTS DE API
 // ===================================
 
+// Endpoint para leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+  const { career } = req.query;
+  if (!career) return res.status(400).json({ error: 'Carrera requerida.' });
+
+  const sheetName = getSheetName(career);
+  try {
+    const range = `${sheetName}!A:J`; // Incluye ID, nombre, sexo, EXP
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+    const rows = response.data.values;
+    if (!rows || rows.length < 2) return res.status(404).json({ error: 'Sin datos suficientes.' });
+
+    const students = rows.slice(1).map(row => ({
+      id: row[0],
+      name: row[1],
+      sexo: row[2],
+      exp: parseInt(row[9]) || 0
+    }));
+
+    students.sort((a, b) => b.exp - a.exp);
+
+    const ranked = students.map((s, index) => ({
+      ...s,
+      rank: index + 1,
+      level: calculateLevel(s.exp)
+    }));
+
+    res.json({ success: true, leaderboard: ranked });
+  } catch (error) {
+    console.error('Error al obtener leaderboard:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+
 // Endpoint de Inicio de Sesión
 app.post('/api/login', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
@@ -136,9 +171,7 @@ app.post('/api/login', async (req, res) => {
       : [];
 
     // Reducir las compras a un mapa de insignias y cantidades
-    const totalBadgesCount = studentPurchases.reduce((sum, row) => sum + (parseInt(row[3]) || 0), 0);
-
-const badgesMap = studentPurchases.reduce((acc, row) => {
+    const badgesMap = studentPurchases.reduce((acc, row) => {
       const badgeName = row[2]; // Columna C es el nombre de la insignia en Purchases
       const quantity = parseInt(row[3]) || 0; // Columna D es la cantidad en Purchases
       acc[badgeName] = (acc[badgeName] || 0) + quantity;
@@ -146,17 +179,7 @@ const badgesMap = studentPurchases.reduce((acc, row) => {
     }, {});
 
 
-    
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
-
-res.json({
+    res.json({
       success: true,
       student: {
         id: id,
@@ -290,17 +313,7 @@ app.post('/api/send-reset-code', async (req, res) => {
       console.log(`Código de restablecimiento para ID ${id} y carrera ${career} expirado.`);
     }, 10 * 60 * 1000);
 
-    
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
-
-res.json({ message: 'Código de restablecimiento enviado a tu correo electrónico.' });
+    res.json({ message: 'Código de restablecimiento enviado a tu correo electrónico.' });
 
   } catch (error) {
     // === Este es el lugar CRÍTICO para ver el error si no es de Nodemailer ===
@@ -345,17 +358,7 @@ app.post('/api/reset-password-with-code', async (req, res) => {
     });
 
     delete resetCodes[`${id}-${career}`]; // Eliminar el código después de usarlo, usando la clave combinada
-    
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
-
-res.json({ message: 'Contraseña actualizada correctamente.' });
+    res.json({ message: 'Contraseña actualizada correctamente.' });
   } catch (error) {
     console.error('Error al actualizar contraseña:', error);
     res.status(500).json({ error: 'Error al actualizar contraseña.', details: error.message });
@@ -386,17 +389,7 @@ app.get('/api/badges', async (req, res) => {
       cost: parseInt(row[2]) || 0      // Columna C: Costo
     }));
 
-    
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
-
-res.json({ success: true, badges });
+    res.json({ success: true, badges });
   } catch (error) {
     console.error('Error al obtener insignias:', error);
     res.status(500).json({ error: 'Error al obtener insignias', details: error.message });
@@ -452,25 +445,7 @@ app.post('/api/purchase', async (req, res) => {
       }
     });
 
-    
-    // Recalcular el total de insignias del alumno (columna I)
-    const purchasesResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'Purchases!A:D'
-    });
-    const purchasesRows = purchasesResponse.data.values || [];
-    const studentBadgeCount = purchasesRows.slice(1)
-      .filter(row => row[1] === studentId)
-      .reduce((sum, row) => sum + (parseInt(row[3]) || 0), 0);
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[studentBadgeCount.toString()]] }
-    });
-    
-
-// Registrar la compra en la hoja 'Purchases'
+    // Registrar la compra en la hoja 'Purchases'
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: 'Purchases!A:E', // Agregamos una columna para la carrera
@@ -507,17 +482,7 @@ Gracias.`
 
     await transporter.sendMail(mailOptions);
 
-    
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
-
-res.json({
+    res.json({
       success: true,
       newCoins,
       newBadgeQuantity: newQty,
@@ -581,17 +546,7 @@ app.post('/api/add-exp', async (req, res) => {
       }
     });
 
-    
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
-
-res.json({
+    res.json({
       success: true,
       message: `EXP. de ${studentId} actualizada. Nueva EXP.: ${newExp}, Nuevo Nivel: ${newLevel}.`,
       newExp: newExp,
