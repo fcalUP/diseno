@@ -497,7 +497,13 @@
                         <span>Asistencias</span><span className="font-bold">{studentData.asistencias}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span>Badges</span><span className="font-bold">{Object.keys(studentData.purchases || {}).length}</span>
+                        <span>Badges</span>
+                        <span className="font-bold">{Object.keys(studentData.purchases || {}).length}</span>
+                      </div>
+                      <div className="text-[10px] font-light text-gray-600 mt-1">
+                        {Object.entries(studentData.purchases || {}).map(([name, qty], idx) => (
+                          <div key={idx}>{name} x{qty}</div>
+                        ))}
                       </div>
                     </div>
                   </div>
