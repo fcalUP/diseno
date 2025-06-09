@@ -74,6 +74,41 @@ const transporter = nodemailer.createTransport({
 // ENDPOINTS DE API
 // ===================================
 
+// Endpoint para leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+  const { career } = req.query;
+  if (!career) return res.status(400).json({ error: 'Carrera requerida.' });
+
+  const sheetName = getSheetName(career);
+  try {
+    const range = `${sheetName}!A:J`; // Incluye ID, nombre, sexo, EXP
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+    const rows = response.data.values;
+    if (!rows || rows.length < 2) return res.status(404).json({ error: 'Sin datos suficientes.' });
+
+    const students = rows.slice(1).map(row => ({
+      id: row[0],
+      name: row[1],
+      sexo: row[2],
+      exp: parseInt(row[9]) || 0
+    }));
+
+    students.sort((a, b) => b.exp - a.exp);
+
+    const ranked = students.map((s, index) => ({
+      ...s,
+      rank: index + 1,
+      level: calculateLevel(s.exp)
+    }));
+
+    res.json({ success: true, leaderboard: ranked });
+  } catch (error) {
+    console.error('Error al obtener leaderboard:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+
 // Endpoint de Inicio de Sesión
 app.post('/api/login', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
