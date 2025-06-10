@@ -385,17 +385,7 @@ app.get('/api/badges', async (req, res) => {
       quantity: parseInt(row[1]) || 0, // Columna B: Cantidad disponible
       cost: parseInt(row[2]) || 0      // Columna C: Costo
     }));
-
     
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
-
 res.json({ success: true, badges });
   } catch (error) {
     console.error('Error al obtener insignias:', error);
