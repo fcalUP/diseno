@@ -339,15 +339,6 @@ app.post('/api/reset-password-with-code', async (req, res) => {
     });
 
     delete resetCodes[`${id}-${career}`]; // Eliminar el código después de usarlo, usando la clave combinada
-    
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
 
 res.json({ message: 'Contraseña actualizada correctamente.' });
   } catch (error) {
