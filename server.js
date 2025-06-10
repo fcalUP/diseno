@@ -540,6 +540,7 @@ app.get('/api/leaderboard', async (req, res) => {
       id: row[0],
       name: row[1],
       sexo: row[2],
+      badges: parseInt(row[8]) || 0, // Columna I (índice 8) es total de badges adquiridas,
       exp: parseInt(row[9]) || 0
     }));
 
