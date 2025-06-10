@@ -582,19 +582,7 @@
                             <tr key={i} className="border-b">
                               <td className="p-2">{student.rank}</td>
                               <td className="p-2">{student.id}</td>
-                              <td className="p-2">
-                                <img
-                                  src={`/avatars/${student.id}${student.level}.png`}
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = student.sexo === 'Hombre'
-                                      ? `/avatars/DefaultH${student.level}.png`
-                                      : `/avatars/DefaultF${student.level}.png`;
-                                  }}
-                                  alt="avatar"
-                                  className="w-4 h-4 rounded-full object-cover"
-                                />
-                              </td>
+                              <td className="p-2">{student.badges}</td>
                               <td className="p-2">{student.level}</td>
                             </tr>
                           ))}
