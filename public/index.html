@@ -135,7 +135,7 @@
                   <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
                 </select>
 
-                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña (4 HEX mayúsculas)" id="reg-pass" />
+                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña (2 mayúsculas y 2 números)" id="reg-pass" />
                 <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold" onClick={async () => {
                   const sexo = document.querySelector('input[name="sexo"]:checked').value;
                   const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
