@@ -244,6 +244,8 @@ app.post('/api/register', async (req, res) => {
 });
 
 
+// server.js
+
 // Endpoint para enviar código de restablecimiento
 app.post('/api/send-reset-code', async (req, res) => {
   const { id, career } = req.body; // Recibe la carrera
@@ -290,17 +292,9 @@ app.post('/api/send-reset-code', async (req, res) => {
       console.log(`Código de restablecimiento para ID ${id} y carrera ${career} expirado.`);
     }, 10 * 60 * 1000);
 
-    
-    // Actualizar columna I (total de badges adquiridas)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!I${studentRowIndex + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [[totalBadgesCount.toString()]] }
-    });
-    
+    // Se eliminó la actualización innecesaria de la hoja de cálculo que causaba el error
 
-res.json({ message: 'Código de restablecimiento enviado a tu correo electrónico.' });
+    res.json({ message: 'Código de restablecimiento enviado a tu correo electrónico.' });
 
   } catch (error) {
     // === Este es el lugar CRÍTICO para ver el error si no es de Nodemailer ===
@@ -385,7 +379,7 @@ app.get('/api/badges', async (req, res) => {
       quantity: parseInt(row[1]) || 0, // Columna B: Cantidad disponible
       cost: parseInt(row[2]) || 0      // Columna C: Costo
     }));
-    
+
 res.json({ success: true, badges });
   } catch (error) {
     console.error('Error al obtener insignias:', error);
