@@ -573,6 +573,7 @@
         // Fetch student data for the selected career
         await fetchAdminStudentsData(career);
         setShowAdminDashboard(true); // Show the admin dashboard
+        setShowAdminLoginModal(false); // Close the login modal
       };
 
       // Fetch Admin Students Data
@@ -606,7 +607,89 @@
 
       return (
         <>
-          {!isLoggedIn && !isAdminLoggedIn ? (
+          {/* Conditional rendering for the main content */}
+          {isAdminLoggedIn ? (
+            // If admin is logged in, show nothing directly here,
+            // the AdminDashboard modal will be shown by its 'show' prop
+            null // or some basic admin placeholder if needed, but the modal covers it
+          ) : isLoggedIn && studentData ? (
+            // If a regular student is logged in, show their profile
+            <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+              <div className="bg-orange-500 text-white text-center p-3">
+                <h2 className="text-2xl font-bold">Hola, {studentData.name}</h2>
+              </div>
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className="col-span-1 flex justify-center items-center">
+                  <img
+                    src={`/avatars/${studentData.id}${studentData.level}.png`}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = studentData.sexo === 'Hombre'
+                        ? `/avatars/DefaultH${studentData.level}.png`
+                        : `/avatars/DefaultF${studentData.level}.png`;
+                    }}
+                    alt="avatar"
+                    className="w-full h-auto max-w-60 max-h-90"
+                  />
+                </div>
+
+                <div className="col-span-1 flex flex-col justify-center items-center text-center space-y-4">
+                  {/* Bloque 1: Nivel */}
+                  <div className="w-full max-w-xs p-3 text-center">
+                    <div className="text-5xl font-extrabold text-orange-500">Nivel {studentData.level}</div>
+                  </div>
+
+                  {/* Bloque 2: Monedas y Experiencia */}
+                  <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow">
+                    <div className="flex justify-between items-center text-md font-semibold text-gray-700">
+                      <span>Coins</span><span className="font-bold text-yellow-500">{studentData.monedas}</span>
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex justify-between items-center text-xs font-semibold text-gray-700 mb-1">
+                        <span>EXP.</span><span>{progress.currentExp}/{progress.requiredExp}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="bg-orange-500 h-2.5 rounded-full" style={{ width: `${progress.percentage}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bloque 3: Tareas, Asistencias y Badges */}
+                  <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span>Tareas</span><span className="font-bold">{studentData.tareas}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Asistencias</span><span className="font-bold">{studentData.asistencias}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Badges</span>
+                      <span className="font-bold">{Object.keys(studentData.purchases || {}).length}</span>
+                    </div>
+                    <div className="text-[10px] font-light text-gray-600 mt-1">
+                      {Object.entries(studentData.purchases || {}).map(([name, qty], idx) => (
+                        <div key={idx}>{name} x{qty}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="px-8 pb-8 flex flex-wrap justify-center w-full gap-4">
+
+                <button className="bg-blue-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 font-semibold" onClick={fetchLeaderboard}>
+                  Leaderboard
+                </button>
+
+                <button className="bg-orange-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 font-semibold" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
+                  Tienda
+                </button>
+                <button onClick={handleLogout} className="bg-purple-600 text-white px-10 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 font-semibold">
+                  Log Out
+                </button>
+              </div>
+            </div>
+          ) : (
+            // If neither is logged in, show the initial login screen
             <LoginScreen
               studentId={studentId}
               setStudentId={setStudentId}
@@ -629,158 +712,153 @@
               handleUpdatePassword={handleUpdatePassword}
               selectedCareer={selectedCareer}
               setSelectedCareer={setSelectedCareer}
-              setShowAdminLoginModal={setShowAdminLoginModal} // Pass setter for admin modal
+              setShowAdminLoginModal={setShowAdminLoginModal}
             />
-          ) : (
-            isLoggedIn && studentData && (
-              <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
-                <div className="bg-orange-500 text-white text-center p-3">
-                  <h2 className="text-2xl font-bold">Hola, {studentData.name}</h2>
-                </div>
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                  <div className="col-span-1 flex justify-center items-center">
-                    <img
-                      src={`/avatars/${studentData.id}${studentData.level}.png`}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = studentData.sexo === 'Hombre'
-                          ? `/avatars/DefaultH${studentData.level}.png`
-                          : `/avatars/DefaultF${studentData.level}.png`;
-                      }}
-                      alt="avatar"
-                      className="w-full h-auto max-w-60 max-h-90"
-                    />
-                  </div>
-
-                  <div className="col-span-1 flex flex-col justify-center items-center text-center space-y-4">
-                    {/* Bloque 1: Nivel */}
-                    <div className="w-full max-w-xs p-3 text-center">
-                      <div className="text-5xl font-extrabold text-orange-500">Nivel {studentData.level}</div>
-                    </div>
-
-                    {/* Bloque 2: Monedas y Experiencia */}
-                    <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow">
-                      <div className="flex justify-between items-center text-md font-semibold text-gray-700">
-                        <span>Coins</span><span className="font-bold text-yellow-500">{studentData.monedas}</span>
-                      </div>
-                      <div className="mt-2">
-                        <div className="flex justify-between items-center text-xs font-semibold text-gray-700 mb-1">
-                          <span>EXP.</span><span>{progress.currentExp}/{progress.requiredExp}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-orange-500 h-2.5 rounded-full" style={{ width: `${progress.percentage}%` }}></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bloque 3: Tareas, Asistencias y Badges */}
-                    <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span>Tareas</span><span className="font-bold">{studentData.tareas}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Asistencias</span><span className="font-bold">{studentData.asistencias}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Badges</span>
-                        <span className="font-bold">{Object.keys(studentData.purchases || {}).length}</span>
-                      </div>
-                      <div className="text-[10px] font-light text-gray-600 mt-1">
-                        {Object.entries(studentData.purchases || {}).map(([name, qty], idx) => (
-                          <div key={idx}>{name} x{qty}</div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-8 pb-8 flex flex-wrap justify-center w-full gap-4">
-
-                  <button className="bg-blue-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 font-semibold" onClick={fetchLeaderboard}>
-                    Leaderboard
-                  </button>
-
-                  <button className="bg-orange-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 font-semibold" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
-                    Tienda
-                  </button>
-                  <button onClick={handleLogout} className="bg-purple-600 text-white px-10 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 font-semibold">
-                    Log Out
-                  </button>
-                </div>
-
-                {showCartModal && (
-                  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
-                    <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform transition-transform duration-300">
-                      <h3 className="text-2xl font-bold mb-4 text-gray-800">Tienda de Insignias</h3>
-                      <p className="mb-4 text-lg">Monedas disponibles: <strong className="text-yellow-500">{studentData.monedas}</strong></p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-2">
-                        {badges.map((b, i) => (
-                          <div key={i} className="border p-4 rounded-xl flex flex-col items-center text-center transition-shadow duration-300 hover:shadow-lg">
-                            <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-20 h-20 object-contain mb-2" />
-                            <strong className="text-sm font-semibold">{b.name}</strong>
-                            <span className="text-xs text-gray-500">Disp.: {b.quantity}</span>
-                            <span className="text-xs text-gray-500 mb-2">Costo: {b.cost}</span>
-                            <div className="flex gap-2 items-center mt-2">
-                              <button className="bg-red-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center" onClick={() => removeFromCart(b.name)}>-</button>
-                              <span className="text-base font-semibold">{cart[b.name] || 0}</span>
-                              <button className="bg-green-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center" onClick={() => addToCart(b.name, b.quantity)}>+</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-6 text-center">
-                        <p className="text-lg">Total a pagar: <strong className="text-yellow-500">{totalCartCost}</strong> monedas</p>
-                        <button className="bg-orange-500 text-white px-6 py-3 rounded-full mt-4 disabled:opacity-50 transition-all duration-300 font-semibold" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
-                          Comprar
-                        </button>
-                        <button className="ml-4 bg-gray-400 text-white px-6 py-3 rounded-full mt-4 transition-all duration-300 font-semibold" onClick={() => setShowCartModal(false)}>
-                          Cerrar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {showLevelUpGif && (
-                  <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50">
-                    <img src="/gifs/levelup.gif" alt="Level Up!" className="w-full h-full object-contain" />
-                  </div>
-                )}
-
-                {showLeaderboard && (
-                  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-                    <div className="bg-white w-full max-w-2xl p-6 rounded-2xl transform transition-transform duration-500 animate-slideIn">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-2xl font-bold text-gray-800">Leaderboard</h3>
-                        <button onClick={() => setShowLeaderboard(false)} className="text-red-500 text-xl font-bold">X</button>
-                      </div>
-                      <table className="w-full text-left table-auto border-collapse">
-                        <thead>
-                          <tr className="text-gray-700 font-semibold border-b">
-                            <th className="p-2">Lugar</th>
-                            <th className="p-2">ID</th>
-                            <th className="p-2">Badges</th>
-                            <th className="p-2">Nivel</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {leaderboardData.map((student, i) => (
-                            <tr key={i} className="border-b">
-                              <td className="p-2">{student.rank}</td>
-                              <td className="p-2">{student.name}</td>
-                              <td className="p-2">{student.badges}</td>
-                              <td className="p-2">{student.level}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
           )}
 
-          {/* Admin Login Modal */}
+          {/* Modals are rendered conditionally based on their 'show' prop */}
+          {/* Student related modals */}
+          {showCartModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+              <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform transition-transform duration-300">
+                <h3 className="text-2xl font-bold mb-4 text-gray-800">Tienda de Insignias</h3>
+                <p className="mb-4 text-lg">Monedas disponibles: <strong className="text-yellow-500">{studentData.monedas}</strong></p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-2">
+                  {badges.map((b, i) => (
+                    <div key={i} className="border p-4 rounded-xl flex flex-col items-center text-center transition-shadow duration-300 hover:shadow-lg">
+                      <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-20 h-20 object-contain mb-2" />
+                      <strong className="text-sm font-semibold">{b.name}</strong>
+                      <span className="text-xs text-gray-500">Disp.: {b.quantity}</span>
+                      <span className="text-xs text-gray-500 mb-2">Costo: {b.cost}</span>
+                      <div className="flex gap-2 items-center mt-2">
+                        <button className="bg-red-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center" onClick={() => removeFromCart(b.name)}>-</button>
+                        <span className="text-base font-semibold">{cart[b.name] || 0}</span>
+                        <button className="bg-green-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center" onClick={() => addToCart(b.name, b.quantity)}>+</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 text-center">
+                  <p className="text-lg">Total a pagar: <strong className="text-yellow-500">{totalCartCost}</strong> monedas</p>
+                  <button className="bg-orange-500 text-white px-6 py-3 rounded-full mt-4 disabled:opacity-50 transition-all duration-300 font-semibold" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
+                    Comprar
+                  </button>
+                  <button className="ml-4 bg-gray-400 text-white px-6 py-3 rounded-full mt-4 transition-all duration-300 font-semibold" onClick={() => setShowCartModal(false)}>
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showLevelUpGif && (
+            <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50">
+              <img src="/gifs/levelup.gif" alt="Level Up!" className="w-full h-full object-contain" />
+            </div>
+          )}
+
+          {showLeaderboard && (
+            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+              <div className="bg-white w-full max-w-2xl p-6 rounded-2xl transform transition-transform duration-500 animate-slideIn">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-2xl font-bold text-gray-800">Leaderboard</h3>
+                  <button onClick={() => setShowLeaderboard(false)} className="text-red-500 text-xl font-bold">X</button>
+                </div>
+                <table className="w-full text-left table-auto border-collapse">
+                  <thead>
+                    <tr className="text-gray-700 font-semibold border-b">
+                      <th className="p-2">Lugar</th>
+                      <th className="p-2">ID</th>
+                      <th className="p-2">Badges</th>
+                      <th className="p-2">Nivel</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboardData.map((student, i) => (
+                      <tr key={i} className="border-b">
+                        <td className="p-2">{student.rank}</td>
+                        <td className="p-2">{student.name}</td>
+                        <td className="p-2">{student.badges}</td>
+                        <td className="p-2">{student.level}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {showRegister && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+              <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+                <h2 className="text-2xl font-bold text-gray-800">Registrar nuevo usuario</h2>
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de alumno" id="reg-id" />
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Nombre completo" id="reg-name" />
+                <div className="flex items-center justify-around text-gray-700">
+                  <label className="flex items-center"><input type="radio" name="sexo" value="Hombre" defaultChecked className="mr-2" /> Hombre</label>
+                  <label className="flex items-center"><input type="radio" name="sexo" value="Mujer" className="mr-2" /> Mujer</label>
+                </div>
+
+                <select
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                  value={registerCareer}
+                  onChange={(e) => setRegisterCareer(e.target.value)}
+                >
+                  <option value="Diseno Digital">Diseño Digital</option>
+                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                </select>
+
+                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña (4 caracteres HEX mayúsculas)" id="reg-pass" />
+                <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold" onClick={async () => {
+                  const sexo = document.querySelector('input[name="sexo"]:checked').value;
+                  const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      id: document.getElementById('reg-id').value,
+                      name: document.getElementById('reg-name').value,
+                      sexo,
+                      password: document.getElementById('reg-pass').value,
+                      career: registerCareer
+                    })
+                  });
+                  const data = await res.json();
+                  alert(data.message || data.error);
+                  setShowRegister(false);
+                }}>Registrar</button>
+                <button className="text-sm text-gray-500 hover:underline transition-colors duration-300" onClick={() => setShowRegister(false)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {showReset && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+              <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+                <h2 className="text-2xl font-bold text-center text-gray-800">Recuperar contraseña</h2>
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
+                <button className="bg-purple-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 w-full font-semibold" onClick={handleSendResetCode}>Enviar código</button>
+
+                {showCodeField && (
+                  <>
+                    <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
+                    <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
+                    <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full mt-2 font-semibold" onClick={handleUpdatePassword}>Actualizar contraseña</button>
+                  </>
+                )}
+
+                <button className="text-sm text-gray-500 hover:underline mt-2 transition-colors duration-300" onClick={() => {
+                  setShowReset(false);
+                  setShowCodeField(false);
+                  setResetId('');
+                  setResetCode('');
+                  setResetPass('');
+                }}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+
+          {/* Admin Login Modal (only shows if setShowAdminLoginModal is true) */}
           <AdminLoginModal
             show={showAdminLoginModal}
             onClose={() => setShowAdminLoginModal(false)}
@@ -788,7 +866,7 @@
             selectedCareer={selectedCareer}
           />
 
-          {/* Admin Dashboard Modal */}
+          {/* Admin Dashboard Modal (only shows if setShowAdminDashboard is true) */}
           <AdminDashboard
             show={showAdminDashboard}
             onClose={() => setShowAdminDashboard(false)}
