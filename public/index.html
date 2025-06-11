@@ -226,7 +226,7 @@
     };
 
     // New AdminDashboard Component
-    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel }) => { // <-- AGREGADO calculateLevel aquí
+    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel, onRefreshStudents }) => { // <-- AGREGADO onRefreshStudents aquí
       if (!show) return null;
 
       const [editableStudents, setEditableStudents] = React.useState(studentsData);
@@ -250,9 +250,11 @@
         });
         const data = await response.json();
         if (data.success) {
-          alert(`Datos de ${id} actualizados correctamente. Nuevo Nivel: ${data.newLevel}`);
-          // Optionally re-fetch all students or update the specific student in state
-          updateStudentData(id, data.newLevel); // Update the level in main student data
+          alert(`Datos de ${id} actualizados correctamente.`);
+          // Después de la actualización exitosa, refrescar la lista de estudiantes
+          if (onRefreshStudents) { // Verificar si la prop existe
+            await onRefreshStudents(selectedCareer); // Llamar a la función para refrescar
+          }
         } else {
           alert(data.error);
         }
@@ -308,7 +310,7 @@
                       <td className="p-2 border">
                         <input type="number" className="w-full text-center border-b" value={student.exp} onChange={(e) => handleFieldChange(index, 'exp', parseInt(e.target.value) || 0)} />
                       </td>
-                      <td className="p-2 border text-center">{calculateLevel(student.exp)}</td> {/* <-- Se usa calculateLevel aquí */}
+                      <td className="p-2 border text-center">{calculateLevel(student.exp)}</td>
                       <td className="p-2 border">
                         <button className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600" onClick={() => handleUpdateClick(student)}>Actualizar</button>
                       </td>
@@ -584,6 +586,8 @@
           const data = await response.json();
           if (data.success) {
             setAdminStudentsData(data.students);
+            // After fetching, also update the local editableStudents state in AdminDashboard if it's open
+            // This is handled by useEffect in AdminDashboard which reacts to studentsData prop changes.
           } else {
             alert(data.error);
             setAdminStudentsData([]);
@@ -596,6 +600,7 @@
       };
 
       // Function to update a single student's data in adminStudentsData state
+      // (This specific function might become redundant if we always refetch, but keeping it for now)
       const updateStudentDataInAdminDashboard = (studentIdToUpdate, newLevel) => {
         setAdminStudentsData(prevStudents =>
           prevStudents.map(student =>
@@ -870,11 +875,12 @@
           {/* Admin Dashboard Modal (only shows if setShowAdminDashboard is true) */}
           <AdminDashboard
             show={showAdminDashboard}
-            onClose={() => setShowAdminDashboard(false)}
+            onClose={handleLogout}
             studentsData={adminStudentsData}
             updateStudentData={updateStudentDataInAdminDashboard}
             selectedCareer={selectedCareer}
             calculateLevel={calculateLevel}
+            onRefreshStudents={fetchAdminStudentsData}
           />
         </>
       );
