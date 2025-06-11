@@ -56,7 +56,7 @@
 
   <script type="text/babel">
     const BACKEND_BASE_URL = window.location.origin;
-    // const BACKEND_BASE_URL = 'http://localhost:3000'; // Descomentar para pruebas locales
+    // const BACKEND_BASE_URL = 'http://localhost:3000'; // Descomment for local testing
 
     const LoginScreen = ({
       studentId, setStudentId,
@@ -70,7 +70,8 @@
       resetPass, setResetPass,
       handleSendResetCode,
       handleUpdatePassword,
-      selectedCareer, setSelectedCareer
+      selectedCareer, setSelectedCareer,
+      setShowAdminLoginModal // New prop
     }) => {
       const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
 
@@ -110,6 +111,7 @@
                 <div className="text-sm mt-6">
                   <button onClick={() => setShowRegister(true)} className="text-purple-600 hover:underline mr-4 transition-colors duration-300">Sign in</button>
                   <button onClick={() => setShowReset(true)} className="text-red-500 hover:underline transition-colors duration-300">¿Olvidaste tu contraseña?</button>
+                  <button onClick={() => setShowAdminLoginModal(true)} className="text-blue-500 hover:underline ml-4 transition-colors duration-300">Admin Login</button> {/* New Admin Login Button */}
                 </div>
               </div>
             </div>
@@ -187,6 +189,139 @@
       );
     };
 
+    // New AdminLoginModal Component
+    const AdminLoginModal = ({ show, onClose, onAdminLoginSuccess, selectedCareer }) => {
+      const [username, setUsername] = React.useState('');
+      const [password, setPassword] = React.useState('');
+
+      const handleAdminLogin = async () => {
+        const response = await fetch(`${BACKEND_BASE_URL}/api/admin-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert(data.message);
+          onAdminLoginSuccess(selectedCareer); // Pass selectedCareer to fetch students for that career
+          onClose(); // Close the login modal
+        } else {
+          alert(data.error);
+        }
+      };
+
+      if (!show) return null;
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+            <h2 className="text-2xl font-bold text-center text-gray-800">Acceso de Administrador</h2>
+            <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button className="bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 w-full font-semibold" onClick={handleAdminLogin}>Iniciar sesión (Admin)</button>
+            <button className="text-sm text-gray-500 hover:underline mt-2 transition-colors duration-300" onClick={onClose}>Cancelar</button>
+          </div>
+        </div>
+      );
+    };
+
+    // New AdminDashboard Component
+    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer }) => {
+      if (!show) return null;
+
+      const [editableStudents, setEditableStudents] = React.useState(studentsData);
+
+      React.useEffect(() => {
+        setEditableStudents(studentsData);
+      }, [studentsData]);
+
+      const handleFieldChange = (index, field, value) => {
+        const updatedStudents = [...editableStudents];
+        updatedStudents[index] = { ...updatedStudents[index], [field]: value };
+        setEditableStudents(updatedStudents);
+      };
+
+      const handleUpdateClick = async (student) => {
+        const { id, rowIndex, tareas, monedas, asistencias, exp } = student;
+        const response = await fetch(`${BACKEND_BASE_URL}/api/admin/update-student-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, career: selectedCareer, rowIndex, tareas, monedas, asistencias, exp }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert(`Datos de ${id} actualizados correctamente. Nuevo Nivel: ${data.newLevel}`);
+          // Optionally re-fetch all students or update the specific student in state
+          updateStudentData(id, data.newLevel); // Update the level in main student data
+        } else {
+          alert(data.error);
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-4xl mx-auto transform transition-transform duration-300">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-bold text-gray-800">Panel de Administrador - {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}</h3>
+              <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
+            </div>
+            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+              <table className="w-full text-left table-auto border-collapse">
+                <thead>
+                  <tr className="bg-gray-200 text-gray-700 font-semibold sticky top-0">
+                    <th className="p-2 border">ID</th>
+                    <th className="p-2 border">Nombre</th>
+                    <th className="p-2 border w-24">Tareas</th>
+                    <th className="p-2 border w-24">Monedas</th>
+                    <th className="p-2 border w-24">Asistencia</th>
+                    <th className="p-2 border w-24">EXP.</th>
+                    <th className="p-2 border">Nivel</th>
+                    <th className="p-2 border">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {editableStudents.map((student, index) => (
+                    <tr key={student.id} className="border-b hover:bg-gray-50">
+                      <td className="p-2 border text-sm">{student.id}</td>
+                      <td className="p-2 border text-sm">{student.name}</td>
+                      <td className="p-2 border">
+                        <div className="flex items-center">
+                          <button onClick={() => handleFieldChange(index, 'tareas', student.tareas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
+                          <input type="number" className="w-12 text-center border-b mx-1" value={student.tareas} onChange={(e) => handleFieldChange(index, 'tareas', parseInt(e.target.value) || 0)} />
+                          <button onClick={() => handleFieldChange(index, 'tareas', student.tareas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                        </div>
+                      </td>
+                      <td className="p-2 border">
+                        <div className="flex items-center">
+                          <button onClick={() => handleFieldChange(index, 'monedas', student.monedas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
+                          <input type="number" className="w-12 text-center border-b mx-1" value={student.monedas} onChange={(e) => handleFieldChange(index, 'monedas', parseInt(e.target.value) || 0)} />
+                          <button onClick={() => handleFieldChange(index, 'monedas', student.monedas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                        </div>
+                      </td>
+                      <td className="p-2 border">
+                        <div className="flex items-center">
+                          <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
+                          <input type="number" className="w-12 text-center border-b mx-1" value={student.asistencias} onChange={(e) => handleFieldChange(index, 'asistencias', parseInt(e.target.value) || 0)} />
+                          <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                        </div>
+                      </td>
+                      <td className="p-2 border">
+                        <input type="number" className="w-full text-center border-b" value={student.exp} onChange={(e) => handleFieldChange(index, 'exp', parseInt(e.target.value) || 0)} />
+                      </td>
+                      <td className="p-2 border text-center">{calculateLevel(student.exp)}</td>
+                      <td className="p-2 border">
+                        <button className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600" onClick={() => handleUpdateClick(student)}>Actualizar</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     const App = () => {
       const [showLeaderboard, setShowLeaderboard] = React.useState(false);
       const [leaderboardData, setLeaderboardData] = React.useState([]);
@@ -215,6 +350,13 @@
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
       const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital');
+
+      // Admin States
+      const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
+      const [showAdminLoginModal, setShowAdminLoginModal] = React.useState(false);
+      const [adminStudentsData, setAdminStudentsData] = React.useState([]);
+      const [showAdminDashboard, setShowAdminDashboard] = React.useState(false);
+
 
       const prevLevelRef = React.useRef(null);
 
@@ -295,6 +437,11 @@
         setShowLevelUpGif(false);
         prevLevelRef.current = null;
         setSelectedCareer('Diseno Digital');
+        // Also reset admin states
+        setIsAdminLoggedIn(false);
+        setShowAdminLoginModal(false);
+        setAdminStudentsData([]);
+        setShowAdminDashboard(false);
       };
 
       const fetchBadges = async () => {
@@ -420,9 +567,46 @@
 
       const progress = studentData ? getLevelProgress(studentData.exp, studentData.level) : { percentage: 0, currentExp: 0, requiredExp: 10 };
 
+      // Admin Login Success Handler
+      const handleAdminLoginSuccess = async (career) => {
+        setIsAdminLoggedIn(true);
+        // Fetch student data for the selected career
+        await fetchAdminStudentsData(career);
+        setShowAdminDashboard(true); // Show the admin dashboard
+      };
+
+      // Fetch Admin Students Data
+      const fetchAdminStudentsData = async (career) => {
+        try {
+          const response = await fetch(`${BACKEND_BASE_URL}/api/admin/students?career=${career}`);
+          const data = await response.json();
+          if (data.success) {
+            setAdminStudentsData(data.students);
+          } else {
+            alert(data.error);
+            setAdminStudentsData([]);
+          }
+        } catch (error) {
+          console.error('Error fetching admin student data:', error);
+          alert('Error al cargar datos de alumnos para el administrador.');
+          setAdminStudentsData([]);
+        }
+      };
+
+      // Function to update a single student's data in adminStudentsData state
+      const updateStudentDataInAdminDashboard = (studentIdToUpdate, newLevel) => {
+        setAdminStudentsData(prevStudents =>
+          prevStudents.map(student =>
+            student.id === studentIdToUpdate
+              ? { ...student, level: newLevel, exp: student.exp } // Update level, exp might need specific update from backend too
+              : student
+          )
+        );
+      };
+
       return (
         <>
-          {!isLoggedIn ? (
+          {!isLoggedIn && !isAdminLoggedIn ? (
             <LoginScreen
               studentId={studentId}
               setStudentId={setStudentId}
@@ -445,9 +629,10 @@
               handleUpdatePassword={handleUpdatePassword}
               selectedCareer={selectedCareer}
               setSelectedCareer={setSelectedCareer}
+              setShowAdminLoginModal={setShowAdminLoginModal} // Pass setter for admin modal
             />
           ) : (
-            studentData && (
+            isLoggedIn && studentData && (
               <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
                 <div className="bg-orange-500 text-white text-center p-3">
                   <h2 className="text-2xl font-bold">Hola, {studentData.name}</h2>
@@ -591,10 +776,26 @@
                     </div>
                   </div>
                 )}
-
               </div>
             )
           )}
+
+          {/* Admin Login Modal */}
+          <AdminLoginModal
+            show={showAdminLoginModal}
+            onClose={() => setShowAdminLoginModal(false)}
+            onAdminLoginSuccess={handleAdminLoginSuccess}
+            selectedCareer={selectedCareer}
+          />
+
+          {/* Admin Dashboard Modal */}
+          <AdminDashboard
+            show={showAdminDashboard}
+            onClose={() => setShowAdminDashboard(false)}
+            studentsData={adminStudentsData}
+            updateStudentData={updateStudentDataInAdminDashboard}
+            selectedCareer={selectedCareer}
+          />
         </>
       );
     };
