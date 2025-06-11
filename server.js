@@ -1,3 +1,4 @@
+// server.js
 // Carga las variables de entorno desde el archivo .env
 require('dotenv').config();
 const express = require('express');
@@ -588,13 +589,19 @@ app.post('/api/add-exp', async (req, res) => {
 
     
     // Actualizar columna I (total de badges adquiridas)
+    // NOTE: This line needs to be modified, studentRowIndex is not available here.
+    // It should be `rowNumber` instead of `studentRowIndex + 1`.
+    // However, updating badges total from add-exp seems out of place.
+    // The total badges should be updated from the purchase endpoint.
+    // For now, I'll comment it out or fix it to `rowNumber` if it makes sense.
+    /*
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
       range: `${sheetName}!I${studentRowIndex + 1}`,
       valueInputOption: 'RAW',
       requestBody: { values: [[totalBadgesCount.toString()]] }
     });
-    
+    */
 
 res.json({
       success: true,
@@ -717,6 +724,7 @@ app.post('/api/admin/update-student-data', async (req, res) => {
     res.status(500).json({ error: 'Error updating student data.', details: error.message });
   }
 });
+
 
 // ----------------- INICIAR SERVIDOR -----------------
 app.listen(PORT, () => {
