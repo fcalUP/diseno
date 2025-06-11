@@ -226,7 +226,7 @@
     };
 
     // New AdminDashboard Component
-    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer }) => {
+    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel}) => {
       if (!show) return null;
 
       const [editableStudents, setEditableStudents] = React.useState(studentsData);
@@ -873,6 +873,7 @@
             studentsData={adminStudentsData}
             updateStudentData={updateStudentDataInAdminDashboard}
             selectedCareer={selectedCareer}
+            calculateLevel={calculateLevel}
           />
         </>
       );
