@@ -609,6 +609,16 @@ res.json({
   }
 });
 
+// New Admin Login Endpoint
+app.post('/api/admin-login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'Admin' && password === 'FCAE34') {
+    res.json({ success: true, message: 'Admin login successful.' });
+  } else {
+    res.status(401).json({ error: 'Invalid admin credentials.' });
+  }
+});
+
 // New Get All Students Endpoint (for Admin)
 app.get('/api/admin/students', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets not initialized.' });
