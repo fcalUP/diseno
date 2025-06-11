@@ -226,13 +226,13 @@
     };
 
     // New AdminDashboard Component
-    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel, onRefreshStudents }) => { // <-- AGREGADO onRefreshStudents aquí
+    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel, onRefreshStudents }) => {
       if (!show) return null;
 
-      const [editableStudents, setEditableStudents] = React.useState(studentsData);
+      const [editableStudents, setEditableStudents] = React.useState(studentsData || []);
 
       React.useEffect(() => {
-        setEditableStudents(studentsData);
+        setEditableStudents(studentsData || []);
       }, [studentsData]);
 
       const handleFieldChange = (index, field, value) => {
@@ -251,9 +251,8 @@
         const data = await response.json();
         if (data.success) {
           alert(`Datos de ${id} actualizados correctamente.`);
-          // Después de la actualización exitosa, refrescar la lista de estudiantes
-          if (onRefreshStudents) { // Verificar si la prop existe
-            await onRefreshStudents(selectedCareer); // Llamar a la función para refrescar
+          if (onRefreshStudents) {
+            await onRefreshStudents(selectedCareer);
           }
         } else {
           alert(data.error);
@@ -289,26 +288,30 @@
                       <td className="p-2 border">
                         <div className="flex items-center">
                           <button onClick={() => handleFieldChange(index, 'tareas', student.tareas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <input type="number" className="w-12 text-center border-b mx-1" value={student.tareas} onChange={(e) => handleFieldChange(index, 'tareas', parseInt(e.target.value) || 0)} />
+                          {/* CAMBIO AQUÍ: input type="number" por span */}
+                          <span className="w-12 text-center mx-1 border-b py-0.5">{student.tareas}</span>
                           <button onClick={() => handleFieldChange(index, 'tareas', student.tareas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
                       <td className="p-2 border">
                         <div className="flex items-center">
                           <button onClick={() => handleFieldChange(index, 'monedas', student.monedas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <input type="number" className="w-12 text-center border-b mx-1" value={student.monedas} onChange={(e) => handleFieldChange(index, 'monedas', parseInt(e.target.value) || 0)} />
+                          {/* CAMBIO AQUÍ: input type="number" por span */}
+                          <span className="w-12 text-center mx-1 border-b py-0.5">{student.monedas}</span>
                           <button onClick={() => handleFieldChange(index, 'monedas', student.monedas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
                       <td className="p-2 border">
                         <div className="flex items-center">
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <input type="number" className="w-12 text-center border-b mx-1" value={student.asistencias} onChange={(e) => handleFieldChange(index, 'asistencias', parseInt(e.target.value) || 0)} />
+                          {/* CAMBIO AQUÍ: input type="number" por span */}
+                          <span className="w-12 text-center mx-1 border-b py-0.5">{student.asistencias}</span>
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
                       <td className="p-2 border">
-                        <input type="number" className="w-full text-center border-b" value={student.exp} onChange={(e) => handleFieldChange(index, 'exp', parseInt(e.target.value) || 0)} />
+                        {/* CAMBIO AQUÍ: input type="number" por span */}
+                        <span className="w-full text-center border-b py-0.5 block">{student.exp}</span>
                       </td>
                       <td className="p-2 border text-center">{calculateLevel(student.exp)}</td>
                       <td className="p-2 border">
