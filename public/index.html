@@ -62,23 +62,18 @@
       studentId, setStudentId,
       password, setPassword,
       handleLogin,
-      showRegister, setShowRegister,
-      showReset, setShowReset,
-      showCodeField, setShowCodeField,
+      setShowRegister, // Ahora showRegister se maneja desde App
+      setShowReset,
+      showCodeField,
       resetId, setResetId,
       resetCode, setResetCode,
       resetPass, setResetPass,
       handleSendResetCode,
       handleUpdatePassword,
       selectedCareer, setSelectedCareer,
-      setShowAdminLoginModal // New prop
+      setShowAdminLoginModal
     }) => {
-      const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
-
-      React.useEffect(() => {
-        setRegisterCareer(selectedCareer);
-      }, [showRegister, selectedCareer]);
-
+      // registerCareer ya no se declara aquí, se pasa como prop o se maneja en App
       const sideImage = selectedCareer === 'Diseno Digital' ? '/img/side-image.jpg' : '/img/comuni.png';
 
       return (
@@ -111,80 +106,13 @@
                 <div className="text-sm mt-6">
                   <button onClick={() => setShowRegister(true)} className="text-purple-600 hover:underline mr-4 transition-colors duration-300">Sign in</button>
                   <button onClick={() => setShowReset(true)} className="text-red-500 hover:underline transition-colors duration-300">¿Olvidaste tu contraseña?</button>
-                  <button onClick={() => setShowAdminLoginModal(true)} className="text-blue-500 hover:underline ml-4 transition-colors duration-300">Admin Login</button> {/* New Admin Login Button */}
+                  <button onClick={() => setShowAdminLoginModal(true)} className="text-blue-500 hover:underline ml-4 transition-colors duration-300">Admin Login</button>
                 </div>
               </div>
             </div>
           </div>
-
-          {showRegister && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
-                <h2 className="text-2xl font-bold text-gray-800">Registrar nuevo usuario</h2>
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de alumno" id="reg-id" />
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Nombre completo" id="reg-name" />
-                <div className="flex items-center justify-around text-gray-700">
-                  <label className="flex items-center"><input type="radio" name="sexo" value="Hombre" defaultChecked className="mr-2" /> Hombre</label>
-                  <label className="flex items-center"><input type="radio" name="sexo" value="Mujer" className="mr-2" /> Mujer</label>
-                </div>
-
-                <select
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
-                  value={registerCareer}
-                  onChange={(e) => setRegisterCareer(e.target.value)}
-                >
-                  <option value="Diseno Digital">Diseño Digital</option>
-                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
-                </select>
-
-                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña (2 mayúsculas y 2 números)" id="reg-pass" />
-                <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold" onClick={async () => {
-                  const sexo = document.querySelector('input[name="sexo"]:checked').value;
-                  const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      id: document.getElementById('reg-id').value,
-                      name: document.getElementById('reg-name').value,
-                      sexo,
-                      password: document.getElementById('reg-pass').value,
-                      career: registerCareer
-                    })
-                  });
-                  const data = await res.json();
-                  alert(data.message || data.error);
-                  setShowRegister(false);
-                }}>Registrar</button>
-                <button className="text-sm text-gray-500 hover:underline transition-colors duration-300" onClick={() => setShowRegister(false)}>Cancelar</button>
-              </div>
-            </div>
-          )}
-
-          {showReset && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
-                <h2 className="text-2xl font-bold text-center text-gray-800">Recuperar contraseña</h2>
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
-                <button className="bg-purple-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 w-full font-semibold" onClick={handleSendResetCode}>Enviar código</button>
-
-                {showCodeField && (
-                  <>
-                    <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
-                    <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
-                    <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full mt-2 font-semibold" onClick={handleUpdatePassword}>Actualizar contraseña</button>
-                  </>
-                )}
-
-                <button className="text-sm text-gray-500 hover:underline mt-2 transition-colors duration-300" onClick={() => {
-                  setShowReset(false);
-                  setShowCodeField(false);
-                  setResetId('');
-                  setResetCode('');
-                  setResetPass('');
-                }}>Cancelar</button>
-              </div>
-            </div>
-          )}
+          {/* El modal de registro se ha movido al componente App */}
+          {/* El modal de reset se ha movido al componente App */}
         </>
       );
     };
@@ -203,8 +131,8 @@
         const data = await response.json();
         if (data.success) {
           alert(data.message);
-          onAdminLoginSuccess(selectedCareer); // Pass selectedCareer to fetch students for that career
-          onClose(); // Close the login modal
+          onAdminLoginSuccess(selectedCareer);
+          onClose();
         } else {
           alert(data.error);
         }
@@ -288,7 +216,6 @@
                       <td className="p-2 border">
                         <div className="flex items-center">
                           <button onClick={() => handleFieldChange(index, 'tareas', student.tareas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          {/* CAMBIO AQUÍ: input type="number" por span */}
                           <span className="w-12 text-center mx-1 border-b py-0.5">{student.tareas}</span>
                           <button onClick={() => handleFieldChange(index, 'tareas', student.tareas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
@@ -296,7 +223,6 @@
                       <td className="p-2 border">
                         <div className="flex items-center">
                           <button onClick={() => handleFieldChange(index, 'monedas', student.monedas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          {/* CAMBIO AQUÍ: input type="number" por span */}
                           <span className="w-12 text-center mx-1 border-b py-0.5">{student.monedas}</span>
                           <button onClick={() => handleFieldChange(index, 'monedas', student.monedas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
@@ -304,13 +230,11 @@
                       <td className="p-2 border">
                         <div className="flex items-center">
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          {/* CAMBIO AQUÍ: input type="number" por span */}
                           <span className="w-12 text-center mx-1 border-b py-0.5">{student.asistencias}</span>
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
                       <td className="p-2 border">
-                        {/* CAMBIO AQUÍ: input type="number" por span */}
                         <span className="w-full text-center border-b py-0.5 block">{student.exp}</span>
                       </td>
                       <td className="p-2 border text-center">{calculateLevel(student.exp)}</td>
@@ -347,6 +271,8 @@
       const [badges, setBadges] = React.useState([]);
       const [cart, setCart] = React.useState({});
       const [showCartModal, setShowCartModal] = React.useState(false);
+
+      // Moved register and reset states to App
       const [showRegister, setShowRegister] = React.useState(false);
       const [showReset, setShowReset] = React.useState(false);
       const [showCodeField, setShowCodeField] = React.useState(false);
@@ -355,6 +281,9 @@
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
       const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital');
+      // registerCareer se declara aquí, inicializado con selectedCareer
+      const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
+
 
       // Admin States
       const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
@@ -705,9 +634,7 @@
               password={password}
               setPassword={setPassword}
               handleLogin={handleLogin}
-              showRegister={showRegister}
-              setShowRegister={setShowRegister}
-              showReset={showReset}
+              setShowRegister={setShowRegister} // Ahora se pasa directamente
               setShowReset={setShowReset}
               showCodeField={showCodeField}
               setShowCodeField={setShowCodeField}
@@ -797,6 +724,7 @@
             </div>
           )}
 
+          {/* MODAL DE REGISTRO - Ahora en App */}
           {showRegister && (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
               <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
@@ -810,8 +738,8 @@
 
                 <select
                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
-                  value={registerCareer}
-                  onChange={(e) => setRegisterCareer(e.target.value)}
+                  value={registerCareer} // <-- Usando registerCareer de App
+                  onChange={(e) => setRegisterCareer(e.target.value)} // <-- Usando setRegisterCareer de App
                 >
                   <option value="Diseno Digital">Diseño Digital</option>
                   <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
@@ -828,7 +756,7 @@
                       name: document.getElementById('reg-name').value,
                       sexo,
                       password: document.getElementById('reg-pass').value,
-                      career: registerCareer
+                      career: registerCareer // <-- Usando registerCareer de App
                     })
                   });
                   const data = await res.json();
@@ -840,6 +768,7 @@
             </div>
           )}
 
+          {/* MODAL DE RESET - Ahora en App */}
           {showReset && (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
               <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
@@ -878,7 +807,7 @@
           {/* Admin Dashboard Modal (only shows if setShowAdminDashboard is true) */}
           <AdminDashboard
             show={showAdminDashboard}
-            onClose={handleLogout}
+            onClose={handleLogout} // Usa handleLogout para cerrar el dashboard y resetear estados
             studentsData={adminStudentsData}
             updateStudentData={updateStudentDataInAdminDashboard}
             selectedCareer={selectedCareer}
