@@ -609,6 +609,104 @@ res.json({
   }
 });
 
+// New Get All Students Endpoint (for Admin)
+app.get('/api/admin/students', async (req, res) => {
+  if (!sheets) return res.status(500).json({ error: 'Sheets not initialized.' });
+  const { career } = req.query;
+
+  if (!career) {
+    return res.status(400).json({ error: 'Career is required.' });
+  }
+
+  const sheetName = getSheetName(career);
+
+  try {
+    // A:K includes ID, Nombre, Sexo, Correo, Password, Homeworks, Coins, Attendance, Badges, EXP, LAST_LOGIN_LEVEL
+    const range = `${sheetName}!A:K`; 
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+    const rows = response.data.values;
+
+    if (!rows || rows.length < 2) { // Assuming first row is header
+      return res.status(404).json({ error: 'No student data found for this career.' });
+    }
+
+    const students = rows.slice(1).map((row, index) => ({
+      rowIndex: index + 2, // +1 for header, +1 for 0-based index
+      id: row[0],
+      name: row[1],
+      sexo: row[2],
+      email: row[3],
+      password: row[4], // For admin view, keep it for now (ideally hashed)
+      tareas: parseInt(row[5]) || 0,
+      monedas: parseInt(row[6]) || 0,
+      asistencias: parseInt(row[7]) || 0,
+      badges: parseInt(row[8]) || 0,
+      exp: parseInt(row[9]) || 0,
+      level: calculateLevel(parseInt(row[9]) || 0)
+    }));
+    res.json({ success: true, students });
+  } catch (error) {
+    console.error('Error fetching students for admin:', error);
+    res.status(500).json({ error: 'Error fetching student data.', details: error.message });
+  }
+});
+
+// New Update Student Data Endpoint (for Admin)
+app.post('/api/admin/update-student-data', async (req, res) => {
+  if (!sheets) return res.status(500).json({ error: 'Sheets not initialized.' });
+
+  const { id, career, rowIndex, tareas, monedas, asistencias, exp } = req.body;
+
+  if (!id || !career || !rowIndex || tareas === undefined || monedas === undefined || asistencias === undefined || exp === undefined) {
+    return res.status(400).json({ error: 'Incomplete data for update.' });
+  }
+
+  const sheetName = getSheetName(career);
+
+  try {
+    const currentStudentRange = `${sheetName}!A${rowIndex}:K${rowIndex}`;
+    const studentResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: currentStudentRange
+    });
+    const studentRow = studentResponse.data.values?.[0];
+
+    if (!studentRow) {
+      return res.status(404).json({ error: 'Student row not found.' });
+    }
+
+    const currentLastLoginLevel = parseInt(studentRow[10]) || 0; // Columna K (índice 10)
+    const newLevel = calculateLevel(exp);
+
+    const updates = [
+      { range: `${sheetName}!F${rowIndex}`, values: [[tareas]] }, // Tareas (F)
+      { range: `${sheetName}!G${rowIndex}`, values: [[monedas]] }, // Monedas (G)
+      { range: `${sheetName}!H${rowIndex}`, values: [[asistencias]] }, // Asistencias (H)
+      { range: `${sheetName}!J${rowIndex}`, values: [[exp]] } // EXP (J)
+    ];
+
+    // Only update LAST_LOGIN_LEVEL if the calculated level changes
+    if (newLevel !== currentLastLoginLevel) {
+      updates.push({
+        range: `${sheetName}!K${rowIndex}`, // LAST_LOGIN_LEVEL (K)
+        values: [[newLevel]]
+      });
+    }
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        data: updates,
+        valueInputOption: 'RAW'
+      }
+    });
+
+    res.json({ success: true, message: `Student ${id} data updated successfully.`, newLevel: newLevel });
+  } catch (error) {
+    console.error('Error updating student data:', error);
+    res.status(500).json({ error: 'Error updating student data.', details: error.message });
+  }
+});
 
 // ----------------- INICIAR SERVIDOR -----------------
 app.listen(PORT, () => {
