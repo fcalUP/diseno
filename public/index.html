@@ -48,6 +48,99 @@
     .animate-slideOut {
       animation: slideOut 0.6s ease-in forwards;
     }
+
+    /* Estilo para tabla responsiva en móviles */
+    @media (max-width: 767px) {
+      .admin-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .admin-table {
+        min-width: 600px;
+        /* Asegura un ancho mínimo para que no se vea todo aplastado */
+      }
+
+      .admin-table thead,
+      .admin-table tbody,
+      .admin-table th,
+      .admin-table td,
+      .admin-table tr {
+        display: block;
+      }
+
+      .admin-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+
+      .admin-table tr {
+        border: 1px solid #ddd;
+        margin-bottom: 0.5rem;
+      }
+
+      .admin-table td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+        font-size: 0.875rem;
+        /* text-sm */
+      }
+
+      .admin-table td:before {
+        position: absolute;
+        top: 0;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        content: attr(data-label);
+      }
+
+      /* Estilos específicos para cada columna en móvil */
+      .admin-table td:nth-of-type(1):before {
+        content: "ID";
+      }
+
+      .admin-table td:nth-of-type(2):before {
+        content: "Nombre";
+      }
+
+      .admin-table td:nth-of-type(3):before {
+        content: "Tareas";
+      }
+
+      .admin-table td:nth-of-type(4):before {
+        content: "Monedas";
+      }
+
+      .admin-table td:nth-of-type(5):before {
+        content: "Asistencia";
+      }
+
+      .admin-table td:nth-of-type(6):before {
+        content: "EXP.";
+      }
+
+      .admin-table td:nth-of-type(7):before {
+        content: "Nivel";
+      }
+
+      .admin-table td:nth-of-type(8):before {
+        content: "Acciones";
+      }
+
+      /* Ajustes para los controles de + y - */
+      .admin-table .flex.items-center {
+        justify-content: flex-end;
+        /* Alinear los controles a la derecha */
+      }
+    }
   </style>
 </head>
 
@@ -62,7 +155,7 @@
       studentId, setStudentId,
       password, setPassword,
       handleLogin,
-      setShowRegister, // Ahora showRegister se maneja desde App
+      setShowRegister,
       setShowReset,
       showCodeField,
       resetId, setResetId,
@@ -73,7 +166,6 @@
       selectedCareer, setSelectedCareer,
       setShowAdminLoginModal
     }) => {
-      // registerCareer ya no se declara aquí, se pasa como prop o se maneja en App
       const sideImage = selectedCareer === 'Diseno Digital' ? '/img/side-image.jpg' : '/img/comuni.png';
 
       return (
@@ -111,13 +203,10 @@
               </div>
             </div>
           </div>
-          {/* El modal de registro se ha movido al componente App */}
-          {/* El modal de reset se ha movido al componente App */}
         </>
       );
     };
 
-    // New AdminLoginModal Component
     const AdminLoginModal = ({ show, onClose, onAdminLoginSuccess, selectedCareer }) => {
       const [username, setUsername] = React.useState('');
       const [password, setPassword] = React.useState('');
@@ -153,7 +242,6 @@
       );
     };
 
-    // New AdminDashboard Component
     const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel, onRefreshStudents }) => {
       if (!show) return null;
 
@@ -189,56 +277,57 @@
 
       return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-4xl mx-auto transform transition-transform duration-300">
+          <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-2xl w-full max-w-5xl mx-auto transform transition-transform duration-300 scale-95 hover:scale-100 h-5/6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold text-gray-800">Panel de Administrador - {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Panel de Administrador - {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}</h3>
               <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
             </div>
-            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
-              <table className="w-full text-left table-auto border-collapse">
+            {/* Contenedor de la tabla responsiva */}
+            <div className="flex-grow overflow-y-auto admin-table-container">
+              <table className="w-full text-left table-auto border-collapse admin-table">
                 <thead>
                   <tr className="bg-gray-200 text-gray-700 font-semibold sticky top-0">
-                    <th className="p-2 border">ID</th>
-                    <th className="p-2 border">Nombre</th>
-                    <th className="p-2 border w-24">Tareas</th>
-                    <th className="p-2 border w-24">Monedas</th>
-                    <th className="p-2 border w-24">Asistencia</th>
-                    <th className="p-2 border w-24">EXP.</th>
-                    <th className="p-2 border">Nivel</th>
-                    <th className="p-2 border">Acciones</th>
+                    <th className="p-2 border text-sm">ID</th>
+                    <th className="p-2 border text-sm">Nombre</th>
+                    <th className="p-2 border text-sm w-[100px]">Tareas</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[100px]">Monedas</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[100px]">Asistencia</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[80px]">EXP.</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[80px]">Nivel</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[120px]">Acciones</th> {/* Ancho fijo para móvil */}
                   </tr>
                 </thead>
                 <tbody>
                   {editableStudents.map((student, index) => (
                     <tr key={student.id} className="border-b hover:bg-gray-50">
-                      <td className="p-2 border text-sm">{student.id}</td>
-                      <td className="p-2 border text-sm">{student.name}</td>
-                      <td className="p-2 border">
-                        <div className="flex items-center">
+                      <td className="p-2 border text-sm" data-label="ID">{student.id}</td>
+                      <td className="p-2 border text-sm" data-label="Nombre">{student.name}</td>
+                      <td className="p-2 border" data-label="Tareas">
+                        <div className="flex items-center justify-end md:justify-center">
                           <button onClick={() => handleFieldChange(index, 'tareas', student.tareas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <span className="w-12 text-center mx-1 border-b py-0.5">{student.tareas}</span>
+                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.tareas}</span>
                           <button onClick={() => handleFieldChange(index, 'tareas', student.tareas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
-                      <td className="p-2 border">
-                        <div className="flex items-center">
+                      <td className="p-2 border" data-label="Monedas">
+                        <div className="flex items-center justify-end md:justify-center">
                           <button onClick={() => handleFieldChange(index, 'monedas', student.monedas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <span className="w-12 text-center mx-1 border-b py-0.5">{student.monedas}</span>
+                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.monedas}</span>
                           <button onClick={() => handleFieldChange(index, 'monedas', student.monedas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
-                      <td className="p-2 border">
-                        <div className="flex items-center">
+                      <td className="p-2 border" data-label="Asistencia">
+                        <div className="flex items-center justify-end md:justify-center">
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <span className="w-12 text-center mx-1 border-b py-0.5">{student.asistencias}</span>
+                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.asistencias}</span>
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
-                      <td className="p-2 border">
-                        <span className="w-full text-center border-b py-0.5 block">{student.exp}</span>
+                      <td className="p-2 border text-center" data-label="EXP.">
+                        <span className="w-full text-center py-0.5 block text-sm">{student.exp}</span>
                       </td>
-                      <td className="p-2 border text-center">{calculateLevel(student.exp)}</td>
-                      <td className="p-2 border">
+                      <td className="p-2 border text-center" data-label="Nivel">{calculateLevel(student.exp)}</td>
+                      <td className="p-2 border text-center" data-label="Acciones">
                         <button className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600" onClick={() => handleUpdateClick(student)}>Actualizar</button>
                       </td>
                     </tr>
@@ -272,7 +361,6 @@
       const [cart, setCart] = React.useState({});
       const [showCartModal, setShowCartModal] = React.useState(false);
 
-      // Moved register and reset states to App
       const [showRegister, setShowRegister] = React.useState(false);
       const [showReset, setShowReset] = React.useState(false);
       const [showCodeField, setShowCodeField] = React.useState(false);
@@ -281,11 +369,8 @@
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
       const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital');
-      // registerCareer se declara aquí, inicializado con selectedCareer
       const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
 
-
-      // Admin States
       const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
       const [showAdminLoginModal, setShowAdminLoginModal] = React.useState(false);
       const [adminStudentsData, setAdminStudentsData] = React.useState([]);
@@ -296,7 +381,6 @@
 
       const levelThresholds = { 0: 0, 1: 10, 2: 25, 3: 50, 4: 75, 5: 100 };
 
-      // Esta función es la que necesitaba ser pasada como prop
       const calculateLevel = (exp) => {
         if (exp >= 100) return 5;
         if (exp >= 75) return 4;
@@ -372,7 +456,6 @@
         setShowLevelUpGif(false);
         prevLevelRef.current = null;
         setSelectedCareer('Diseno Digital');
-        // Also reset admin states
         setIsAdminLoggedIn(false);
         setShowAdminLoginModal(false);
         setAdminStudentsData([]);
@@ -502,24 +585,19 @@
 
       const progress = studentData ? getLevelProgress(studentData.exp, studentData.level) : { percentage: 0, currentExp: 0, requiredExp: 10 };
 
-      // Admin Login Success Handler
       const handleAdminLoginSuccess = async (career) => {
         setIsAdminLoggedIn(true);
-        // Fetch student data for the selected career
         await fetchAdminStudentsData(career);
-        setShowAdminDashboard(true); // Show the admin dashboard
-        setShowAdminLoginModal(false); // Close the login modal
+        setShowAdminDashboard(true);
+        setShowAdminLoginModal(false);
       };
 
-      // Fetch Admin Students Data
       const fetchAdminStudentsData = async (career) => {
         try {
           const response = await fetch(`${BACKEND_BASE_URL}/api/admin/students?career=${career}`);
           const data = await response.json();
           if (data.success) {
             setAdminStudentsData(data.students);
-            // After fetching, also update the local editableStudents state in AdminDashboard if it's open
-            // This is handled by useEffect in AdminDashboard which reacts to studentsData prop changes.
           } else {
             alert(data.error);
             setAdminStudentsData([]);
@@ -531,13 +609,11 @@
         }
       };
 
-      // Function to update a single student's data in adminStudentsData state
-      // (This specific function might become redundant if we always refetch, but keeping it for now)
       const updateStudentDataInAdminDashboard = (studentIdToUpdate, newLevel) => {
         setAdminStudentsData(prevStudents =>
           prevStudents.map(student =>
             student.id === studentIdToUpdate
-              ? { ...student, level: newLevel, exp: student.exp } // Update level, exp might need specific update from backend too
+              ? { ...student, level: newLevel, exp: student.exp }
               : student
           )
         );
@@ -545,13 +621,9 @@
 
       return (
         <>
-          {/* Conditional rendering for the main content */}
           {isAdminLoggedIn ? (
-            // If admin is logged in, show nothing directly here,
-            // the AdminDashboard modal will be shown by its 'show' prop
             null
           ) : isLoggedIn && studentData ? (
-            // If a regular student is logged in, show their profile
             <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
               <div className="bg-orange-500 text-white text-center p-3">
                 <h2 className="text-2xl font-bold">Hola, {studentData.name}</h2>
@@ -572,12 +644,10 @@
                 </div>
 
                 <div className="col-span-1 flex flex-col justify-center items-center text-center space-y-4">
-                  {/* Bloque 1: Nivel */}
                   <div className="w-full max-w-xs p-3 text-center">
                     <div className="text-5xl font-extrabold text-orange-500">Nivel {studentData.level}</div>
                   </div>
 
-                  {/* Bloque 2: Monedas y Experiencia */}
                   <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow">
                     <div className="flex justify-between items-center text-md font-semibold text-gray-700">
                       <span>Coins</span><span className="font-bold text-yellow-500">{studentData.monedas}</span>
@@ -592,7 +662,6 @@
                     </div>
                   </div>
 
-                  {/* Bloque 3: Tareas, Asistencias y Badges */}
                   <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
                     <div className="flex justify-between items-center">
                       <span>Tareas</span><span className="font-bold">{studentData.tareas}</span>
@@ -627,14 +696,13 @@
               </div>
             </div>
           ) : (
-            // If neither is logged in, show the initial login screen
             <LoginScreen
               studentId={studentId}
               setStudentId={setStudentId}
               password={password}
               setPassword={setPassword}
               handleLogin={handleLogin}
-              setShowRegister={setShowRegister} // Ahora se pasa directamente
+              setShowRegister={setShowRegister}
               setShowReset={setShowReset}
               showCodeField={showCodeField}
               setShowCodeField={setShowCodeField}
@@ -652,8 +720,6 @@
             />
           )}
 
-          {/* Modals are rendered conditionally based on their 'show' prop */}
-          {/* Student related modals */}
           {showCartModal && (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
               <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform transition-transform duration-300">
@@ -724,7 +790,6 @@
             </div>
           )}
 
-          {/* MODAL DE REGISTRO - Ahora en App */}
           {showRegister && (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
               <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
@@ -738,8 +803,8 @@
 
                 <select
                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
-                  value={registerCareer} // <-- Usando registerCareer de App
-                  onChange={(e) => setRegisterCareer(e.target.value)} // <-- Usando setRegisterCareer de App
+                  value={registerCareer}
+                  onChange={(e) => setRegisterCareer(e.target.value)}
                 >
                   <option value="Diseno Digital">Diseño Digital</option>
                   <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
@@ -756,7 +821,7 @@
                       name: document.getElementById('reg-name').value,
                       sexo,
                       password: document.getElementById('reg-pass').value,
-                      career: registerCareer // <-- Usando registerCareer de App
+                      career: registerCareer
                     })
                   });
                   const data = await res.json();
@@ -768,7 +833,6 @@
             </div>
           )}
 
-          {/* MODAL DE RESET - Ahora en App */}
           {showReset && (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
               <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
@@ -795,8 +859,6 @@
             </div>
           )}
 
-
-          {/* Admin Login Modal (only shows if setShowAdminLoginModal is true) */}
           <AdminLoginModal
             show={showAdminLoginModal}
             onClose={() => setShowAdminLoginModal(false)}
@@ -804,10 +866,9 @@
             selectedCareer={selectedCareer}
           />
 
-          {/* Admin Dashboard Modal (only shows if setShowAdminDashboard is true) */}
           <AdminDashboard
             show={showAdminDashboard}
-            onClose={handleLogout} // Usa handleLogout para cerrar el dashboard y resetear estados
+            onClose={handleLogout}
             studentsData={adminStudentsData}
             updateStudentData={updateStudentDataInAdminDashboard}
             selectedCareer={selectedCareer}
