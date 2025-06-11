@@ -448,9 +448,9 @@
             />
           ) : (
             studentData && (
-              <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden">
-                <div className="bg-orange-500 text-white text-center p-4">
-                  <h2 className="text-3xl font-bold">Hola, {studentData.name}</h2>
+              <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+                <div className="bg-orange-500 text-white text-center p-3">
+                  <h2 className="text-2xl font-bold">Hola, {studentData.name}</h2>
                 </div>
                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                   <div className="col-span-1 flex justify-center items-center">
@@ -474,7 +474,7 @@
                     </div>
 
                     {/* Bloque 2: Monedas y Experiencia */}
-                    <div className="w-full max-w-xs p-4 bg-purple-100 rounded-xl shadow">
+                    <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow">
                       <div className="flex justify-between items-center text-md font-semibold text-gray-700">
                         <span>Coins</span><span className="font-bold text-yellow-500">{studentData.monedas}</span>
                       </div>
@@ -489,7 +489,7 @@
                     </div>
 
                     {/* Bloque 3: Tareas, Asistencias y Badges */}
-                    <div className="w-full max-w-xs p-4 bg-purple-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
+                    <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
                       <div className="flex justify-between items-center">
                         <span>Tareas</span><span className="font-bold">{studentData.tareas}</span>
                       </div>
