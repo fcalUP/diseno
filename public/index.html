@@ -111,7 +111,7 @@
                 <div className="text-sm mt-6">
                   <button onClick={() => setShowRegister(true)} className="text-purple-600 hover:underline mr-4 transition-colors duration-300">Sign in</button>
                   <button onClick={() => setShowReset(true)} className="text-red-500 hover:underline transition-colors duration-300">¿Olvidaste tu contraseña?</button>
-                  <button onClick={() => setShowAdminLoginModal(true)} className="text-blue-500 hover:underline ml-4 transition-colors duration-300">Administrador</button> {/* New Admin Login Button */}
+                  <button onClick={() => setShowAdminLoginModal(true)} className="text-blue-500 hover:underline ml-4 transition-colors duration-300">Admin Login</button> {/* New Admin Login Button */}
                 </div>
               </div>
             </div>
@@ -226,7 +226,7 @@
     };
 
     // New AdminDashboard Component
-    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel}) => {
+    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel }) => { // <-- AGREGADO calculateLevel aquí
       if (!show) return null;
 
       const [editableStudents, setEditableStudents] = React.useState(studentsData);
@@ -308,7 +308,7 @@
                       <td className="p-2 border">
                         <input type="number" className="w-full text-center border-b" value={student.exp} onChange={(e) => handleFieldChange(index, 'exp', parseInt(e.target.value) || 0)} />
                       </td>
-                      <td className="p-2 border text-center">{calculateLevel(student.exp)}</td>
+                      <td className="p-2 border text-center">{calculateLevel(student.exp)}</td> {/* <-- Se usa calculateLevel aquí */}
                       <td className="p-2 border">
                         <button className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600" onClick={() => handleUpdateClick(student)}>Actualizar</button>
                       </td>
@@ -362,6 +362,7 @@
 
       const levelThresholds = { 0: 0, 1: 10, 2: 25, 3: 50, 4: 75, 5: 100 };
 
+      // Esta función es la que necesitaba ser pasada como prop
       const calculateLevel = (exp) => {
         if (exp >= 100) return 5;
         if (exp >= 75) return 4;
@@ -611,7 +612,7 @@
           {isAdminLoggedIn ? (
             // If admin is logged in, show nothing directly here,
             // the AdminDashboard modal will be shown by its 'show' prop
-            null // or some basic admin placeholder if needed, but the modal covers it
+            null
           ) : isLoggedIn && studentData ? (
             // If a regular student is logged in, show their profile
             <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
@@ -808,7 +809,7 @@
                   <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
                 </select>
 
-                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña (4 caracteres HEX mayúsculas)" id="reg-pass" />
+                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña (2 mayúsculas y 2 números)" id="reg-pass" />
                 <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold" onClick={async () => {
                   const sexo = document.querySelector('input[name="sexo"]:checked').value;
                   const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
