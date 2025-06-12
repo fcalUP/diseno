@@ -88,7 +88,7 @@ app.post('/api/login', async (req, res) => {
 
   try {
     // Rango ajustado para incluir hasta la nueva columna K (LAST_LOGIN_LEVEL)
-    const range = `${sheetName}!A:K`; // Ahora leemos hasta la columna K
+    const range = `${sheetName}!A:L`; // Ahora leemos hasta la columna L
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
 
@@ -112,6 +112,8 @@ app.post('/api/login', async (req, res) => {
     const asistencias = studentData[7] || '0'; // Attendance
     const badgesString = studentData[8] || '0'; // Badges (como cadena)
     const exp = parseInt(studentData[9]) || 0; // EXP
+    const games = studentData[11] || '0'; // Games / Challenges (columna L)
+
 
     // Obtener lastLoginLevel. Si está vacío o es undefined (primera carga), se inicializa a 0
     let lastLoginLevel = parseInt(studentData[10]);
@@ -170,7 +172,8 @@ res.json({
         exp: exp,
         level: currentLevel, // Nivel actual
         purchases: badgesMap, // Usar el mapa de compras reales
-        rowIndex: studentRowIndex + 1 // Fila en el Sheets (para futuras actualizaciones)
+        rowIndex: studentRowIndex + 1, // Fila en el Sheets (para futuras actualizaciones)
+        games: games,
       },
       // Indicador para el frontend
       levelUpOccurred: levelUpOccurred
