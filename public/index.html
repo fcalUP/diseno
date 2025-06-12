@@ -262,11 +262,11 @@
       };
 
       const handleUpdateClick = async (student) => {
-        const { id, rowIndex, tareas, monedas, asistencias, exp } = student;
+        const { id, rowIndex, tareas, monedas, asistencias, games, exp } = student;
         const response = await fetch(`${BACKEND_BASE_URL}/api/admin/update-student-data`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, career: selectedCareer, rowIndex, tareas, monedas, asistencias, exp }),
+          body: JSON.stringify({ id, career: selectedCareer, rowIndex, tareas, monedas, asistencias,games, exp }),
         });
         const data = await response.json();
         if (data.success) {
@@ -328,11 +328,12 @@
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
-                      <div className="flex items-center justify-end md:justify-center">
-                        <button onClick={() => handleFieldChange(index, 'asistencias', student.games - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
                       <td className="p-2 border text-center" data-label="Games">
+                        <div className="flex items-center justify-end md:justify-center">
+                        <button onClick={() => handleFieldChange(index, 'games', student.games - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
                         <span className="w-full text-center py-0.5 block text-sm">{student.games}</span>
-                        <button onClick={() => handleFieldChange(index, 'asistencias', student.games + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                        <button onClick={() => handleFieldChange(index, 'games', student.games + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                        </div>
                       </td>
                       <td className="p-2 border text-center" data-label="EXP.">
                         <span className="w-full text-center py-0.5 block text-sm">{student.exp}</span>
