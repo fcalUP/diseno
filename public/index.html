@@ -328,8 +328,11 @@
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
+                      <div className="flex items-center justify-end md:justify-center">
+                        <button onClick={() => handleFieldChange(index, 'asistencias', student.games - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
                       <td className="p-2 border text-center" data-label="Games">
                         <span className="w-full text-center py-0.5 block text-sm">{student.games}</span>
+                        <button onClick={() => handleFieldChange(index, 'asistencias', student.games + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                       </td>
                       <td className="p-2 border text-center" data-label="EXP.">
                         <span className="w-full text-center py-0.5 block text-sm">{student.exp}</span>
