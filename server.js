@@ -662,7 +662,8 @@ app.get('/api/admin/students', async (req, res) => {
       asistencias: parseInt(row[7]) || 0,
       badges: parseInt(row[8]) || 0,
       exp: parseInt(row[9]) || 0,
-      level: calculateLevel(parseInt(row[9]) || 0)
+      level: calculateLevel(parseInt(row[9]) || 0),
+      games: parseInt(row[11]) || 0 // <= Añadido: Columna L
     }));
     res.json({ success: true, students });
   } catch (error) {
