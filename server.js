@@ -87,8 +87,8 @@ app.post('/api/login', async (req, res) => {
   const sheetName = getSheetName(career);
 
   try {
-    // Rango ajustado para incluir hasta la nueva columna L (Games / Challenges)
-    const range = `${sheetName}!A:L`; // Ahora leemos hasta la columna L
+    // Rango ajustado para incluir hasta la nueva columna K (LAST_LOGIN_LEVEL)
+    const range = `${sheetName}!A:K`; // Ahora leemos hasta la columna K
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
 
@@ -112,8 +112,6 @@ app.post('/api/login', async (req, res) => {
     const asistencias = studentData[7] || '0'; // Attendance
     const badgesString = studentData[8] || '0'; // Badges (como cadena)
     const exp = parseInt(studentData[9]) || 0; // EXP
-    const gamesChallenges = parseInt(studentData[11]) || 0; // Games / Challenges (Columna L, índice 11)
-
 
     // Obtener lastLoginLevel. Si está vacío o es undefined (primera carga), se inicializa a 0
     let lastLoginLevel = parseInt(studentData[10]);
@@ -169,7 +167,6 @@ res.json({
         monedas: monedas,
         tareas: homeworks,
         asistencias: asistencias,
-        gamesChallenges: gamesChallenges, // NEW
         exp: exp,
         level: currentLevel, // Nivel actual
         purchases: badgesMap, // Usar el mapa de compras reales
@@ -230,8 +227,7 @@ app.post('/api/register', async (req, res) => {
       '0',                 // Columna H: Attendance (0 por defecto)
       '0',                 // Columna I: Badges (inicializado con '0')
       '0',                 // Columna J: EXP (0 por defecto)
-      '0',                 // Columna K: LAST_LOGIN_LEVEL (0 por defecto para nuevos usuarios)
-      '0'                  // Columna L: Games / Challenges (0 por defecto para nuevos usuarios)
+      '0'                  // Columna K: LAST_LOGIN_LEVEL (0 por defecto para nuevos usuarios)
     ];
 
     await sheets.spreadsheets.values.append({
@@ -371,12 +367,12 @@ app.get('/api/badges', async (req, res) => {
     }
 
     const badges = rows.slice(1).map(row => ({ // Ignorar encabezado
-      name: row[0], // Columna A: Nombre de la Insignia
+      name: row[0],     // Columna A: Nombre de la Insignia
       quantity: parseInt(row[1]) || 0, // Columna B: Cantidad disponible
-      cost: parseInt(row[2]) || 0 // Columna C: Costo
+      cost: parseInt(row[2]) || 0      // Columna C: Costo
     }));
 
-    res.json({ success: true, badges });
+res.json({ success: true, badges });
   } catch (error) {
     console.error('Error al obtener insignias:', error);
     res.status(500).json({ error: 'Error al obtener insignias', details: error.message });
@@ -384,178 +380,311 @@ app.get('/api/badges', async (req, res) => {
 });
 
 // Endpoint para realizar una compra
+
 app.post('/api/purchase', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
 
   const { studentId, studentRowIndex, itemName, quantityToBuy, itemCost, career } = req.body;
-
   if (!studentId || !studentRowIndex || !itemName || typeof quantityToBuy !== 'number' || typeof itemCost !== 'number' || !career) {
-    return res.status(400).json({ error: 'Datos inválidos o incompletos para la compra.' });
+    return res.status(400).json({ error: 'Datos inválidos o incompletos para la compra' });
   }
 
   const sheetName = getSheetName(career);
+  const totalCost = quantityToBuy * itemCost;
 
   try {
-    // 1. Obtener datos actuales del alumno para verificar monedas y EXP
-    const studentRange = `${sheetName}!G${studentRowIndex}:J${studentRowIndex}`; // Monedas (G), Badges (I), EXP (J)
-    const studentResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: studentRange
-    });
-    const studentRow = studentResponse.data.values?.[0];
+    const studentCoinsRange = `${sheetName}!G${studentRowIndex}`;
+    const badgeDataRange = 'Badges!A:C';
 
-    if (!studentRow) {
-      return res.status(404).json({ error: 'Student row not found.' });
+    const [coinsResponse, badgesResponse] = await Promise.all([
+      sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: studentCoinsRange }),
+      sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: badgeDataRange })
+    ]);
+
+    const currentCoins = parseInt(coinsResponse.data.values?.[0]?.[0]) || 0;
+    if (currentCoins < totalCost) {
+      return res.status(400).json({ error: 'Monedas insuficientes' });
     }
 
-    let currentMonedas = parseInt(studentRow[0]) || 0; // Monedas (G)
-    let currentExp = parseInt(studentRow[3]) || 0; // EXP (J)
-
-    // 2. Obtener datos de la insignia de la hoja 'Badges' para verificar disponibilidad
-    const badgesResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'Badges!A:C'
-    });
     const badgeRows = badgesResponse.data.values;
+    const badgeRowIndex = badgeRows.findIndex((row, i) => i > 0 && row[0] === itemName);
+    if (badgeRowIndex === -1) return res.status(404).json({ error: 'Insignia no encontrada' });
 
-    const badgeIndex = badgeRows ? badgeRows.findIndex(row => row[0] === itemName) : -1;
-    if (badgeIndex === -1) {
-      return res.status(404).json({ error: 'Insignia no encontrada.' });
+    const currentQty = parseInt(badgeRows[badgeRowIndex][1]) || 0;
+    if (currentQty < quantityToBuy) {
+      return res.status(400).json({ error: `Sólo quedan ${currentQty} unidades de ${itemName}` });
     }
 
-    const availableQuantity = parseInt(badgeRows[badgeIndex][1]) || 0;
-    const badgeCost = parseInt(badgeRows[badgeIndex][2]) || 0;
+    const newCoins = currentCoins - totalCost;
+    const newQty = currentQty - quantityToBuy;
 
-    if (availableQuantity < quantityToBuy) {
-      return res.status(400).json({ error: `No hay suficientes unidades de ${itemName} disponibles.` });
-    }
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        data: [
+          { range: studentCoinsRange, values: [[newCoins]] },
+          { range: `Badges!B${badgeRowIndex + 1}`, values: [[newQty]] }
+        ],
+        valueInputOption: 'RAW'
+      }
+    });
 
-    const totalCost = itemCost * quantityToBuy;
-    if (currentMonedas < totalCost) {
-      return res.status(400).json({ error: 'Monedas insuficientes.' });
-    }
-
-    // 3. Realizar la compra
-    const newMonedas = currentMonedas - totalCost;
-    const expGain = totalCost; // Gana 1 EXP por cada moneda gastada
-    const newExp = currentExp + expGain;
-
-    // Actualizar la hoja de Compras
-    const purchaseRow = [
-      new Date().toISOString(), // Timestamp
-      studentId,                  // Student ID
-      itemName,                   // Item Name
-      quantityToBuy.toString()    // Quantity
-    ];
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Purchases!A1', // Agrega a la hoja de compras
-      valueInputOption: 'RAW',
-      requestBody: { values: [purchaseRow] }
+      range: 'Purchases!A:E',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          new Date().toLocaleString(),
+          studentId,
+          itemName,
+          quantityToBuy,
+          career
+        ]]
+      }
     });
 
-    // Actualizar la cantidad disponible de la insignia en la hoja 'Badges'
-    const newBadgeQuantity = availableQuantity - quantityToBuy;
-    await sheets.spreadsheets.values.update({
+    // Recalcular total de badges del estudiante
+    const purchasesResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `Badges!B${badgeIndex + 1}`, // Columna B (Cantidad) de la fila de la insignia
-      valueInputOption: 'RAW',
-      requestBody: { values: [[newBadgeQuantity.toString()]] }
+      range: 'Purchases!A:D'
     });
 
-    // Actualizar Monedas y EXP en la hoja del alumno
+    const purchasesRows = purchasesResponse.data.values || [];
+    const totalBadgesCount = purchasesRows
+      .slice(1)
+      .filter(row => row[1] === studentId)
+      .reduce((sum, row) => sum + (parseInt(row[3]) || 0), 0);
+
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!G${studentRowIndex}`, // Monedas (G)
+      range: `${sheetName}!I${studentRowIndex}`,
       valueInputOption: 'RAW',
-      requestBody: { values: [[newMonedas.toString()]] }
+      requestBody: { values: [[totalBadgesCount.toString()]] }
     });
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!J${studentRowIndex}`, // EXP (J)
-      valueInputOption: 'RAW',
-      requestBody: { values: [[newExp.toString()]] }
-    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'],
+      subject: 'Confirmación de compra de insignia',
+      text: `Hola,
+
+Se ha realizado una compra de insignia:
+
+- Alumno: ${studentId}@up.edu.mx
+- Carrera: ${career}
+- Insignia: ${itemName}
+- Cantidad: ${quantityToBuy}
+- Costo total: ${totalCost} monedas
+- Monedas anteriores: ${currentCoins}
+- Monedas restantes: ${newCoins}
+
+Gracias.`
+    };
+
+    await transporter.sendMail(mailOptions);
 
     res.json({
       success: true,
-      message: 'Compra realizada exitosamente.',
-      newCoins: newMonedas.toString(),
-      newExp: newExp.toString(),
-      newBadgeQuantity: newBadgeQuantity,
+      newCoins,
+      newBadgeQuantity: newQty,
+      message: `Compra de ${quantityToBuy} ${itemName} realizada. Monedas restantes: ${newCoins}`
     });
-
   } catch (error) {
-    console.error('Error al procesar la compra:', error);
-    res.status(500).json({ error: 'Error interno del servidor al procesar la compra.', details: error.message });
+    console.error('Error en la compra:', error);
+    res.status(500).json({ error: 'Error en la compra', details: error.message });
   }
 });
 
 
-// Endpoint para obtener todos los estudiantes para el admin
-app.get('/api/admin/students', async (req, res) => {
-  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
-  const { career } = req.query; // Obtener la carrera desde los query parameters
 
-  if (!career) {
-    return res.status(400).json({ error: 'Carrera requerida para obtener datos de estudiantes.' });
-  }
+// Endpoint para añadir EXP.
+
+// Endpoint para leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+  const { career } = req.query;
+  if (!career) return res.status(400).json({ error: 'Carrera requerida.' });
 
   const sheetName = getSheetName(career);
-
   try {
-    // Rango ajustado para incluir hasta la columna L (Games / Challenges)
-    const range = `${sheetName}!A:L`; // Leemos hasta la columna L
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: range
-    });
+    const range = `${sheetName}!A:J`; // Incluye ID, nombre, sexo, EXP
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
+    if (!rows || rows.length < 2) return res.status(404).json({ error: 'Sin datos suficientes.' });
 
-    if (!rows || rows.length < 2) { // Considera la primera fila como encabezado
-      return res.status(404).json({ error: 'No se encontraron datos de alumnos para la carrera seleccionada.' });
-    }
-
-    const students = rows.slice(1).map((row, index) => ({
+    const students = rows.slice(1).map(row => ({
       id: row[0],
       name: row[1],
       sexo: row[2],
-      email: row[3], // Columna D
-      password: row[4], // Columna E (Contraseña)
-      tareas: parseInt(row[5]) || 0, // Columna F
-      monedas: parseInt(row[6]) || 0, // Columna G
-      asistencias: parseInt(row[7]) || 0, // Columna H
-      badges: parseInt(row[8]) || 0, // Columna I
-      exp: parseInt(row[9]) || 0, // Columna J
-      lastLoginLevel: parseInt(row[10]) || 0, // Columna K
-      gamesChallenges: parseInt(row[11]) || 0, // Columna L
-      rowIndex: index + 2 // +2 porque slice(1) y 0-indexed
+      badges: parseInt(row[8]) || 0, // Columna I (índice 8) es total de badges adquiridas,
+      exp: parseInt(row[9]) || 0
     }));
 
-    res.json({ success: true, students });
+    students.sort((a, b) => b.exp - a.exp);
+
+    const ranked = students.map((s, index) => ({
+      ...s,
+      rank: index + 1,
+      level: calculateLevel(s.exp)
+    }));
+
+    res.json({ success: true, leaderboard: ranked });
   } catch (error) {
-    console.error('Error fetching admin students data:', error);
-    res.status(500).json({ error: 'Error interno del servidor al obtener datos de alumnos para el administrador.', details: error.message });
+    console.error('Error al obtener leaderboard:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
 
-// Endpoint para actualizar datos de un estudiante por el admin
-app.post('/api/admin/update-student-data', async (req, res) => {
-  if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
 
-  const { id, career, rowIndex, tareas, monedas, asistencias, exp, gamesChallenges } = req.body; // Add gamesChallenges
+app.post('/api/add-exp', async (req, res) => {
+  const { studentId, expToAdd, career } = req.body; // Recibe la carrera
 
-  if (!id || !career || !rowIndex) {
-    return res.status(400).json({ error: 'ID, carrera y rowIndex son requeridos.' });
+  if (!studentId || expToAdd === undefined || isNaN(expToAdd) || expToAdd <= 0 || !career) {
+    return res.status(400).json({ error: 'ID de alumno, cantidad de EXP. válida y carrera son requeridos.' });
   }
 
   const sheetName = getSheetName(career);
 
   try {
-    // Antes de actualizar, obtén el LAST_LOGIN_LEVEL actual
+    const range = `${sheetName}!A:K`; // Necesitamos ID, EXP. (J) y LAST_LOGIN_LEVEL (K) en la hoja correcta
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+    const rows = response.data.values;
+
+    const index = rows.findIndex((row, i) => i > 0 && row[0] === studentId); // Buscar por ID
+    if (index === -1) {
+      return res.status(404).json({ error: 'ID de alumno no encontrado en la carrera seleccionada.' });
+    }
+
+    const rowNumber = index + 1;
+    const currentExp = parseInt(rows[index][9]) || 0; // Columna J (índice 9) es EXP.
+    let currentLastLoginLevel = parseInt(rows[index][10]); // Columna K (índice 10) es LAST_LOGIN_LEVEL
+
+    if (isNaN(currentLastLoginLevel)) { // Si está vacío, inicialízalo a 0
+        currentLastLoginLevel = 0;
+    }
+
+    const newExp = currentExp + expToAdd;
+    const newLevel = calculateLevel(newExp);
+
+    const updates = [{
+      range: `${sheetName}!J${rowNumber}`, // Columna J: EXP. en la hoja correcta
+      values: [[newExp]]
+    }];
+
+    // Actualizar LAST_LOGIN_LEVEL solo si el nuevo nivel es mayor o si estaba vacío
+    if (newLevel > currentLastLoginLevel || isNaN(parseInt(rows[index][10]))) {
+        updates.push({
+            range: `${sheetName}!K${rowNumber}`, // Columna K: LAST_LOGIN_LEVEL en la hoja correcta
+            values: [[newLevel]]
+        });
+    }
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        data: updates,
+        valueInputOption: 'RAW'
+      }
+    });
+
+    
+    // Actualizar columna I (total de badges adquiridas)
+    // NOTE: This line needs to be modified, studentRowIndex is not available here.
+    // It should be `rowNumber` instead of `studentRowIndex + 1`.
+    // However, updating badges total from add-exp seems out of place.
+    // The total badges should be updated from the purchase endpoint.
+    // For now, I'll comment it out or fix it to `rowNumber` if it makes sense.
+    /*
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!I${studentRowIndex + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[totalBadgesCount.toString()]] }
+    });
+    */
+
+res.json({
+      success: true,
+      message: `EXP. de ${studentId} actualizada. Nueva EXP.: ${newExp}, Nuevo Nivel: ${newLevel}.`,
+      newExp: newExp,
+      newLevel: newLevel
+    });
+
+  } catch (error) {
+    console.error('Error al añadir EXP.:', error);
+    res.status(500).json({ error: 'Error interno del servidor al añadir EXP.', details: error.message });
+  }
+});
+
+// New Admin Login Endpoint
+app.post('/api/admin-login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'Admin' && password === 'FCAE34') {
+    res.json({ success: true, message: 'Admin login successful.' });
+  } else {
+    res.status(401).json({ error: 'Invalid admin credentials.' });
+  }
+});
+
+// New Get All Students Endpoint (for Admin)
+app.get('/api/admin/students', async (req, res) => {
+  if (!sheets) return res.status(500).json({ error: 'Sheets not initialized.' });
+  const { career } = req.query;
+
+  if (!career) {
+    return res.status(400).json({ error: 'Career is required.' });
+  }
+
+  const sheetName = getSheetName(career);
+
+  try {
+    // A:K includes ID, Nombre, Sexo, Correo, Password, Homeworks, Coins, Attendance, Badges, EXP, LAST_LOGIN_LEVEL
+    const range = `${sheetName}!A:K`; 
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+    const rows = response.data.values;
+
+    if (!rows || rows.length < 2) { // Assuming first row is header
+      return res.status(404).json({ error: 'No student data found for this career.' });
+    }
+
+    const students = rows.slice(1).map((row, index) => ({
+      rowIndex: index + 2, // +1 for header, +1 for 0-based index
+      id: row[0],
+      name: row[1],
+      sexo: row[2],
+      email: row[3],
+      password: row[4], // For admin view, keep it for now (ideally hashed)
+      tareas: parseInt(row[5]) || 0,
+      monedas: parseInt(row[6]) || 0,
+      asistencias: parseInt(row[7]) || 0,
+      badges: parseInt(row[8]) || 0,
+      exp: parseInt(row[9]) || 0,
+      level: calculateLevel(parseInt(row[9]) || 0)
+    }));
+    res.json({ success: true, students });
+  } catch (error) {
+    console.error('Error fetching students for admin:', error);
+    res.status(500).json({ error: 'Error fetching student data.', details: error.message });
+  }
+});
+
+// New Update Student Data Endpoint (for Admin)
+app.post('/api/admin/update-student-data', async (req, res) => {
+  if (!sheets) return res.status(500).json({ error: 'Sheets not initialized.' });
+
+  const { id, career, rowIndex, tareas, monedas, asistencias, exp } = req.body;
+
+  if (!id || !career || !rowIndex || tareas === undefined || monedas === undefined || asistencias === undefined || exp === undefined) {
+    return res.status(400).json({ error: 'Incomplete data for update.' });
+  }
+
+  const sheetName = getSheetName(career);
+
+  try {
+    const currentStudentRange = `${sheetName}!A${rowIndex}:K${rowIndex}`;
     const studentResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!K${rowIndex}` // Columna K (índice 10)
+      range: currentStudentRange
     });
     const studentRow = studentResponse.data.values?.[0];
 
@@ -563,15 +692,14 @@ app.post('/api/admin/update-student-data', async (req, res) => {
       return res.status(404).json({ error: 'Student row not found.' });
     }
 
-    const currentLastLoginLevel = parseInt(studentRow[0]) || 0; // Columna K (índice 0 en el rango de una celda)
+    const currentLastLoginLevel = parseInt(studentRow[10]) || 0; // Columna K (índice 10)
     const newLevel = calculateLevel(exp);
 
     const updates = [
       { range: `${sheetName}!F${rowIndex}`, values: [[tareas]] }, // Tareas (F)
       { range: `${sheetName}!G${rowIndex}`, values: [[monedas]] }, // Monedas (G)
       { range: `${sheetName}!H${rowIndex}`, values: [[asistencias]] }, // Asistencias (H)
-      { range: `${sheetName}!J${rowIndex}`, values: [[exp]] }, // EXP (J)
-      { range: `${sheetName}!L${rowIndex}`, values: [[gamesChallenges]] } // Games / Challenges (L)
+      { range: `${sheetName}!J${rowIndex}`, values: [[exp]] } // EXP (J)
     ];
 
     // Only update LAST_LOGIN_LEVEL if the calculated level changes
@@ -593,28 +721,12 @@ app.post('/api/admin/update-student-data', async (req, res) => {
     res.json({ success: true, message: `Student ${id} data updated successfully.`, newLevel: newLevel });
   } catch (error) {
     console.error('Error updating student data:', error);
-    res.status(500).json({ error: 'Error interno del servidor al actualizar datos del alumno.', details: error.message });
+    res.status(500).json({ error: 'Error updating student data.', details: error.message });
   }
 });
 
 
-// Endpoint para login del administrador (ejemplo simple, en producción usar bcryptjs)
-app.post('/api/admin-login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-    res.json({ success: true, message: 'Admin login successful.' });
-  } else {
-    res.status(401).json({ error: 'Invalid admin credentials.' });
-  }
-});
-
-
-// Sirve el archivo HTML principal
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Inicia el servidor
+// ----------------- INICIAR SERVIDOR -----------------
 app.listen(PORT, () => {
-  console.log(`Servidor iniciado en http://localhost:${PORT}`);
+  console.log(`Servidor backend escuchando en http://localhost:${PORT}`);
 });
