@@ -642,7 +642,7 @@ app.get('/api/admin/students', async (req, res) => {
 
   try {
     // A:K includes ID, Nombre, Sexo, Correo, Password, Homeworks, Coins, Attendance, Badges, EXP, LAST_LOGIN_LEVEL
-    const range = `${sheetName}!A:K`; 
+    const range = `${sheetName}!A:L`; 
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
 
