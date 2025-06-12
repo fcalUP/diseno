@@ -676,7 +676,7 @@ app.get('/api/admin/students', async (req, res) => {
 app.post('/api/admin/update-student-data', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets not initialized.' });
 
-  const { id, career, rowIndex, tareas, monedas, asistencias, exp } = req.body;
+  const { id, career, rowIndex, tareas, monedas, asistencias, games, exp } = req.body;
 
   if (!id || !career || !rowIndex || tareas === undefined || monedas === undefined || asistencias === undefined || exp === undefined) {
     return res.status(400).json({ error: 'Incomplete data for update.' });
@@ -703,7 +703,8 @@ app.post('/api/admin/update-student-data', async (req, res) => {
       { range: `${sheetName}!F${rowIndex}`, values: [[tareas]] }, // Tareas (F)
       { range: `${sheetName}!G${rowIndex}`, values: [[monedas]] }, // Monedas (G)
       { range: `${sheetName}!H${rowIndex}`, values: [[asistencias]] }, // Asistencias (H)
-      { range: `${sheetName}!J${rowIndex}`, values: [[exp]] } // EXP (J)
+      { range: `${sheetName}!J${rowIndex}`, values: [[exp]] }, // EXP (J)
+      { range: `${sheetName}!L${rowIndex}`, values: [[games]] } // Games (L)
     ];
 
     // Only update LAST_LOGIN_LEVEL if the calculated level changes
