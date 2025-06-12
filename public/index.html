@@ -42,656 +42,808 @@
     }
 
     .animate-slideIn {
-      animation: slideIn 0.6s forwards;
+      animation: slideIn 0.6s ease-out forwards;
     }
 
     .animate-slideOut {
-      animation: slideOut 0.6s forwards;
+      animation: slideOut 0.6s ease-in forwards;
+    }
+
+    /* Estilo para tabla responsiva en móviles */
+    @media (max-width: 767px) {
+      .admin-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .admin-table {
+        min-width: 350px;
+        /* Asegura un ancho mínimo para que no se vea todo aplastado */
+      }
+
+      .admin-table thead,
+      .admin-table tbody,
+      .admin-table th,
+      .admin-table td,
+      .admin-table tr {
+        display: block;
+      }
+
+      .admin-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+
+      .admin-table tr {
+        border: 1px solid #ddd;
+        margin-bottom: 0.5rem;
+      }
+
+      .admin-table td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+        font-size: 0.875rem;
+        /* text-sm */
+      }
+
+      .admin-table td:before {
+        position: absolute;
+        top: 0;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        content: attr(data-label);
+      }
+
+      /* Estilos específicos para cada columna en móvil */
+      .admin-table td:nth-of-type(1):before {
+        content: "ID";
+      }
+
+      .admin-table td:nth-of-type(2):before {
+        content: "Nombre";
+      }
+
+      .admin-table td:nth-of-type(3):before {
+        content: "Tareas";
+      }
+
+      .admin-table td:nth-of-type(4):before {
+        content: "Monedas";
+      }
+
+      .admin-table td:nth-of-type(5):before {
+        content: "Asistencia";
+      }
+
+      .admin-table td:nth-of-type(6):before {
+        content: "EXP.";
+      }
+
+      .admin-table td:nth-of-type(7):before {
+        content: "Nivel";
+      }
+
+      .admin-table td:nth-of-type(8):before {
+        content: "Acciones";
+      }
+
+      /* Ajustes para los controles de + y - */
+      .admin-table .flex.items-center {
+        justify-content: flex-end;
+        /* Alinear los controles a la derecha */
+      }
     }
   </style>
 </head>
 
-<body class="bg-gradient-to-br from-blue-400 to-purple-600 min-h-screen flex items-center justify-center p-4">
-  <div id="root"></div>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-200">
+  <div id="root" class="w-full flex items-center justify-center"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const BACKEND_BASE_URL = window.location.origin;
+    // const BACKEND_BASE_URL = 'http://localhost:3000'; // Descomment for local testing
 
-    // Componente Modal para el inicio de sesión del administrador
+    const LoginScreen = ({
+      studentId, setStudentId,
+      password, setPassword,
+      handleLogin,
+      setShowRegister,
+      setShowReset,
+      showCodeField,
+      resetId, setResetId,
+      resetCode, setResetCode,
+      resetPass, setResetPass,
+      handleSendResetCode,
+      handleUpdatePassword,
+      selectedCareer, setSelectedCareer,
+      setShowAdminLoginModal
+    }) => {
+      const sideImage = selectedCareer === 'Diseno Digital' ? '/img/side-image.jpg' : '/img/comuni.png';
+
+      return (
+        <>
+          <div className="flex flex-col md:flex-row w-screen h-screen">
+            <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: `url('${sideImage}')` }}></div>
+            <div className="w-full md:w-1/2 flex items-center justify-center bg-white p-8">
+              <div className="w-full max-w-md px-6 py-8 text-center">
+                <img src={selectedCareer === 'Diseno Digital' ? "logo.png" : "/img/Com.png"} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
+                <h2 className="text-3xl font-bold mb-4 text-gray-800">
+                  {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}
+                </h2>
+
+                <select
+                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                  value={selectedCareer}
+                  onChange={(e) => setSelectedCareer(e.target.value)}
+                >
+                  <option value="Diseno Digital">Diseño Digital</option>
+                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                </select>
+
+                <input className="w-full p-3 mb-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de Alumno"
+                  value={studentId} onChange={(e) => setStudentId(e.target.value)} />
+                <input type="password" className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña"
+                  value={password} onChange={(e) => setPassword(e.target.value)} />
+                <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold"
+                  onClick={handleLogin}>Iniciar sesión</button>
+
+                <div className="text-sm mt-6">
+                  <button onClick={() => setShowRegister(true)} className="text-purple-600 hover:underline mr-4 transition-colors duration-300">Sign in</button>
+                  <button onClick={() => setShowReset(true)} className="text-red-500 hover:underline transition-colors duration-300">¿Olvidaste tu contraseña?</button>
+                  <button onClick={() => setShowAdminLoginModal(true)} className="text-blue-500 hover:underline ml-4 transition-colors duration-300">Admin Login</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    };
+
     const AdminLoginModal = ({ show, onClose, onAdminLoginSuccess, selectedCareer }) => {
-      const [username, setUsername] = useState('');
-      const [password, setPassword] = useState('');
-      const [error, setError] = useState('');
+      const [username, setUsername] = React.useState('');
+      const [password, setPassword] = React.useState('');
 
-      const handleLogin = async () => {
-        setError('');
-        try {
-          const response = await fetch('/admin/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username, password }),
-          });
-
-          const data = await response.json();
-
-          if (response.ok) {
-            onAdminLoginSuccess(selectedCareer);
-            onClose();
-          } else {
-            setError(data.error || 'Error en el inicio de sesión del administrador.');
-          }
-        } catch (error) {
-          console.error('Error:', error);
-          setError('Error de conexión. Inténtalo de nuevo.');
+      const handleAdminLogin = async () => {
+        const response = await fetch(`${BACKEND_BASE_URL}/api/admin-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert(data.message);
+          onAdminLoginSuccess(selectedCareer);
+          onClose();
+        } else {
+          alert(data.error);
         }
       };
 
       if (!show) return null;
 
       return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm transform transition-all duration-300 scale-100 opacity-100">
-            <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Acceso de Administrador</h2>
-            {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-            <input
-              type="text"
-              placeholder="Usuario"
-              className="w-full p-3 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <input
-              type="password"
-              placeholder="Contraseña"
-              className="w-full p-3 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus-ring-blue-500"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              onClick={handleLogin}
-              className="bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 w-full font-semibold"
-            >
-              Ingresar
-            </button>
-            <button
-              onClick={onClose}
-              className="text-sm text-gray-500 hover:underline mt-4 w-full transition-colors duration-300"
-            >
-              Cancelar
-            </button>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+            <h2 className="text-2xl font-bold text-center text-gray-800">Acceso de Administrador</h2>
+            <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button className="bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 w-full font-semibold" onClick={handleAdminLogin}>Iniciar sesión (Admin)</button>
+            <button className="text-sm text-gray-500 hover:underline mt-2 transition-colors duration-300" onClick={onClose}>Cancelar</button>
           </div>
         </div>
       );
     };
 
-    // Componente Dashboard del Administrador
     const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel, onRefreshStudents }) => {
-      const [editingStudentId, setEditingStudentId] = useState(null);
-      const [editFormData, setEditFormData] = useState({
-        id: '',
-        nombre: '',
-        email: '',
-        password: '',
-        tareas: 0,
-        monedas: 0,
-        asistencias: 0,
-        exp: 0,
-        gamesChallenges: '', // Added gamesChallenges
-      });
-      const [filter, setFilter] = useState('');
-
-      useEffect(() => {
-        if (show) {
-          onRefreshStudents(); // Refresh data when dashboard is shown
-        }
-      }, [show, onRefreshStudents]);
-
-
-      const handleEditClick = (student) => {
-        setEditingStudentId(student.id);
-        setEditFormData({
-          id: student.id,
-          nombre: student.nombre,
-          email: student.email,
-          password: student.password,
-          tareas: student.tareas,
-          monedas: student.monedas,
-          asistencias: student.asistencias,
-          exp: student.exp,
-          gamesChallenges: student.gamesChallenges, // Added gamesChallenges
-        });
-      };
-
-      const handleSaveClick = async () => {
-        try {
-          const response = await fetch(`/student/${editFormData.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ ...editFormData, career: selectedCareer }),
-          });
-
-          if (response.ok) {
-            await onRefreshStudents(); // Refrescar la lista completa de estudiantes
-            setEditingStudentId(null); // Salir del modo de edición
-          } else {
-            console.error('Error al actualizar estudiante:', await response.json());
-            alert('Error al actualizar los datos del estudiante.');
-          }
-        } catch (error) {
-          console.error('Error de red al actualizar estudiante:', error);
-          alert('Error de conexión al intentar actualizar.');
-        }
-      };
-
-      const handleCancelClick = () => {
-        setEditingStudentId(null);
-      };
-
-      const handleChange = (e) => {
-        const { name, value } = e.target;
-        setEditFormData(prev => ({
-          ...prev,
-          [name]: name === 'tareas' || name === 'monedas' || name === 'asistencias' || name === 'exp' ? parseInt(value) || 0 : value,
-        }));
-      };
-
-      const filteredStudents = studentsData.filter(student =>
-        student.id.toLowerCase().includes(filter.toLowerCase()) ||
-        student.nombre.toLowerCase().includes(filter.toLowerCase()) ||
-        student.email.toLowerCase().includes(filter.toLowerCase())
-      );
-
       if (!show) return null;
 
+      const [editableStudents, setEditableStudents] = React.useState(studentsData || []);
+
+      React.useEffect(() => {
+        setEditableStudents(studentsData || []);
+      }, [studentsData]);
+
+      const handleFieldChange = (index, field, value) => {
+        const updatedStudents = [...editableStudents];
+        updatedStudents[index] = { ...updatedStudents[index], [field]: value };
+        setEditableStudents(updatedStudents);
+      };
+
+      const handleUpdateClick = async (student) => {
+        const { id, rowIndex, tareas, monedas, asistencias, exp } = student;
+        const response = await fetch(`${BACKEND_BASE_URL}/api/admin/update-student-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, career: selectedCareer, rowIndex, tareas, monedas, asistencias, exp }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert(`Datos de ${id} actualizados correctamente.`);
+          if (onRefreshStudents) {
+            await onRefreshStudents(selectedCareer);
+          }
+        } else {
+          alert(data.error);
+        }
+      };
+
       return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl transform transition-all duration-300 scale-100 opacity-100">
-            <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Panel de Administrador</h2>
-
-            <div className="mb-6">
-              <input
-                type="text"
-                placeholder="Filtrar por ID, Nombre o Email"
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              />
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+          <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-2xl w-full max-w-5xl mx-auto transform transition-transform duration-300 scale-95 hover:scale-100 h-5/6 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Panel de Administrador - {selectedCareer === 'Diseno Digital' ? 'Diseño Digital' : 'Diseño de la Comunicación'}</h3>
+              <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white rounded-lg shadow-md">
-                <thead className="bg-gray-200">
-                  <tr>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">ID</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Nombre</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Email</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Password</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Tareas</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Monedas</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Asistencias</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Games / Challenges</th> {/* New Header */}
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">EXP</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Nivel</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Acciones</th>
+            {/* Contenedor de la tabla responsiva */}
+            <div className="flex-grow overflow-y-auto admin-table-container">
+              <table className="w-full text-left table-auto border-collapse admin-table">
+                <thead>
+                  <tr className="bg-gray-200 text-gray-700 font-semibold sticky top-0">
+                    <th className="p-2 border text-sm">ID</th>
+                    <th className="p-2 border text-sm">Nombre</th>
+                    <th className="p-2 border text-sm w-[100px]">Tareas</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[100px]">Monedas</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[100px]">Asistencia</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[80px]">EXP.</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[80px]">Nivel</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[120px]">Acciones</th> {/* Ancho fijo para móvil */}
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.map((student) => (
-                    <tr key={student.id} className="border-b last:border-0 hover:bg-gray-50">
-                      {editingStudentId === student.id ? (
-                        <>
-                          <td className="py-3 px-4"><input type="text" name="id" value={editFormData.id} onChange={handleChange} className="w-20 p-1 border rounded" /></td>
-                          <td className="py-3 px-4"><input type="text" name="nombre" value={editFormData.nombre} onChange={handleChange} className="w-28 p-1 border rounded" /></td>
-                          <td className="py-3 px-4"><input type="text" name="email" value={editFormData.email} onChange={handleChange} className="w-32 p-1 border rounded" /></td>
-                          <td className="py-3 px-4"><input type="text" name="password" value={editFormData.password} onChange={handleChange} className="w-28 p-1 border rounded" /></td>
-                          <td className="py-3 px-4"><input type="number" name="tareas" value={editFormData.tareas} onChange={handleChange} className="w-20 p-1 border rounded" /></td>
-                          <td className="py-3 px-4"><input type="number" name="monedas" value={editFormData.monedas} onChange={handleChange} className="w-20 p-1 border rounded" /></td>
-                          <td className="py-3 px-4"><input type="number" name="asistencias" value={editFormData.asistencias} onChange={handleChange} className="w-20 p-1 border rounded" /></td>
-                          <td className="py-3 px-4"><input type="text" name="gamesChallenges" value={editFormData.gamesChallenges} onChange={handleChange} className="w-28 p-1 border rounded" /></td> {/* New Input */}
-                          <td className="py-3 px-4"><input type="number" name="exp" value={editFormData.exp} onChange={handleChange} className="w-20 p-1 border rounded" /></td>
-                          <td className="py-3 px-4 text-center">{calculateLevel(editFormData.exp)}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex space-x-2">
-                              <button onClick={handleSaveClick} className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 transition-colors duration-200">Guardar</button>
-                              <button onClick={handleCancelClick} className="bg-gray-400 text-white px-3 py-1 rounded text-sm hover:bg-gray-500 transition-colors duration-200">Cancelar</button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="py-3 px-4">{student.id}</td>
-                          <td className="py-3 px-4">{student.nombre}</td>
-                          <td className="py-3 px-4">{student.email}</td>
-                          <td className="py-3 px-4">{student.password}</td>
-                          <td className="py-3 px-4">{student.tareas}</td>
-                          <td className="py-3 px-4">{student.monedas}</td>
-                          <td className="py-3 px-4">{student.asistencias}</td>
-                          <td className="py-3 px-4">{student.gamesChallenges}</td> {/* New Display */}
-                          <td className="py-3 px-4">{student.exp}</td>
-                          <td className="py-3 px-4">{student.level}</td>
-                          <td className="py-3 px-4">
-                            <button
-                              onClick={() => handleEditClick(student)}
-                              className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 transition-colors duration-200"
-                            >
-                              Editar
-                            </button>
-                          </td>
-                        </>
-                      )}
+                  {editableStudents.map((student, index) => (
+                    <tr key={student.id} className="border-b hover:bg-gray-50">
+                      <td className="p-2 border text-sm" data-label="ID">{student.id}</td>
+                      <td className="p-2 border text-sm" data-label="Nombre">{student.name}</td>
+                      <td className="p-2 border" data-label="Tareas">
+                        <div className="flex items-center justify-end md:justify-center">
+                          <button onClick={() => handleFieldChange(index, 'tareas', student.tareas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
+                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.tareas}</span>
+                          <button onClick={() => handleFieldChange(index, 'tareas', student.tareas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                        </div>
+                      </td>
+                      <td className="p-2 border" data-label="Monedas">
+                        <div className="flex items-center justify-end md:justify-center">
+                          <button onClick={() => handleFieldChange(index, 'monedas', student.monedas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
+                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.monedas}</span>
+                          <button onClick={() => handleFieldChange(index, 'monedas', student.monedas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                        </div>
+                      </td>
+                      <td className="p-2 border" data-label="Asistencia">
+                        <div className="flex items-center justify-end md:justify-center">
+                          <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
+                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.asistencias}</span>
+                          <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                        </div>
+                      </td>
+                      <td className="p-2 border text-center" data-label="EXP.">
+                        <span className="w-full text-center py-0.5 block text-sm">{student.exp}</span>
+                      </td>
+                      <td className="p-2 border text-center" data-label="Nivel">{calculateLevel(student.exp)}</td>
+                      <td className="p-2 border text-center" data-label="Acciones">
+                        <button className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600" onClick={() => handleUpdateClick(student)}>Actualizar</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-
-            <div className="mt-6 flex justify-center">
-              <button
-                onClick={onClose}
-                className="bg-red-500 text-white px-6 py-3 rounded-full shadow-lg hover:bg-red-600 transition-all duration-300 font-semibold"
-              >
-                Cerrar Sesión
-              </button>
-            </div>
           </div>
         </div>
       );
     };
 
-    // Componente de Perfil del Alumno
-    const StudentProfile = ({ student, onLogout, calculateLevel, selectedCareer, showAdminLogin }) => {
-      if (!student) return null;
+    const App = () => {
+      const [showLeaderboard, setShowLeaderboard] = React.useState(false);
+      const [leaderboardData, setLeaderboardData] = React.useState([]);
 
-      const level = calculateLevel(student.exp);
-
-      return (
-        <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-500 animate-slideIn">
-          <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">¡Hola, {student.nombre}!</h2>
-
-          <div className="space-y-4 text-lg text-gray-700">
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">ID:</span>
-              <span>{student.id}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">Carrera:</span>
-              <span>{selectedCareer === 'Com' ? 'Comunicación' : 'Programación'}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">Email:</span>
-              <span>{student.email}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">Tareas Completadas:</span>
-              <span>{student.tareas}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">Monedas Obtenidas:</span>
-              <span>{student.monedas}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">Asistencias:</span>
-              <span>{student.asistencias}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">Games / Challenges:</span> {/* New Field */}
-              <span>{student.gamesChallenges}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">EXP:</span>
-              <span>{student.exp}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm">
-              <span className="font-semibold">Nivel:</span>
-              <span className="font-bold text-blue-600">{level}</span>
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col space-y-4">
-            <button
-              onClick={onLogout}
-              className="bg-red-500 text-white px-6 py-3 rounded-full shadow-lg hover:bg-red-600 transition-all duration-300 w-full font-semibold"
-            >
-              Cerrar Sesión
-            </button>
-            <button
-              onClick={showAdminLogin}
-              className="bg-gray-700 text-white px-6 py-3 rounded-full shadow-lg hover:bg-gray-800 transition-all duration-300 w-full font-semibold"
-            >
-              Acceso Administrador
-            </button>
-          </div>
-        </div>
-      );
-    };
-
-    // Componente de Inicio de Sesión
-    const Login = ({ onLoginSuccess, onShowReset, onCareerSelect }) => {
-      const [id, setId] = useState('');
-      const [password, setPassword] = useState('');
-      const [error, setError] = useState('');
-      const [selectedCareer, setSelectedCareer] = useState('');
-
-      const handleLogin = async () => {
-        setError('');
-        if (!selectedCareer) {
-          setError('Por favor, selecciona una carrera.');
-          return;
-        }
-
-        try {
-          const response = await fetch('/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id, password, career: selectedCareer }),
-          });
-
-          const data = await response.json();
-
-          if (response.ok) {
-            onLoginSuccess(data.student, selectedCareer);
-          } else {
-            setError(data.error || 'Error en el inicio de sesión.');
-          }
-        } catch (error) {
-          console.error('Error:', error);
-          setError('Error de conexión. Inténtalo de nuevo.');
+      const fetchLeaderboard = async () => {
+        const response = await fetch(`${BACKEND_BASE_URL}/api/leaderboard?career=${selectedCareer}`);
+        const data = await response.json();
+        if (data.success) {
+          setLeaderboardData(data.leaderboard);
+          setShowLeaderboard(true);
         }
       };
 
-      return (
-        <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm transform transition-all duration-500 animate-slideIn">
-          <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Bienvenido</h2>
-          {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+      const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+      const [studentId, setStudentId] = React.useState('');
+      const [password, setPassword] = React.useState('');
+      const [studentData, setStudentData] = React.useState(null);
+      const [badges, setBadges] = React.useState([]);
+      const [cart, setCart] = React.useState({});
+      const [showCartModal, setShowCartModal] = React.useState(false);
 
-          <div className="mb-4">
-            <label htmlFor="career" className="block text-gray-700 text-sm font-bold mb-2">
-              Selecciona tu carrera:
-            </label>
-            <select
-              id="career"
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-              value={selectedCareer}
-              onChange={(e) => {
-                setSelectedCareer(e.target.value);
-                onCareerSelect(e.target.value);
-              }}
-            >
-              <option value="">-- Selecciona --</option>
-              <option value="Programacion">Programación</option>
-              <option value="Com">Comunicación</option>
-            </select>
-          </div>
+      const [showRegister, setShowRegister] = React.useState(false);
+      const [showReset, setShowReset] = React.useState(false);
+      const [showCodeField, setShowCodeField] = React.useState(false);
+      const [resetId, setResetId] = React.useState('');
+      const [resetCode, setResetCode] = React.useState('');
+      const [resetPass, setResetPass] = React.useState('');
+      const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
+      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital');
+      const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
 
-          <input
-            type="text"
-            placeholder="ID de Alumno"
-            className="w-full p-3 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="Contraseña"
-            className="w-full p-3 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <button
-            onClick={handleLogin}
-            className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold"
-          >
-            Iniciar Sesión
-          </button>
-          <button
-            onClick={onShowReset}
-            className="text-sm text-gray-500 hover:underline mt-4 w-full transition-colors duration-300"
-          >
-            ¿Olvidaste tu contraseña?
-          </button>
-        </div>
-      );
-    };
+      const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
+      const [showAdminLoginModal, setShowAdminLoginModal] = React.useState(false);
+      const [adminStudentsData, setAdminStudentsData] = React.useState([]);
+      const [showAdminDashboard, setShowAdminDashboard] = React.useState(false);
 
-    // Componente principal de la aplicación
-    const App = () => {
-      const [student, setStudent] = useState(null);
-      const [showReset, setShowReset] = useState(false);
-      const [resetEmail, setResetEmail] = useState('');
-      const [resetCode, setResetCode] = useState('');
-      const [resetId, setResetId] = useState('');
-      const [resetPass, setResetPass] = useState('');
-      const [showCodeField, setShowCodeField] = useState(false);
-      const [resetMessage, setResetMessage] = useState('');
-      const [resetError, setResetError] = useState('');
-      const [selectedCareer, setSelectedCareer] = useState('');
-      const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
-      const [showAdminDashboard, setShowAdminDashboard] = useState(false);
-      const [adminStudentsData, setAdminStudentsData] = useState([]);
 
+      const prevLevelRef = React.useRef(null);
+
+      const levelThresholds = { 0: 0, 1: 10, 2: 25, 3: 50, 4: 75, 5: 100 };
 
       const calculateLevel = (exp) => {
-        if (exp >= 1000) return 5;
-        if (exp >= 500) return 4;
-        if (exp >= 200) return 3;
-        if (exp >= 50) return 2;
-        return 1;
+        if (exp >= 100) return 5;
+        if (exp >= 75) return 4;
+        if (exp >= 50) return 3;
+        if (exp >= 25) return 2;
+        if (exp >= 10) return 1;
+        return 0;
       };
 
-      const handleLoginSuccess = (studentData, career) => {
-        setStudent(studentData);
-        setSelectedCareer(career);
+      const getLevelProgress = (exp, level) => {
+        const currentLevelExp = levelThresholds[level];
+        const nextLevelExp = levelThresholds[level + 1] === undefined ? 100 : levelThresholds[level + 1];
+        const expInLevel = exp - currentLevelExp;
+        const expForNextLevel = nextLevelExp - currentLevelExp;
+        const percentage = (expInLevel / expForNextLevel) * 100;
+        return {
+          percentage: isNaN(percentage) ? 0 : percentage,
+          currentExp: exp,
+          requiredExp: nextLevelExp
+        };
+      };
+
+      React.useEffect(() => {
+        if (studentData) {
+          const currentLevel = studentData.level;
+          const prevLevel = prevLevelRef.current;
+
+          if (prevLevel !== null && currentLevel > prevLevel) {
+            alert(`¡Felicidades, has subido de nivel!\nNivel anterior: ${prevLevel}\nNivel actual: ${currentLevel}`);
+            setShowLevelUpGif(true);
+            setTimeout(() => setShowLevelUpGif(false), 4000);
+          }
+          prevLevelRef.current = currentLevel;
+        }
+      }, [studentData]);
+
+      const handleLogin = async () => {
+        const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId, password, career: selectedCareer }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          data.student.level = calculateLevel(data.student.exp);
+          setStudentData(data.student);
+          setIsLoggedIn(true);
+          prevLevelRef.current = data.student.level;
+
+          if (data.levelUpOccurred) {
+            setShowLevelUpGif(true);
+            setTimeout(() => setShowLevelUpGif(false), 4000);
+          }
+        } else {
+          alert(data.error);
+        }
       };
 
       const handleLogout = () => {
-        setStudent(null);
-        setShowAdminDashboard(false);
+        setIsLoggedIn(false);
+        setStudentId('');
+        setPassword('');
+        setStudentData(null);
+        setBadges([]);
+        setCart({});
+        setShowCartModal(false);
+        setShowRegister(false);
+        setShowReset(false);
+        setShowCodeField(false);
+        setResetId('');
+        setResetCode('');
+        setResetPass('');
+        setShowLevelUpGif(false);
+        prevLevelRef.current = null;
+        setSelectedCareer('Diseno Digital');
+        setIsAdminLoggedIn(false);
+        setShowAdminLoginModal(false);
         setAdminStudentsData([]);
-        setSelectedCareer('');
+        setShowAdminDashboard(false);
       };
 
-      const handleShowReset = () => {
-        setShowReset(true);
-        setResetMessage('');
-        setResetError('');
+      const fetchBadges = async () => {
+        const response = await fetch(`${BACKEND_BASE_URL}/api/badges?career=${selectedCareer}`);
+        const data = await response.json();
+        setBadges(data.badges || []);
+      };
+
+      const totalCartCost = Object.keys(cart).reduce((total, name) => {
+        const badge = badges.find(b => b.name === name);
+        return total + ((badge?.cost || 0) * (cart[name] || 0));
+      }, 0);
+
+      const addToCart = (name, available) => {
+        const currentQuantity = cart[name] || 0;
+        const badge = badges.find(b => b.name === name);
+        const newTotal = totalCartCost + (badge?.cost || 0);
+        if (studentData && currentQuantity < available && newTotal <= parseInt(studentData.monedas)) {
+          setCart(prev => ({ ...prev, [name]: currentQuantity + 1 }));
+        }
+      };
+
+      const removeFromCart = (name) => {
+        setCart(prev => {
+          const qty = prev[name] || 0;
+          if (qty <= 1) {
+            const { [name]: _, ...rest } = prev;
+            return rest;
+          }
+          return { ...prev, [name]: qty - 1 };
+        });
+      };
+
+      const handlePurchase = async () => {
+        if (!studentData) return;
+
+        const items = Object.keys(cart).map(name => {
+          const badge = badges.find(b => b.name === name);
+          return {
+            itemName: name,
+            quantityToBuy: cart[name],
+            itemCost: badge?.cost || 0,
+          };
+        });
+
+        for (const item of items) {
+          const response = await fetch(`${BACKEND_BASE_URL}/api/purchase`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId: studentData.id,
+              studentRowIndex: studentData.rowIndex,
+              ...item,
+              career: selectedCareer
+            }),
+          });
+          const data = await response.json();
+
+          setStudentData(prev => {
+            const updatedStudent = {
+              ...prev,
+              monedas: data.newCoins.toString(),
+              purchases: {
+                ...prev.purchases,
+                [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
+              }
+            };
+            updatedStudent.level = calculateLevel(updatedStudent.exp);
+            return updatedStudent;
+          });
+
+          setBadges(prevBadges => prevBadges.map(b =>
+            b.name === item.itemName ? { ...b, quantity: data.newBadgeQuantity } : b
+          ));
+        }
+        setCart({});
+        setShowCartModal(false);
       };
 
       const handleSendResetCode = async () => {
-        setResetMessage('');
-        setResetError('');
-        if (!resetEmail) {
-          setResetError('Por favor, ingresa tu correo electrónico.');
-          return;
-        }
-        if (!selectedCareer) {
-          setResetError('Por favor, selecciona una carrera.');
-          return;
-        }
-
+        if (!resetId) return alert("Ingresa tu ID.");
         try {
-          const response = await fetch('/send-reset-code', {
+          const res = await fetch(`${BACKEND_BASE_URL}/api/send-reset-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: resetEmail, career: selectedCareer }),
+            body: JSON.stringify({ id: resetId, career: selectedCareer })
           });
-          const data = await response.json();
-          if (response.ok) {
-            setResetMessage(data.message);
-            setResetId(data.resetId); // Guardar el ID del estudiante para la verificación
-            setShowCodeField(true);
-          } else {
-            setResetError(data.error);
-          }
-        } catch (error) {
-          console.error('Error:', error);
-          setResetError('Error de conexión.');
-        }
-      };
-
-      const handleVerifyResetCode = async () => {
-        setResetMessage('');
-        setResetError('');
-        if (!resetCode) {
-          setResetError('Por favor, ingresa el código.');
-          return;
-        }
-
-        try {
-          const response = await fetch('/verify-reset-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ resetId, resetCode, career: selectedCareer }),
-          });
-          const data = await response.json();
-          if (response.ok) {
-            setResetMessage(data.message);
-            // Si el código es correcto, el usuario ahora puede establecer una nueva contraseña
-            // setShowCodeField(false); // Mantener el campo de código visible o cambiar a un nuevo campo de contraseña
-          } else {
-            setResetError(data.error);
-          }
-        } catch (error) {
-          console.error('Error:', error);
-          setResetError('Error de conexión.');
+          const data = await res.json();
+          alert(data.message || data.error);
+          if (res.ok) setShowCodeField(true);
+        } catch (err) {
+          console.error(err);
+          alert("Error al enviar código.");
         }
       };
 
       const handleUpdatePassword = async () => {
-        setResetMessage('');
-        setResetError('');
-        if (!resetPass) {
-          setResetError('Por favor, ingresa tu nueva contraseña.');
+        const regex = /^[A-Z0-9]{4}$/;
+        if (!regex.test(resetPass)) {
+          alert("Contraseña inválida. Usa solo 4 letras/números MAYÚSCULOS.");
           return;
         }
-
         try {
-          const response = await fetch('/update-password', {
+          const res = await fetch(`${BACKEND_BASE_URL}/api/reset-password-with-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ resetId, newPassword: resetPass, career: selectedCareer }),
+            body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass, career: selectedCareer })
           });
-          const data = await response.json();
-          if (response.ok) {
-            setResetMessage(data.message + " Ahora puedes iniciar sesión con tu nueva contraseña.");
-            setTimeout(() => {
-              setShowReset(false);
-              setShowCodeField(false);
-              setResetId('');
-              setResetCode('');
-              setResetPass('');
-              setResetEmail('');
-              setResetMessage('');
-            }, 3000);
-          } else {
-            setResetError(data.error);
+          const data = await res.json();
+          alert(data.message || data.error);
+          if (res.ok) {
+            setShowReset(false);
+            setShowCodeField(false);
+            setResetId('');
+            setResetCode('');
+            setResetPass('');
           }
-        } catch (error) {
-          console.error('Error:', error);
-          setResetError('Error de conexión.');
+        } catch (err) {
+          console.error(err);
+          alert("Error al actualizar contraseña.");
         }
       };
+
+      const progress = studentData ? getLevelProgress(studentData.exp, studentData.level) : { percentage: 0, currentExp: 0, requiredExp: 10 };
 
       const handleAdminLoginSuccess = async (career) => {
-        setSelectedCareer(career);
+        setIsAdminLoggedIn(true);
         await fetchAdminStudentsData(career);
         setShowAdminDashboard(true);
+        setShowAdminLoginModal(false);
       };
 
-      const fetchAdminStudentsData = async (career = selectedCareer) => {
-        if (!career) return;
+      const fetchAdminStudentsData = async (career) => {
         try {
-          const response = await fetch(`/admin/students?career=${career}`);
-          if (response.ok) {
-            const data = await response.json();
-            setAdminStudentsData(data);
+          const response = await fetch(`${BACKEND_BASE_URL}/api/admin/students?career=${career}`);
+          const data = await response.json();
+          if (data.success) {
+            setAdminStudentsData(data.students);
           } else {
-            console.error('Error fetching admin students data:', await response.json());
+            alert(data.error);
+            setAdminStudentsData([]);
           }
         } catch (error) {
-          console.error('Network error fetching admin students data:', error);
+          console.error('Error fetching admin student data:', error);
+          alert('Error al cargar datos de alumnos para el administrador.');
+          setAdminStudentsData([]);
         }
       };
 
-      const updateStudentDataInAdminDashboard = (updatedStudent) => {
-        setAdminStudentsData(prevData =>
-          prevData.map(student =>
-            student.id === updatedStudent.id ? updatedStudent : student
+      const updateStudentDataInAdminDashboard = (studentIdToUpdate, newLevel) => {
+        setAdminStudentsData(prevStudents =>
+          prevStudents.map(student =>
+            student.id === studentIdToUpdate
+              ? { ...student, level: newLevel, exp: student.exp }
+              : student
           )
         );
       };
 
-
       return (
         <>
-          {student ? (
-            <StudentProfile
-              student={student}
-              onLogout={handleLogout}
-              calculateLevel={calculateLevel}
-              selectedCareer={selectedCareer}
-              showAdminLogin={() => setShowAdminLoginModal(true)}
-            />
+          {isAdminLoggedIn ? (
+            null
+          ) : isLoggedIn && studentData ? (
+            <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+              <div className="bg-orange-500 text-white text-center p-3">
+                <h2 className="text-2xl font-bold">Hola, {studentData.name}</h2>
+              </div>
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className="col-span-1 flex justify-center items-center">
+                  <img
+                    src={`/avatars/${studentData.id}${studentData.level}.png`}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = studentData.sexo === 'Hombre'
+                        ? `/avatars/DefaultH${studentData.level}.png`
+                        : `/avatars/DefaultF${studentData.level}.png`;
+                    }}
+                    alt="avatar"
+                    className="w-full h-auto max-w-60 max-h-90"
+                  />
+                </div>
+
+                <div className="col-span-1 flex flex-col justify-center items-center text-center space-y-4">
+                  <div className="w-full max-w-xs p-3 text-center">
+                    <div className="text-5xl font-extrabold text-orange-500">Nivel {studentData.level}</div>
+                  </div>
+
+                  <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow">
+                    <div className="flex justify-between items-center text-md font-semibold text-gray-700">
+                      <span>Coins</span><span className="font-bold text-yellow-500">{studentData.monedas}</span>
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex justify-between items-center text-xs font-semibold text-gray-700 mb-1">
+                        <span>EXP.</span><span>{progress.currentExp}/{progress.requiredExp}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="bg-orange-500 h-2.5 rounded-full" style={{ width: `${progress.percentage}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span>Tareas</span><span className="font-bold">{studentData.tareas}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Asistencias</span><span className="font-bold">{studentData.asistencias}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Badges</span>
+                      <span className="font-bold">{Object.keys(studentData.purchases || {}).length}</span>
+                    </div>
+                    <div className="text-[10px] font-light text-gray-600 mt-1">
+                      {Object.entries(studentData.purchases || {}).map(([name, qty], idx) => (
+                        <div key={idx}>{name} x{qty}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="px-8 pb-8 flex flex-wrap justify-center w-full gap-4">
+
+                <button className="bg-blue-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 font-semibold" onClick={fetchLeaderboard}>
+                  Leaderboard
+                </button>
+
+                <button className="bg-orange-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 font-semibold" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
+                  Tienda
+                </button>
+                <button onClick={handleLogout} className="bg-purple-600 text-white px-10 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 font-semibold">
+                  Log Out
+                </button>
+              </div>
+            </div>
           ) : (
-            <Login
-              onLoginSuccess={handleLoginSuccess}
-              onShowReset={handleShowReset}
-              onCareerSelect={setSelectedCareer}
+            <LoginScreen
+              studentId={studentId}
+              setStudentId={setStudentId}
+              password={password}
+              setPassword={setPassword}
+              handleLogin={handleLogin}
+              setShowRegister={setShowRegister}
+              setShowReset={setShowReset}
+              showCodeField={showCodeField}
+              setShowCodeField={setShowCodeField}
+              resetId={resetId}
+              setResetId={setResetId}
+              resetCode={resetCode}
+              setResetCode={setResetCode}
+              resetPass={resetPass}
+              setResetPass={setResetPass}
+              handleSendResetCode={handleSendResetCode}
+              handleUpdatePassword={handleUpdatePassword}
+              selectedCareer={selectedCareer}
+              setSelectedCareer={setSelectedCareer}
+              setShowAdminLoginModal={setShowAdminLoginModal}
             />
           )}
 
-          {showReset && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm transform transition-all duration-300 scale-100 opacity-100">
-                <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Recuperar Contraseña</h2>
-                {resetMessage && <p className="text-green-600 text-center mb-4">{resetMessage}</p>}
-                {resetError && <p className="text-red-500 text-center mb-4">{resetError}</p>}
+          {showCartModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+              <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform transition-transform duration-300">
+                <h3 className="text-2xl font-bold mb-4 text-gray-800">Tienda de Insignias</h3>
+                <p className="mb-4 text-lg">Monedas disponibles: <strong className="text-yellow-500">{studentData.monedas}</strong></p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-2">
+                  {badges.map((b, i) => (
+                    <div key={i} className="border p-4 rounded-xl flex flex-col items-center text-center transition-shadow duration-300 hover:shadow-lg">
+                      <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-20 h-20 object-contain mb-2" />
+                      <strong className="text-sm font-semibold">{b.name}</strong>
+                      <span className="text-xs text-gray-500">Disp.: {b.quantity}</span>
+                      <span className="text-xs text-gray-500 mb-2">Costo: {b.cost}</span>
+                      <div className="flex gap-2 items-center mt-2">
+                        <button className="bg-red-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center" onClick={() => removeFromCart(b.name)}>-</button>
+                        <span className="text-base font-semibold">{cart[b.name] || 0}</span>
+                        <button className="bg-green-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center" onClick={() => addToCart(b.name, b.quantity)}>+</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 text-center">
+                  <p className="text-lg">Total a pagar: <strong className="text-yellow-500">{totalCartCost}</strong> monedas</p>
+                  <button className="bg-orange-500 text-white px-6 py-3 rounded-full mt-4 disabled:opacity-50 transition-all duration-300 font-semibold" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
+                    Comprar
+                  </button>
+                  <button className="ml-4 bg-gray-400 text-white px-6 py-3 rounded-full mt-4 transition-all duration-300 font-semibold" onClick={() => setShowCartModal(false)}>
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
-                {!showCodeField ? (
+          {showLevelUpGif && (
+            <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50">
+              <img src="/gifs/levelup.gif" alt="Level Up!" className="w-full h-full object-contain" />
+            </div>
+          )}
+
+          {showLeaderboard && (
+            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+              <div className="bg-white w-full max-w-2xl p-6 rounded-2xl transform transition-transform duration-500 animate-slideIn">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-2xl font-bold text-gray-800">Leaderboard</h3>
+                  <button onClick={() => setShowLeaderboard(false)} className="text-red-500 text-xl font-bold">X</button>
+                </div>
+                <table className="w-full text-left table-auto border-collapse">
+                  <thead>
+                    <tr className="text-gray-700 font-semibold border-b">
+                      <th className="p-2">Lugar</th>
+                      <th className="p-2">ID</th>
+                      <th className="p-2">Badges</th>
+                      <th className="p-2">Nivel</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboardData.map((student, i) => (
+                      <tr key={i} className="border-b">
+                        <td className="p-2">{student.rank}</td>
+                        <td className="p-2">{student.name}</td>
+                        <td className="p-2">{student.badges}</td>
+                        <td className="p-2">{student.level}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {showRegister && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+              <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+                <h2 className="text-2xl font-bold text-gray-800">Registrar nuevo usuario</h2>
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de alumno" id="reg-id" />
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Nombre completo" id="reg-name" />
+                <div className="flex items-center justify-around text-gray-700">
+                  <label className="flex items-center"><input type="radio" name="sexo" value="Hombre" defaultChecked className="mr-2" /> Hombre</label>
+                  <label className="flex items-center"><input type="radio" name="sexo" value="Mujer" className="mr-2" /> Mujer</label>
+                </div>
+
+                <select
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                  value={registerCareer}
+                  onChange={(e) => setRegisterCareer(e.target.value)}
+                >
+                  <option value="Diseno Digital">Diseño Digital</option>
+                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                </select>
+
+                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Contraseña (2 mayúsculas y 2 números)" id="reg-pass" />
+                <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold" onClick={async () => {
+                  const sexo = document.querySelector('input[name="sexo"]:checked').value;
+                  const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      id: document.getElementById('reg-id').value,
+                      name: document.getElementById('reg-name').value,
+                      sexo,
+                      password: document.getElementById('reg-pass').value,
+                      career: registerCareer
+                    })
+                  });
+                  const data = await res.json();
+                  alert(data.message || data.error);
+                  setShowRegister(false);
+                }}>Registrar</button>
+                <button className="text-sm text-gray-500 hover:underline transition-colors duration-300" onClick={() => setShowRegister(false)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {showReset && (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+              <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+                <h2 className="text-2xl font-bold text-center text-gray-800">Recuperar contraseña</h2>
+                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="ID de alumno" value={resetId} onChange={(e) => setResetId(e.target.value)} />
+                <button className="bg-purple-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 w-full font-semibold" onClick={handleSendResetCode}>Enviar código</button>
+
+                {showCodeField && (
                   <>
-                    <p className="text-gray-600 text-center mb-4">Ingresa tu correo electrónico asociado a tu cuenta.</p>
-                    <input
-                      type="email"
-                      placeholder="Correo electrónico"
-                      className="w-full p-3 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                    />
-                    <button
-                      className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold"
-                      onClick={handleSendResetCode}
-                    >
-                      Enviar código de recuperación
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-gray-600 text-center mb-4">Se ha enviado un código a tu correo. Ingresa el código y tu nueva contraseña.</p>
-                    <input
-                      type="text"
-                      placeholder="Código de recuperación"
-                      className="w-full p-3 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      value={resetCode}
-                      onChange={(e) => setResetCode(e.target.value)}
-                    />
-                    <button
-                      className="bg-blue-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 w-full font-semibold mb-3"
-                      onClick={handleVerifyResetCode}
-                    >
-                      Verificar Código
-                    </button>
-                    <input
-                      type="password"
-                      placeholder="Nueva contraseña"
-                      className="w-full p-3 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      value={resetPass}
-                      onChange={(e) => setResetPass(e.target.value)}
-                    />
+                    <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Código recibido" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
+                    <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Nueva contraseña (4 letras/números MAYÚSCULOS)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
                     <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full mt-2 font-semibold" onClick={handleUpdatePassword}>Actualizar contraseña</button>
                   </>
                 )}
