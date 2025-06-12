@@ -292,7 +292,7 @@
                     <th className="p-2 border text-sm w-[100px]">Tareas</th> {/* Ancho fijo para móvil */}
                     <th className="p-2 border text-sm w-[100px]">Monedas</th> {/* Ancho fijo para móvil */}
                     <th className="p-2 border text-sm w-[100px]">Asistencia</th> {/* Ancho fijo para móvil */}
-                    <th className="p-2 border text-sm w-[80px]">Games</th> {/* Ancho fijo para móvil */}
+                    <th className="p-2 border text-sm w-[100px]">Games</th>
                     <th className="p-2 border text-sm w-[80px]">EXP.</th> {/* Ancho fijo para móvil */}
                     <th className="p-2 border text-sm w-[80px]">Nivel</th> {/* Ancho fijo para móvil */}
                     <th className="p-2 border text-sm w-[120px]">Acciones</th> {/* Ancho fijo para móvil */}
@@ -324,12 +324,8 @@
                           <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
-                      <td className="p-2 border" data-label="Games / Challenges">
-                        <div className="flex items-center justify-end md:justify-center">
-                          <button onClick={() => handleFieldChange(index, 'games', student.games - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.games}</span>
-                          <button onClick={() => handleFieldChange(index, 'games', student.games+ 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
-                        </div>
+                      <td className="p-2 border text-center" data-label="Games">
+                        <span className="w-full text-center py-0.5 block text-sm">{student.games}</span>
                       </td>
                       <td className="p-2 border text-center" data-label="EXP.">
                         <span className="w-full text-center py-0.5 block text-sm">{student.exp}</span>
@@ -678,7 +674,7 @@
                       <span>Asistencias</span><span className="font-bold">{studentData.asistencias}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span>Games / Challenges</span><span className="font-bold">{studentData.games}</span>
+                      <span className="font-bold">{studentData.games || 0}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span>Badges</span>
