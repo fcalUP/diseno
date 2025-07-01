@@ -266,7 +266,7 @@
         const response = await fetch(`${BACKEND_BASE_URL}/api/admin/update-student-data`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, career: selectedCareer, rowIndex, tareas, monedas, asistencias,games, exp }),
+          body: JSON.stringify({ id, career: selectedCareer, rowIndex, tareas, monedas, asistencias, games, exp }),
         });
         const data = await response.json();
         if (data.success) {
@@ -330,9 +330,9 @@
                       </td>
                       <td className="p-2 border text-center" data-label="Games">
                         <div className="flex items-center justify-end md:justify-center">
-                        <button onClick={() => handleFieldChange(index, 'games', student.games - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                        <span className="w-full text-center py-0.5 block text-sm">{student.games}</span>
-                        <button onClick={() => handleFieldChange(index, 'games', student.games + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
+                          <button onClick={() => handleFieldChange(index, 'games', student.games - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
+                          <span className="w-full text-center py-0.5 block text-sm">{student.games}</span>
+                          <button onClick={() => handleFieldChange(index, 'games', student.games + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
                         </div>
                       </td>
                       <td className="p-2 border text-center" data-label="EXP.">
@@ -692,6 +692,13 @@
                       {Object.entries(studentData.purchases || {}).map(([name, qty], idx) => (
                         <div key={idx}>{name} x{qty}</div>
                       ))}
+                    </div>
+                  </div>
+                  {/* New Comments Section */}
+                  <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
+                    <p className="font-bold text-lg">Comentarios</p>
+                    <div className="w-full bg-gray-50 p-2 rounded-lg border border-gray-200 overflow-y-auto max-h-24 text-sm text-left font-normal whitespace-pre-wrap">
+                      {studentData.comments || 'No hay comentarios.'}
                     </div>
                   </div>
                 </div>
