@@ -87,8 +87,8 @@ app.post('/api/login', async (req, res) => {
   const sheetName = getSheetName(career);
 
   try {
-    // Rango ajustado para incluir hasta la nueva columna K (LAST_LOGIN_LEVEL)
-    const range = `${sheetName}!A:L`; // Ahora leemos hasta la columna L
+    // Rango ajustado para incluir hasta la nueva columna N (Comentarios)
+    const range = `${sheetName}!A:N`; // Ahora leemos hasta la columna N
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
 
@@ -113,6 +113,7 @@ app.post('/api/login', async (req, res) => {
     const badgesString = studentData[8] || '0'; // Badges (como cadena)
     const exp = parseInt(studentData[9]) || 0; // EXP
     const games = studentData[11] || '0'; // Games / Challenges (columna L)
+    const comments = studentData[13] || ''; // Comments (columna N, índice 13)
 
 
     // Obtener lastLoginLevel. Si está vacío o es undefined (primera carga), se inicializa a 0
@@ -174,6 +175,7 @@ res.json({
         purchases: badgesMap, // Usar el mapa de compras reales
         rowIndex: studentRowIndex + 1, // Fila en el Sheets (para futuras actualizaciones)
         games: games,
+        comments: comments, // Include comments here
       },
       // Indicador para el frontend
       levelUpOccurred: levelUpOccurred
@@ -230,7 +232,10 @@ app.post('/api/register', async (req, res) => {
       '0',                 // Columna H: Attendance (0 por defecto)
       '0',                 // Columna I: Badges (inicializado con '0')
       '0',                 // Columna J: EXP (0 por defecto)
-      '0'                  // Columna K: LAST_LOGIN_LEVEL (0 por defecto para nuevos usuarios)
+      '0',                 // Columna K: LAST_LOGIN_LEVEL (0 por defecto para nuevos usuarios)
+      '0',                 // Columna L: Games (0 por defecto)
+      '',                  // Columna M: (Assuming this is an empty column before N, if not, adjust index for Comments)
+      ''                   // Columna N: Comentarios (vacío por defecto)
     ];
 
     await sheets.spreadsheets.values.append({
@@ -641,8 +646,8 @@ app.get('/api/admin/students', async (req, res) => {
   const sheetName = getSheetName(career);
 
   try {
-    // A:K includes ID, Nombre, Sexo, Correo, Password, Homeworks, Coins, Attendance, Badges, EXP, LAST_LOGIN_LEVEL
-    const range = `${sheetName}!A:L`; 
+    // A:N includes ID, Nombre, Sexo, Correo, Password, Homeworks, Coins, Attendance, Badges, EXP, LAST_LOGIN_LEVEL, Games, M (empty), Comments
+    const range = `${sheetName}!A:N`; 
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
 
@@ -663,7 +668,8 @@ app.get('/api/admin/students', async (req, res) => {
       badges: parseInt(row[8]) || 0,
       exp: parseInt(row[9]) || 0,
       level: calculateLevel(parseInt(row[9]) || 0),
-      games: parseInt(row[11]) || 0 // <= Añadido: Columna L
+      games: parseInt(row[11]) || 0, // Columna L
+      comments: row[13] || '' // Columna N
     }));
     res.json({ success: true, students });
   } catch (error) {
