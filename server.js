@@ -490,11 +490,17 @@ Se ha realizado una compra de insignia:
 Gracias.`
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log('📨 Correo enviado correctamente.');
+    } catch (emailError) {
+      console.error('⚠️ Error al enviar correo de confirmación:', emailError.message);
+      // No se detiene el flujo si el correo falla
+    }
 
     res.json({
       success: true,
-      newCoins,
+      newCoins: String(newCoins),
       newBadgeQuantity: newQty,
       message: `Compra de ${quantityToBuy} ${itemName} realizada. Monedas restantes: ${newCoins}`
     });
