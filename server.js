@@ -4,7 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const { google } = require('googleapis');
 const path = require('path');
-const nodemailer = require('nodemailer');
+//const nodemailer = require('nodemailer');
 // const bcrypt = require('bcryptjs'); // Descomentar si decides usar hashing de contraseñas
 
 const app = express();
@@ -63,12 +63,12 @@ function getSheetName(career) {
 }
 
 // Configuración de Nodemailer para el envío de correos
-const transporter = nodemailer.createTransport({
+/*const transporter = nodemailer.createTransport({
   service: 'gmail', // Puedes usar otro servicio o configuración SMTP
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
-  },
+  },*/
 });
 
 // ===================================
