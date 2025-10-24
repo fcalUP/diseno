@@ -471,9 +471,13 @@ app.post('/api/purchase', async (req, res) => {
       requestBody: { values: [[totalBadgesCount.toString()]] }
     });
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'],
+    // ====== ✅ Envío de correo con SendGrid ======
+    const sgMail = require('@sendgrid/mail');
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+    const msg = {
+      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'], // destinatarios
+      from: process.env.EMAIL_FROM,                     // remitente configurado
       subject: 'Confirmación de compra de insignia',
       text: `Hola,
 
@@ -487,26 +491,26 @@ Se ha realizado una compra de insignia:
 - Monedas anteriores: ${currentCoins}
 - Monedas restantes: ${newCoins}
 
-Gracias.`
+Gracias.`,
     };
 
     try {
-      await transporter.sendMail(mailOptions);
-      console.log('📨 Correo enviado correctamente.');
+      await sgMail.send(msg);
+      console.log('📨 Correo enviado correctamente con SendGrid.');
     } catch (emailError) {
-      console.error('⚠️ Error al enviar correo de confirmación:', emailError.message);
-      // No se detiene el flujo si el correo falla
+      console.error('⚠️ Error al enviar correo con SendGrid:', emailError.message);
+      // No detener la compra
     }
 
     res.json({
       success: true,
-      newCoins: String(newCoins),
-      newBadgeQuantity: newQty,
-      message: `Compra de ${quantityToBuy} ${itemName} realizada. Monedas restantes: ${newCoins}`
+      message: `Compra realizada correctamente. Monedas restantes: ${newCoins}`,
+      newCoins: newCoins,
+      newQty: newQty
     });
   } catch (error) {
     console.error('Error en la compra:', error);
-    res.status(500).json({ error: 'Error en la compra', details: error.message });
+    res.status(500).json({ error: 'Error interno del servidor durante la compra.', details: error.message });
   }
 });
 
