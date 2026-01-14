@@ -57,7 +57,7 @@ function calculateLevel(exp) {
 function getSheetName(career) {
   if (career === 'Diseno de la Comunicacion') return 'Com';
   if (career === 'POO') return 'POO';
-  if (career === 'Técnicas Avanzadas de Representación') return 'TAR';
+  if (career === 'TAR') return 'TAR';
   return 'Sheet1'; // Corresponde a Técnicas Avanzadas de Representación
 }
 
