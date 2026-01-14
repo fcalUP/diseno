@@ -362,7 +362,6 @@
     };
 
     const App = () => {
-      const [selectedCareer, setSelectedCareer] = React.useState('Tecnicas Avanzadas de Representacion');
       const [showLeaderboard, setShowLeaderboard] = React.useState(false);
       const [leaderboardData, setLeaderboardData] = React.useState([]);
 
@@ -382,7 +381,6 @@
       const [badges, setBadges] = React.useState([]);
       const [cart, setCart] = React.useState({});
       const [showCartModal, setShowCartModal] = React.useState(false);
-
       const [showRegister, setShowRegister] = React.useState(false);
       const [showReset, setShowReset] = React.useState(false);
       const [showCodeField, setShowCodeField] = React.useState(false);
@@ -390,7 +388,7 @@
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
-      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital');
+      const [selectedCareer, setSelectedCareer] = React.useState('Tecnicas Avanzadas de Representacion');
       const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
 
       const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
@@ -477,7 +475,7 @@
         setResetPass('');
         setShowLevelUpGif(false);
         prevLevelRef.current = null;
-        setSelectedCareer('Diseno Digital');
+        setSelectedCareer('Tecnicas Avanzadas de Representacion');
         setIsAdminLoggedIn(false);
         setShowAdminLoginModal(false);
         setAdminStudentsData([]);
