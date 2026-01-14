@@ -1,11 +1,9 @@
-// server.js
+/ server.js
 // Carga las variables de entorno desde el archivo .env
 require('dotenv').config();
 const express = require('express');
 const { google } = require('googleapis');
 const path = require('path');
-//const nodemailer = require('nodemailer');
-// const bcrypt = require('bcryptjs'); // Descomentar si decides usar hashing de contraseñas
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,15 +37,13 @@ async function initializeGoogleSheetsClient() {
     console.log('Cliente de Google Sheets inicializado correctamente.');
   } catch (error) {
     console.error('Error al inicializar Google Sheets:', error);
-    process.exit(1); // Sale del proceso si no se puede inicializar el cliente
+    process.exit(1);
   }
 }
 initializeGoogleSheetsClient();
 
-// Almacenamiento temporal para códigos de restablecimiento de contraseña
 const resetCodes = {};
 
-// Función para calcular el nivel basada en la EXP.
 function calculateLevel(exp) {
   if (exp >= 100) return 5;
   if (exp >= 75) return 4;
@@ -57,28 +53,21 @@ function calculateLevel(exp) {
   return 0;
 }
 
-// Helper para obtener el nombre de la hoja según la carrera
+// Helper para obtener el nombre de la hoja según la carrera (Actualizado)
 function getSheetName(career) {
-  return career === 'Diseno de la Comunicacion' ? 'Com' : 'Sheet1';
+  if (career === 'Diseno de la Comunicacion') return 'Com';
+  if (career === 'POO') return 'POO';
+  if (career === 'Técnicas Avanzadas de Representación') return 'TAR';
+  return 'Sheet1'; // Corresponde a Técnicas Avanzadas de Representación
 }
-
-// Configuración de Nodemailer para el envío de correos
-/*const transporter = nodemailer.createTransport({
-  service: 'gmail', // Puedes usar otro servicio o configuración SMTP
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});*/
 
 // ===================================
 // ENDPOINTS DE API
 // ===================================
 
-// Endpoint de Inicio de Sesión
 app.post('/api/login', async (req, res) => {
   if (!sheets) return res.status(500).json({ error: 'Sheets no inicializado' });
-  const { studentId, password, career } = req.body; // Recibe la carrera
+  const { studentId, password, career } = req.body;
 
   if (!studentId || !password || !career) {
     return res.status(400).json({ error: 'ID, contraseña y carrera requeridos.' });
@@ -87,8 +76,7 @@ app.post('/api/login', async (req, res) => {
   const sheetName = getSheetName(career);
 
   try {
-    // Rango ajustado para incluir hasta la nueva columna N (Comentarios)
-    const range = `${sheetName}!A:N`; // Ahora leemos hasta la columna N
+    const range = `${sheetName}!A:N`;
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
     const rows = response.data.values;
 
@@ -96,62 +84,50 @@ app.post('/api/login', async (req, res) => {
       return res.status(404).json({ error: 'No se encontraron datos de alumnos.' });
     }
 
-    // Buscar el alumno por ID y Contraseña. La contraseña está en Columna E (índice 4)
     const studentRowIndex = rows.findIndex((row, index) => index > 0 && row[0] === studentId && row[4] === password);
     if (studentRowIndex === -1) {
       return res.status(401).json({ error: 'Credenciales inválidas.' });
     }
 
-    const studentData = rows[studentRowIndex]; // Datos de la fila encontrada
-    const id = studentData[0]; // ID
-    const name = studentData[1] || 'N/A'; // NOMBRE
-    const sexo = studentData[2] || 'N/A'; // Sexo
-    const email = studentData[3] || ''; // CORREO
-    const homeworks = studentData[5] || '0'; // Homeworks
-    const monedas = studentData[6] || '0'; // Coins
-    const asistencias = studentData[7] || '0'; // Attendance
-    const badgesString = studentData[8] || '0'; // Badges (como cadena)
-    const exp = parseInt(studentData[9]) || 0; // EXP
-    const games = studentData[11] || '0'; // Games / Challenges (columna L)
-    const comments = studentData[13] || ''; // Comments (columna N, índice 13)
+    const studentData = rows[studentRowIndex];
+    const id = studentData[0];
+    const name = studentData[1] || 'N/A';
+    const sexo = studentData[2] || 'N/A';
+    const email = studentData[3] || '';
+    const homeworks = studentData[5] || '0';
+    const monedas = studentData[6] || '0';
+    const asistencias = studentData[7] || '0';
+    const exp = parseInt(studentData[9]) || 0;
+    const games = studentData[11] || '0';
+    const comments = studentData[13] || '';
 
-
-    // Obtener lastLoginLevel. Si está vacío o es undefined (primera carga), se inicializa a 0
     let lastLoginLevel = parseInt(studentData[10]);
-    if (isNaN(lastLoginLevel)) { // Si no es un número (es decir, está vacío en la hoja)
-        lastLoginLevel = 0; // Considera el nivel en el último login como 0 inicialmente
+    if (isNaN(lastLoginLevel)) {
+        lastLoginLevel = 0;
     }
 
-    const currentLevel = calculateLevel(exp); // Nivel actual calculado
-
-    // Determinar si hay una subida de nivel desde el último login
+    const currentLevel = calculateLevel(exp);
     const levelUpOccurred = currentLevel > lastLoginLevel;
 
-    // Obtener las compras de la hoja 'Purchases' (asume que Purchases es global o por carrera si lo necesitas)
     const purchasesResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Purchases!A:D' // Mantendremos una sola hoja de Purchases por simplicidad
+      range: 'Purchases!A:D'
     });
 
     const purchaseRows = purchasesResponse.data.values;
-    // Filtrar las compras para este studentId
     const studentPurchases = purchaseRows?.length > 1
-      ? purchaseRows.slice(1).filter(row => row[1] === id) // row[1] es studentId en Purchases
+      ? purchaseRows.slice(1).filter(row => row[1] === id)
       : [];
 
-    // Reducir las compras a un mapa de insignias y cantidades
     const totalBadgesCount = studentPurchases.reduce((sum, row) => sum + (parseInt(row[3]) || 0), 0);
 
-const badgesMap = studentPurchases.reduce((acc, row) => {
-      const badgeName = row[2]; // Columna C es el nombre de la insignia en Purchases
-      const quantity = parseInt(row[3]) || 0; // Columna D es la cantidad en Purchases
+    const badgesMap = studentPurchases.reduce((acc, row) => {
+      const badgeName = row[2];
+      const quantity = parseInt(row[3]) || 0;
       acc[badgeName] = (acc[badgeName] || 0) + quantity;
       return acc;
     }, {});
-
-
     
-    // Actualizar columna I (total de badges adquiridas)
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
       range: `${sheetName}!I${studentRowIndex + 1}`,
@@ -159,8 +135,7 @@ const badgesMap = studentPurchases.reduce((acc, row) => {
       requestBody: { values: [[totalBadgesCount.toString()]] }
     });
     
-
-res.json({
+    res.json({
       success: true,
       student: {
         id: id,
@@ -171,23 +146,19 @@ res.json({
         tareas: homeworks,
         asistencias: asistencias,
         exp: exp,
-        level: currentLevel, // Nivel actual
-        purchases: badgesMap, // Usar el mapa de compras reales
-        rowIndex: studentRowIndex + 1, // Fila en el Sheets (para futuras actualizaciones)
+        level: currentLevel,
+        purchases: badgesMap,
+        rowIndex: studentRowIndex + 1,
         games: games,
-        comments: comments, // Include comments here
+        comments: comments,
       },
-      // Indicador para el frontend
       levelUpOccurred: levelUpOccurred
     });
 
-    // ¡Importante! Actualizar el LAST_LOGIN_LEVEL en Google Sheets después del login exitoso
-    // Esto asegura que la animación no se dispare en el próximo inicio de sesión si no hay cambio de nivel real.
-    // Y también inicializa el valor si estaba vacío.
-    if (currentLevel !== lastLoginLevel || isNaN(parseInt(studentData[10]))) { // Actualiza si hay cambio de nivel O si estaba vacío
+    if (currentLevel !== lastLoginLevel || isNaN(parseInt(studentData[10]))) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${sheetName}!K${studentRowIndex + 1}`, // Columna K para LAST_LOGIN_LEVEL
+        range: `${sheetName}!K${studentRowIndex + 1}`,
         valueInputOption: 'RAW',
         requestBody: { values: [[currentLevel]] }
       });
