@@ -655,8 +655,10 @@
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = studentData.sexo === 'Hombre'
+                      console.log('studentData.id')
                         ? `/avatars/DefaultH${studentData.level}.png`
                         : `/avatars/DefaultF${studentData.level}.png`;
+                      console.log('studentData.id')
                     }}
                     alt="avatar"
                     className="w-full h-auto max-w-60 max-h-90"
