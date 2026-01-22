@@ -170,7 +170,15 @@
       selectedCareer, setSelectedCareer,
       setShowAdminLoginModal
     }) => {
-      const sideImage = selectedCareer === 'Diseno Digital' ? '/img/side-image.jpg' : '/img/comuni.png';
+      // Configuración de imagen lateral según el grupo
+      let sideImage = '/img/side-image.jpg';
+      if (selectedCareer === 'Diseno de la Comunicacion') sideImage = '/img/comuni.png';
+      if (selectedCareer === 'POO') sideImage = '/img/poo-side.jpg'; // Imagen opcional para POO
+
+      // Configuración de logo central según el grupo
+      let centerLogo = "logo.png";
+      if (selectedCareer === 'Diseno de la Comunicacion') centerLogo = "/img/Com.png";
+      if (selectedCareer === 'POO') centerLogo = "/img/poo-logo.png"; // Logo opcional para POO
 
       return (
         <>
@@ -178,9 +186,9 @@
             <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: `url('${sideImage}')` }}></div>
             <div className="w-full md:w-1/2 flex items-center justify-center bg-white p-8">
               <div className="w-full max-w-md px-6 py-8 text-center">
-                <img src={selectedCareer === 'Diseno Digital' ? "logo.png" : "/img/Com.png"} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
+                <img src={centerLogo} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
                 <h2 className="text-3xl font-bold mb-4 text-gray-800">
-                  {selectedCareer === 'Diseno Digital' ? 'Digital Design' : 'Communication Design'}
+                  {selectedCareer}
                 </h2>
 
                 <select
@@ -188,8 +196,9 @@
                   value={selectedCareer}
                   onChange={(e) => setSelectedCareer(e.target.value)}
                 >
-                  <option value="Diseno Digital">Digital Design</option>
-                  <option value="Diseno de la Comunicacion">Communication Design</option>
+                  <option value="TAR">Técnicas Avanzadas de Representación</option>
+                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                  <option value="POO">Programación Orientada a Objetos</option>
                 </select>
 
                 <input className="w-full p-3 mb-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Student ID"
@@ -283,7 +292,7 @@
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
           <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-2xl w-full max-w-5xl mx-auto transform transition-transform duration-300 scale-95 hover:scale-100 h-5/6 flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Administrator Panel - {selectedCareer === 'Diseno Digital' ? 'Digital Design' : 'Communication Design'}</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Administrator Panel - {selectedCareer}</h3>
               <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
             </div>
             {/* Responsive table container */}
@@ -372,7 +381,6 @@
       const [badges, setBadges] = React.useState([]);
       const [cart, setCart] = React.useState({});
       const [showCartModal, setShowCartModal] = React.useState(false);
-
       const [showRegister, setShowRegister] = React.useState(false);
       const [showReset, setShowReset] = React.useState(false);
       const [showCodeField, setShowCodeField] = React.useState(false);
@@ -380,7 +388,7 @@
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
-      const [selectedCareer, setSelectedCareer] = React.useState('Diseno Digital');
+      const [selectedCareer, setSelectedCareer] = React.useState('Tecnicas Avanzadas de Representacion');
       const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
 
       const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
@@ -467,7 +475,7 @@
         setResetPass('');
         setShowLevelUpGif(false);
         prevLevelRef.current = null;
-        setSelectedCareer('Diseno Digital');
+        setSelectedCareer('Tecnicas Avanzadas de Representacion');
         setIsAdminLoggedIn(false);
         setShowAdminLoginModal(false);
         setAdminStudentsData([]);
@@ -828,8 +836,9 @@
                   value={registerCareer}
                   onChange={(e) => setRegisterCareer(e.target.value)}
                 >
-                  <option value="Diseno Digital">Digital Design</option>
-                  <option value="Diseno de la Comunicacion">Graphic Design Communication</option>
+                  <option value="Tecnicas Avanzadas de Representacion">Técnicas Avanzadas de Representación</option>
+                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
+                  <option value="POO">Programación Orientada a Objetos</option>
                 </select>
 
                 <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Password (2 uppercase letters and 2 numbers)" id="reg-pass" />
