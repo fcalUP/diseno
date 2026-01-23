@@ -654,6 +654,7 @@
                     src={`/avatars/${studentData.id}${studentData.level}.png`}
                     onError={(e) => {
                       console.log(studentData.id);
+                      console.log(studentData.level);
                       e.target.onerror = null;
                       e.target.src = studentData.sexo === 'Hombre'
                         ? `/avatars/DefaultH${studentData.level}.png`
