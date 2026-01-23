@@ -650,16 +650,14 @@
               </div>
               <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div className="col-span-1 flex justify-center items-center">
-                  console.log('studentData.id')
                   <img
                     src={`/avatars/${studentData.id}${studentData.level}.png`}
                     onError={(e) => {
+                      console.log(studentData.id);
                       e.target.onerror = null;
                       e.target.src = studentData.sexo === 'Hombre'
-                      console.log('studentData.id')
                         ? `/avatars/DefaultH${studentData.level}.png`
                         : `/avatars/DefaultF${studentData.level}.png`;
-                      console.log('studentData.id')
                     }}
                     alt="avatar"
                     className="w-full h-auto max-w-60 max-h-90"
