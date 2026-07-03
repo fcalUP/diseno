@@ -16,6 +16,6 @@
     "google-auth-library": "^9.15.1",
     "googleapis": "^149.0.0",
     "nodemailer": "^7.0.3",
-    "resend": "^1.1.0",
+    "resend": "^1.1.0"
   }
 }
