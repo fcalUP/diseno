@@ -55,10 +55,14 @@ function calculateLevel(exp) {
 
 // Helper para obtener el nombre de la hoja según la carrera (Actualizado)
 function getSheetName(career) {
-  if (career === 'Diseno de la Comunicacion') return 'Com';
-  if (career === 'POO') return 'POO';
-  if (career === 'TAR') return 'TAR';
-  return 'TAR'; // Corresponde a Técnicas Avanzadas de Representación
+  const normalizedCareer = `${career || ''}`.trim().toLowerCase();
+
+  if (normalizedCareer.includes('técnicas') || normalizedCareer.includes('tecnicas') || normalizedCareer === 'tar') return 'TAR';
+  if (normalizedCareer.includes('analisis') || normalizedCareer.includes('análisis') || normalizedCareer.includes('datos')) return 'Analisis de Datos';
+  if (normalizedCareer.includes('interfaces') || normalizedCareer.includes('ihm')) return 'IHM';
+  if (normalizedCareer === 'diseno de la comunicacion' || normalizedCareer.includes('com')) return 'Com';
+  if (normalizedCareer === 'poo') return 'POO';
+  return 'TAR';
 }
 
 // ===================================

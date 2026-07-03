@@ -196,9 +196,9 @@
                   value={selectedCareer}
                   onChange={(e) => setSelectedCareer(e.target.value)}
                 >
-                  <option value="TAR">Técnicas Avanzadas de Representación</option>
-                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
-                  <option value="POO">Programación Orientada a Objetos</option>
+                  <option value="Técnicas Avanzadas de Representación">Técnicas Avanzadas de Representación</option>
+                  <option value="Analisis de Datos">Analisis de Datos</option>
+                  <option value="Interfaces Hombre-Máquina">Interfaces Hombre-Máquina</option>
                 </select>
 
                 <input className="w-full p-3 mb-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Student ID"
@@ -388,8 +388,8 @@
       const [resetCode, setResetCode] = React.useState('');
       const [resetPass, setResetPass] = React.useState('');
       const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
-      const [selectedCareer, setSelectedCareer] = React.useState('Tecnicas Avanzadas de Representacion');
-      const [registerCareer, setRegisterCareer] = React.useState(selectedCareer);
+      const [selectedCareer, setSelectedCareer] = React.useState('Técnicas Avanzadas de Representación');
+      const [registerCareer, setRegisterCareer] = React.useState('Técnicas Avanzadas de Representación');
 
       const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
       const [showAdminLoginModal, setShowAdminLoginModal] = React.useState(false);
@@ -475,7 +475,8 @@
         setResetPass('');
         setShowLevelUpGif(false);
         prevLevelRef.current = null;
-        setSelectedCareer('Tecnicas Avanzadas de Representacion');
+        setSelectedCareer('Técnicas Avanzadas de Representación');
+        setRegisterCareer('Técnicas Avanzadas de Representación');
         setIsAdminLoggedIn(false);
         setShowAdminLoginModal(false);
         setAdminStudentsData([]);
@@ -838,9 +839,9 @@
                   value={registerCareer}
                   onChange={(e) => setRegisterCareer(e.target.value)}
                 >
-                  <option value="Tecnicas Avanzadas de Representacion">Técnicas Avanzadas de Representación</option>
-                  <option value="Diseno de la Comunicacion">Diseño de la Comunicación</option>
-                  <option value="POO">Programación Orientada a Objetos</option>
+                  <option value="Técnicas Avanzadas de Representación">Técnicas Avanzadas de Representación</option>
+                  <option value="Analisis de Datos">Analisis de Datos</option>
+                  <option value="Interfaces Hombre-Máquina">Interfaces Hombre-Máquina</option>
                 </select>
 
                 <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Password (2 uppercase letters and 2 numbers)" id="reg-pass" />
