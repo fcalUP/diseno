@@ -253,33 +253,29 @@ app.post('/api/send-reset-code', async (req, res) => {
     // Almacena el código con el ID y la carrera para evitar conflictos entre carreras
     resetCodes[`${id}-${career}`] = code;
 
-    // ========= NUEVO envío de correo con SendGrid =========
-const sgMail = require('@sendgrid/mail');
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// ========= NUEVO envío de correo con Resend =========
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
-const msg = {
-  to: [studentEmailToUse, 'fcal@up.edu.mx'], // destinatarios
-  from: process.env.EMAIL_FROM,              // remitente configurado en Render
-  subject: 'Código de restablecimiento de contraseña',
-  text: `Tu código de restablecimiento de contraseña es: ${code}\nEste código expirará en 10 minutos.`,
-  // También puedes usar formato HTML más vistoso:
-  html: `
-    <h2>Código de restablecimiento de contraseña</h2>
-    <p>Tu código de verificación es:</p>
-    <h1 style="color:#ff6600;">${code}</h1>
-    <p>Este código expirará en <strong>10 minutos</strong>.</p>
-  `,
-};
+    console.log(`📤 Intentando enviar código con Resend a: ${studentEmailToUse} (carrera: ${career})`);
 
-console.log(`📤 Intentando enviar código con SendGrid a: ${studentEmailToUse} (carrera: ${career})`);
-
-try {
-  await sgMail.send(msg);
-  console.log(`✅ Código de restablecimiento enviado correctamente a ${studentEmailToUse}`);
-} catch (emailError) {
-  console.error('⚠️ Error al enviar el correo con SendGrid:', emailError.message);
-  // No detiene el flujo — solo registra el error
-}
+    try {
+      await resend.emails.send({
+        from: 'onboarding@resend.dev', // Resend te obliga a usar este remitente en cuentas gratuitas
+        to: [studentEmailToUse, 'fcal@up.edu.mx'], 
+        subject: 'Código de restablecimiento de contraseña',
+        html: `
+          <h2>Código de restablecimiento de contraseña</h2>
+          <p>Tu código de verificación es:</p>
+          <h1 style="color:#ff6600;">${code}</h1>
+          <p>Este código expirará en <strong>10 minutos</strong>.</p>
+        `,
+      });
+      console.log(`✅ Código de restablecimiento enviado correctamente a ${studentEmailToUse}`);
+    } catch (emailError) {
+      console.error('⚠️ Error al enviar el correo con Resend:', emailError.message);
+      // No detiene el flujo — solo registra el error
+    }
 
 
     setTimeout(() => {
