@@ -1,921 +1,1404 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gamification</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-    }
-
-    @keyframes slideIn {
-      0% {
-        transform: perspective(1000px) rotateY(70deg) translateZ(-300px);
-        opacity: 0;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gamification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.development.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/@babel/standalone/babel.min.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+    ></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Poppins", sans-serif;
       }
 
-      100% {
-        transform: perspective(1000px) rotateY(0deg) translateZ(0);
-        opacity: 1;
-      }
-    }
+      @keyframes slideIn {
+        0% {
+          transform: perspective(1000px) rotateY(70deg) translateZ(-300px);
+          opacity: 0;
+        }
 
-    @keyframes slideOut {
-      0% {
-        transform: perspective(1000px) rotateY(0deg) translateZ(0);
-        opacity: 1;
-      }
-
-      100% {
-        transform: perspective(1000px) rotateY(70deg) translateZ(-300px);
-        opacity: 0;
-      }
-    }
-
-    .animate-slideIn {
-      animation: slideIn 0.6s ease-out forwards;
-    }
-
-    .animate-slideOut {
-      animation: slideOut 0.6s ease-in forwards;
-    }
-
-    /* Style for responsive table on mobile */
-    @media (max-width: 767px) {
-      .admin-table-container {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        100% {
+          transform: perspective(1000px) rotateY(0deg) translateZ(0);
+          opacity: 1;
+        }
       }
 
-      .admin-table {
-        min-width: 350px;
-        /* Ensures a minimum width so it doesn't look squashed */
+      @keyframes slideOut {
+        0% {
+          transform: perspective(1000px) rotateY(0deg) translateZ(0);
+          opacity: 1;
+        }
+
+        100% {
+          transform: perspective(1000px) rotateY(70deg) translateZ(-300px);
+          opacity: 0;
+        }
       }
 
-      .admin-table thead,
-      .admin-table tbody,
-      .admin-table th,
-      .admin-table td,
-      .admin-table tr {
-        display: block;
+      .animate-slideIn {
+        animation: slideIn 0.6s ease-out forwards;
       }
 
-      .admin-table thead tr {
-        position: absolute;
-        top: -9999px;
-        left: -9999px;
+      .animate-slideOut {
+        animation: slideOut 0.6s ease-in forwards;
       }
 
-      .admin-table tr {
-        border: 1px solid #ddd;
-        margin-bottom: 0.5rem;
+      /* Style for responsive table on mobile */
+      @media (max-width: 767px) {
+        .admin-table-container {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .admin-table {
+          min-width: 350px;
+          /* Ensures a minimum width so it doesn't look squashed */
+        }
+
+        .admin-table thead,
+        .admin-table tbody,
+        .admin-table th,
+        .admin-table td,
+        .admin-table tr {
+          display: block;
+        }
+
+        .admin-table thead tr {
+          position: absolute;
+          top: -9999px;
+          left: -9999px;
+        }
+
+        .admin-table tr {
+          border: 1px solid #ddd;
+          margin-bottom: 0.5rem;
+        }
+
+        .admin-table td {
+          border: none;
+          border-bottom: 1px solid #eee;
+          position: relative;
+          padding-left: 50%;
+          text-align: right;
+          font-size: 0.875rem;
+          /* text-sm */
+        }
+
+        .admin-table td:before {
+          position: absolute;
+          top: 0;
+          left: 6px;
+          width: 45%;
+          padding-right: 10px;
+          white-space: nowrap;
+          text-align: left;
+          font-weight: bold;
+          content: attr(data-label);
+        }
+
+        /* Specific styles for each column on mobile */
+        .admin-table td:nth-of-type(1):before {
+          content: "ID";
+        }
+
+        .admin-table td:nth-of-type(2):before {
+          content: "Name";
+        }
+
+        .admin-table td:nth-of-type(3):before {
+          content: "Tasks";
+        }
+
+        .admin-table td:nth-of-type(4):before {
+          content: "Coins";
+        }
+
+        .admin-table td:nth-of-type(5):before {
+          content: "Attendance";
+        }
+
+        .admin-table td:nth-of-type(6):before {
+          content: "Games";
+        }
+
+        .admin-table td:nth-of-type(7):before {
+          content: "EXP.";
+        }
+
+        .admin-table td:nth-of-type(8):before {
+          content: "Level";
+        }
+
+        .admin-table td:nth-of-type(9):before {
+          content: "Actions";
+        }
+
+        /* Adjustments for the + and - controls */
+        .admin-table .flex.items-center {
+          justify-content: flex-end;
+          /* Align controls to the right */
+        }
       }
+    </style>
+  </head>
 
-      .admin-table td {
-        border: none;
-        border-bottom: 1px solid #eee;
-        position: relative;
-        padding-left: 50%;
-        text-align: right;
-        font-size: 0.875rem;
-        /* text-sm */
-      }
+  <body
+    class="bg-gray-100 min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-200"
+  >
+    <div id="root" class="w-full flex items-center justify-center"></div>
 
-      .admin-table td:before {
-        position: absolute;
-        top: 0;
-        left: 6px;
-        width: 45%;
-        padding-right: 10px;
-        white-space: nowrap;
-        text-align: left;
-        font-weight: bold;
-        content: attr(data-label);
-      }
+    <script type="text/babel">
+      const BACKEND_BASE_URL = window.location.origin;
+      // const BACKEND_BASE_URL = 'http://localhost:3000'; // Uncomment for local testing
 
-      /* Specific styles for each column on mobile */
-      .admin-table td:nth-of-type(1):before {
-        content: "ID";
-      }
+      const LoginScreen = ({
+        studentId,
+        setStudentId,
+        password,
+        setPassword,
+        handleLogin,
+        setShowRegister,
+        setShowReset,
+        showCodeField,
+        resetId,
+        setResetId,
+        resetCode,
+        setResetCode,
+        resetPass,
+        setResetPass,
+        handleSendResetCode,
+        handleUpdatePassword,
+        selectedCareer,
+        setSelectedCareer,
+        setShowAdminLoginModal,
+      }) => {
+        // Configuración de imagen lateral según el grupo
+        let sideImage = "/img/side-image.jpg";
+        if (selectedCareer === "Diseno de la Comunicacion")
+          sideImage = "/img/comuni.png";
+        if (selectedCareer === "POO") sideImage = "/img/poo-side.jpg"; // Imagen opcional para POO
 
-      .admin-table td:nth-of-type(2):before {
-        content: "Name";
-      }
+        // Configuración de logo central según el grupo
+        let centerLogo = "logo.png";
+        if (selectedCareer === "Diseno de la Comunicacion")
+          centerLogo = "/img/Com.png";
+        if (selectedCareer === "POO") centerLogo = "/img/poo-logo.png"; // Logo opcional para POO
 
-      .admin-table td:nth-of-type(3):before {
-        content: "Tasks";
-      }
+        return (
+          <>
+            <div className="flex flex-col md:flex-row w-screen h-screen">
+              <div
+                className="hidden md:block md:w-1/2 bg-cover bg-center"
+                style={{ backgroundImage: `url('${sideImage}')` }}
+              ></div>
+              <div className="w-full md:w-1/2 flex items-center justify-center bg-white p-8">
+                <div className="w-full max-w-md px-6 py-8 text-center">
+                  <img
+                    src={centerLogo}
+                    alt="Logo"
+                    className="mx-auto w-32 h-32 mb-4"
+                  />
+                  <h2 className="text-3xl font-bold mb-4 text-gray-800">
+                    {selectedCareer}
+                  </h2>
 
-      .admin-table td:nth-of-type(4):before {
-        content: "Coins";
-      }
+                  <select
+                    className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                    value={selectedCareer}
+                    onChange={(e) => setSelectedCareer(e.target.value)}
+                  >
+                    <option value="Técnicas Avanzadas de Representación">
+                      Técnicas Avanzadas de Representación
+                    </option>
+                    <option value="Analisis de Datos">Analisis de Datos</option>
+                    <option value="Interfaces Hombre-Máquina">
+                      Interfaces Hombre-Máquina
+                    </option>
+                  </select>
 
-      .admin-table td:nth-of-type(5):before {
-        content: "Attendance";
-      }
+                  <input
+                    className="w-full p-3 mb-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                    placeholder="Student ID"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
+                  />
+                  <input
+                    type="password"
+                    className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold"
+                    onClick={handleLogin}
+                  >
+                    Log in
+                  </button>
 
-      .admin-table td:nth-of-type(6):before {
-        content: "Games";
-      }
-
-      .admin-table td:nth-of-type(7):before {
-        content: "EXP.";
-      }
-
-      .admin-table td:nth-of-type(8):before {
-        content: "Level";
-      }
-
-      .admin-table td:nth-of-type(9):before {
-        content: "Actions";
-      }
-
-      /* Adjustments for the + and - controls */
-      .admin-table .flex.items-center {
-        justify-content: flex-end;
-        /* Align controls to the right */
-      }
-    }
-  </style>
-</head>
-
-<body class="bg-gray-100 min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-200">
-  <div id="root" class="w-full flex items-center justify-center"></div>
-
-  <script type="text/babel">
-    const BACKEND_BASE_URL = window.location.origin;
-    // const BACKEND_BASE_URL = 'http://localhost:3000'; // Uncomment for local testing
-
-    const LoginScreen = ({
-      studentId, setStudentId,
-      password, setPassword,
-      handleLogin,
-      setShowRegister,
-      setShowReset,
-      showCodeField,
-      resetId, setResetId,
-      resetCode, setResetCode,
-      resetPass, setResetPass,
-      handleSendResetCode,
-      handleUpdatePassword,
-      selectedCareer, setSelectedCareer,
-      setShowAdminLoginModal
-    }) => {
-      // Configuración de imagen lateral según el grupo
-      let sideImage = '/img/side-image.jpg';
-      if (selectedCareer === 'Diseno de la Comunicacion') sideImage = '/img/comuni.png';
-      if (selectedCareer === 'POO') sideImage = '/img/poo-side.jpg'; // Imagen opcional para POO
-
-      // Configuración de logo central según el grupo
-      let centerLogo = "logo.png";
-      if (selectedCareer === 'Diseno de la Comunicacion') centerLogo = "/img/Com.png";
-      if (selectedCareer === 'POO') centerLogo = "/img/poo-logo.png"; // Logo opcional para POO
-
-      return (
-        <>
-          <div className="flex flex-col md:flex-row w-screen h-screen">
-            <div className="hidden md:block md:w-1/2 bg-cover bg-center" style={{ backgroundImage: `url('${sideImage}')` }}></div>
-            <div className="w-full md:w-1/2 flex items-center justify-center bg-white p-8">
-              <div className="w-full max-w-md px-6 py-8 text-center">
-                <img src={centerLogo} alt="Logo" className="mx-auto w-32 h-32 mb-4" />
-                <h2 className="text-3xl font-bold mb-4 text-gray-800">
-                  {selectedCareer}
-                </h2>
-
-                <select
-                  className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
-                  value={selectedCareer}
-                  onChange={(e) => setSelectedCareer(e.target.value)}
-                >
-                  <option value="Técnicas Avanzadas de Representación">Técnicas Avanzadas de Representación</option>
-                  <option value="Analisis de Datos">Analisis de Datos</option>
-                  <option value="Interfaces Hombre-Máquina">Interfaces Hombre-Máquina</option>
-                </select>
-
-                <input className="w-full p-3 mb-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Student ID"
-                  value={studentId} onChange={(e) => setStudentId(e.target.value)} />
-                <input type="password" className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Password"
-                  value={password} onChange={(e) => setPassword(e.target.value)} />
-                <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold"
-                  onClick={handleLogin}>Log in</button>
-
-                <div className="text-sm mt-6">
-                  <button onClick={() => setShowRegister(true)} className="text-purple-600 hover:underline mr-4 transition-colors duration-300">Sign up</button>
-                  <button onClick={() => setShowReset(true)} className="text-red-500 hover:underline transition-colors duration-300">Forgot your password?</button>
-                  <button onClick={() => setShowAdminLoginModal(true)} className="text-blue-500 hover:underline ml-4 transition-colors duration-300">Administrator</button>
+                  <div className="text-sm mt-6">
+                    <button
+                      onClick={() => setShowRegister(true)}
+                      className="text-purple-600 hover:underline mr-4 transition-colors duration-300"
+                    >
+                      Sign up
+                    </button>
+                    <button
+                      onClick={() => setShowReset(true)}
+                      className="text-red-500 hover:underline transition-colors duration-300"
+                    >
+                      Forgot your password?
+                    </button>
+                    <button
+                      onClick={() => setShowAdminLoginModal(true)}
+                      className="text-blue-500 hover:underline ml-4 transition-colors duration-300"
+                    >
+                      Administrator
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </>
-      );
-    };
-
-    const AdminLoginModal = ({ show, onClose, onAdminLoginSuccess, selectedCareer }) => {
-      const [username, setUsername] = React.useState('');
-      const [password, setPassword] = React.useState('');
-
-      const handleAdminLogin = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/admin-login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const data = await response.json();
-        if (data.success) {
-          alert(data.message);
-          onAdminLoginSuccess(selectedCareer);
-          onClose();
-        } else {
-          alert(data.error);
-        }
-      };
-
-      if (!show) return null;
-
-      return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
-            <h2 className="text-2xl font-bold text-center text-gray-800">Administrator Access</h2>
-            <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-            <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button className="bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 w-full font-semibold" onClick={handleAdminLogin}>Log in (Admin)</button>
-            <button className="text-sm text-gray-500 hover:underline mt-2 transition-colors duration-300" onClick={onClose}>Cancel</button>
-          </div>
-        </div>
-      );
-    };
-
-    const AdminDashboard = ({ show, onClose, studentsData, updateStudentData, selectedCareer, calculateLevel, onRefreshStudents }) => {
-      if (!show) return null;
-
-      const [editableStudents, setEditableStudents] = React.useState(studentsData || []);
-
-      React.useEffect(() => {
-        setEditableStudents(studentsData || []);
-      }, [studentsData]);
-
-      const handleFieldChange = (index, field, value) => {
-        const updatedStudents = [...editableStudents];
-        updatedStudents[index] = { ...updatedStudents[index], [field]: value };
-        setEditableStudents(updatedStudents);
-      };
-
-      const handleUpdateClick = async (student) => {
-        const { id, rowIndex, tareas, monedas, asistencias, games, exp } = student;
-        const response = await fetch(`${BACKEND_BASE_URL}/api/admin/update-student-data`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, career: selectedCareer, rowIndex, tareas, monedas, asistencias, games, exp }),
-        });
-        const data = await response.json();
-        if (data.success) {
-          alert(`Data for ${id} updated successfully.`);
-          if (onRefreshStudents) {
-            await onRefreshStudents(selectedCareer);
-          }
-        } else {
-          alert(data.error);
-        }
-      };
-
-      return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
-          <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-2xl w-full max-w-5xl mx-auto transform transition-transform duration-300 scale-95 hover:scale-100 h-5/6 flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-800">Administrator Panel - {selectedCareer}</h3>
-              <button onClick={onClose} className="text-red-500 text-xl font-bold">X</button>
-            </div>
-            {/* Responsive table container */}
-            <div className="flex-grow overflow-y-auto admin-table-container">
-              <table className="w-full text-left table-auto border-collapse admin-table">
-                <thead>
-                  <tr className="bg-gray-200 text-gray-700 font-semibold sticky top-0">
-                    <th className="p-2 border text-sm">ID</th>
-                    <th className="p-2 border text-sm">Name</th>
-                    <th className="p-2 border text-sm w-[100px]">Tasks</th> {/* Fixed width for mobile */}
-                    <th className="p-2 border text-sm w-[100px]">Coins</th> {/* Fixed width for mobile */}
-                    <th className="p-2 border text-sm w-[100px]">Attendance</th> {/* Fixed width for mobile */}
-                    <th className="p-2 border text-sm w-[100px]">Games</th>
-                    <th className="p-2 border text-sm w-[80px]">EXP.</th> {/* Fixed width for mobile */}
-                    <th className="p-2 border text-sm w-[80px]">Level</th> {/* Fixed width for mobile */}
-                    <th className="p-2 border text-sm w-[120px]">Actions</th> {/* Fixed width for mobile */}
-                  </tr>
-                </thead>
-                <tbody>
-                  {editableStudents.map((student, index) => (
-                    <tr key={student.id} className="border-b hover:bg-gray-50">
-                      <td className="p-2 border text-sm" data-label="ID">{student.id}</td>
-                      <td className="p-2 border text-sm" data-label="Name">{student.name}</td>
-                      <td className="p-2 border" data-label="Tasks">
-                        <div className="flex items-center justify-end md:justify-center">
-                          <button onClick={() => handleFieldChange(index, 'tareas', student.tareas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.tareas}</span>
-                          <button onClick={() => handleFieldChange(index, 'tareas', student.tareas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
-                        </div>
-                      </td>
-                      <td className="p-2 border" data-label="Coins">
-                        <div className="flex items-center justify-end md:justify-center">
-                          <button onClick={() => handleFieldChange(index, 'monedas', student.monedas - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.monedas}</span>
-                          <button onClick={() => handleFieldChange(index, 'monedas', student.monedas + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
-                        </div>
-                      </td>
-                      <td className="p-2 border" data-label="Attendance">
-                        <div className="flex items-center justify-end md:justify-center">
-                          <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">{student.asistencias}</span>
-                          <button onClick={() => handleFieldChange(index, 'asistencias', student.asistencias + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
-                        </div>
-                      </td>
-                      <td className="p-2 border text-center" data-label="Games">
-                        <div className="flex items-center justify-end md:justify-center">
-                          <button onClick={() => handleFieldChange(index, 'games', student.games - 1)} className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">-</button>
-                          <span className="w-full text-center py-0.5 block text-sm">{student.games}</span>
-                          <button onClick={() => handleFieldChange(index, 'games', student.games + 1)} className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">+</button>
-                        </div>
-                      </td>
-                      <td className="p-2 border text-center" data-label="EXP.">
-                        <span className="w-full text-center py-0.5 block text-sm">{student.exp}</span>
-                      </td>
-                      <td className="p-2 border text-center" data-label="Level">{calculateLevel(student.exp)}</td>
-                      <td className="p-2 border text-center" data-label="Actions">
-                        <button className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600" onClick={() => handleUpdateClick(student)}>Update</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      );
-    };
-
-    const App = () => {
-      const [showLeaderboard, setShowLeaderboard] = React.useState(false);
-      const [leaderboardData, setLeaderboardData] = React.useState([]);
-
-      const fetchLeaderboard = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/leaderboard?career=${selectedCareer}`);
-        const data = await response.json();
-        if (data.success) {
-          setLeaderboardData(data.leaderboard);
-          setShowLeaderboard(true);
-        }
-      };
-
-      const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-      const [studentId, setStudentId] = React.useState('');
-      const [password, setPassword] = React.useState('');
-      const [studentData, setStudentData] = React.useState(null);
-      const [badges, setBadges] = React.useState([]);
-      const [cart, setCart] = React.useState({});
-      const [showCartModal, setShowCartModal] = React.useState(false);
-      const [showRegister, setShowRegister] = React.useState(false);
-      const [showReset, setShowReset] = React.useState(false);
-      const [showCodeField, setShowCodeField] = React.useState(false);
-      const [resetId, setResetId] = React.useState('');
-      const [resetCode, setResetCode] = React.useState('');
-      const [resetPass, setResetPass] = React.useState('');
-      const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
-      const [selectedCareer, setSelectedCareer] = React.useState('Técnicas Avanzadas de Representación');
-      const [registerCareer, setRegisterCareer] = React.useState('Técnicas Avanzadas de Representación');
-
-      const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
-      const [showAdminLoginModal, setShowAdminLoginModal] = React.useState(false);
-      const [adminStudentsData, setAdminStudentsData] = React.useState([]);
-      const [showAdminDashboard, setShowAdminDashboard] = React.useState(false);
-
-
-      const prevLevelRef = React.useRef(null);
-
-      const levelThresholds = { 0: 0, 1: 10, 2: 25, 3: 50, 4: 75, 5: 100 };
-
-      const calculateLevel = (exp) => {
-        if (exp >= 100) return 5;
-        if (exp >= 75) return 4;
-        if (exp >= 50) return 3;
-        if (exp >= 25) return 2;
-        if (exp >= 10) return 1;
-        return 0;
-      };
-
-      const getLevelProgress = (exp, level) => {
-        const currentLevelExp = levelThresholds[level];
-        const nextLevelExp = levelThresholds[level + 1] === undefined ? 100 : levelThresholds[level + 1];
-        const expInLevel = exp - currentLevelExp;
-        const expForNextLevel = nextLevelExp - currentLevelExp;
-        const percentage = (expInLevel / expForNextLevel) * 100;
-        return {
-          percentage: isNaN(percentage) ? 0 : percentage,
-          currentExp: exp,
-          requiredExp: nextLevelExp
-        };
-      };
-
-      React.useEffect(() => {
-        if (studentData) {
-          const currentLevel = studentData.level;
-          const prevLevel = prevLevelRef.current;
-
-          if (prevLevel !== null && currentLevel > prevLevel) {
-            alert(`Congratulations, you've leveled up!\nPrevious Level: ${prevLevel}\nCurrent Level: ${currentLevel}`);
-            setShowLevelUpGif(true);
-            setTimeout(() => setShowLevelUpGif(false), 4000);
-          }
-          prevLevelRef.current = currentLevel;
-        }
-      }, [studentData]);
-
-      const handleLogin = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId, password, career: selectedCareer }),
-        });
-        const data = await response.json();
-        if (data.success) {
-          data.student.level = calculateLevel(data.student.exp);
-          setStudentData(data.student);
-          setIsLoggedIn(true);
-          prevLevelRef.current = data.student.level;
-
-          if (data.levelUpOccurred) {
-            setShowLevelUpGif(true);
-            setTimeout(() => setShowLevelUpGif(false), 4000);
-          }
-        } else {
-          alert(data.error);
-        }
-      };
-
-      const handleLogout = () => {
-        setIsLoggedIn(false);
-        setStudentId('');
-        setPassword('');
-        setStudentData(null);
-        setBadges([]);
-        setCart({});
-        setShowCartModal(false);
-        setShowRegister(false);
-        setShowReset(false);
-        setShowCodeField(false);
-        setResetId('');
-        setResetCode('');
-        setResetPass('');
-        setShowLevelUpGif(false);
-        prevLevelRef.current = null;
-        setSelectedCareer('Técnicas Avanzadas de Representación');
-        setRegisterCareer('Técnicas Avanzadas de Representación');
-        setIsAdminLoggedIn(false);
-        setShowAdminLoginModal(false);
-        setAdminStudentsData([]);
-        setShowAdminDashboard(false);
-      };
-
-      const fetchBadges = async () => {
-        const response = await fetch(`${BACKEND_BASE_URL}/api/badges?career=${selectedCareer}`);
-        const data = await response.json();
-        setBadges(data.badges || []);
-      };
-
-      const totalCartCost = Object.keys(cart).reduce((total, name) => {
-        const badge = badges.find(b => b.name === name);
-        return total + ((badge?.cost || 0) * (cart[name] || 0));
-      }, 0);
-
-      const addToCart = (name, available) => {
-        const currentQuantity = cart[name] || 0;
-        const badge = badges.find(b => b.name === name);
-        const newTotal = totalCartCost + (badge?.cost || 0);
-        if (studentData && currentQuantity < available && newTotal <= parseInt(studentData.monedas)) {
-          setCart(prev => ({ ...prev, [name]: currentQuantity + 1 }));
-        }
-      };
-
-      const removeFromCart = (name) => {
-        setCart(prev => {
-          const qty = prev[name] || 0;
-          if (qty <= 1) {
-            const { [name]: _, ...rest } = prev;
-            return rest;
-          }
-          return { ...prev, [name]: qty - 1 };
-        });
-      };
-
-      const handlePurchase = async () => {
-        if (!studentData) return;
-
-        const items = Object.keys(cart).map(name => {
-          const badge = badges.find(b => b.name === name);
-          return {
-            itemName: name,
-            quantityToBuy: cart[name],
-            itemCost: badge?.cost || 0,
-          };
-        });
-
-        for (const item of items) {
-          const response = await fetch(`${BACKEND_BASE_URL}/api/purchase`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              studentId: studentData.id,
-              studentRowIndex: studentData.rowIndex,
-              ...item,
-              career: selectedCareer
-            }),
-          });
-          const data = await response.json();
-
-          setStudentData(prev => {
-            const updatedStudent = {
-              ...prev,
-              monedas: data.newCoins.toString(),
-              purchases: {
-                ...prev.purchases,
-                [item.itemName]: (prev.purchases[item.itemName] || 0) + item.quantityToBuy
-              }
-            };
-            updatedStudent.level = calculateLevel(updatedStudent.exp);
-            return updatedStudent;
-          });
-
-          setBadges(prevBadges => prevBadges.map(b =>
-            b.name === item.itemName ? { ...b, quantity: data.newBadgeQuantity } : b
-          ));
-        }
-        setCart({});
-        setShowCartModal(false);
-      };
-
-      const handleSendResetCode = async () => {
-        if (!resetId) return alert("Enter your ID.");
-        try {
-          const res = await fetch(`${BACKEND_BASE_URL}/api/send-reset-code`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: resetId, career: selectedCareer })
-          });
-          const data = await res.json();
-          alert(data.message || data.error);
-          if (res.ok) setShowCodeField(true);
-        } catch (err) {
-          console.error(err);
-          alert("Error sending code.");
-        }
-      };
-
-      const handleUpdatePassword = async () => {
-        const regex = /^[A-Z0-9]{4}$/;
-        if (!regex.test(resetPass)) {
-          alert("Invalid password. Use only 4 uppercase letters/numbers.");
-          return;
-        }
-        try {
-          const res = await fetch(`${BACKEND_BASE_URL}/api/reset-password-with-code`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: resetId, code: resetCode, password: resetPass, career: selectedCareer })
-          });
-          const data = await res.json();
-          alert(data.message || data.error);
-          if (res.ok) {
-            setShowReset(false);
-            setShowCodeField(false);
-            setResetId('');
-            setResetCode('');
-            setResetPass('');
-          }
-        } catch (err) {
-          console.error(err);
-          alert("Error updating password.");
-        }
-      };
-
-      const progress = studentData ? getLevelProgress(studentData.exp, studentData.level) : { percentage: 0, currentExp: 0, requiredExp: 10 };
-
-      const handleAdminLoginSuccess = async (career) => {
-        setIsAdminLoggedIn(true);
-        await fetchAdminStudentsData(career);
-        setShowAdminDashboard(true);
-        setShowAdminLoginModal(false);
-      };
-
-      const fetchAdminStudentsData = async (career) => {
-        try {
-          const response = await fetch(`${BACKEND_BASE_URL}/api/admin/students?career=${career}`);
-          const data = await response.json();
-          if (data.success) {
-            setAdminStudentsData(data.students);
-          } else {
-            alert(data.error);
-            setAdminStudentsData([]);
-          }
-        } catch (error) {
-          console.error('Error fetching admin student data:', error);
-          alert('Error loading student data for administrator.');
-          setAdminStudentsData([]);
-        }
-      };
-
-      const updateStudentDataInAdminDashboard = (studentIdToUpdate, newLevel) => {
-        setAdminStudentsData(prevStudents =>
-          prevStudents.map(student =>
-            student.id === studentIdToUpdate
-              ? { ...student, level: newLevel, exp: student.exp }
-              : student
-          )
+          </>
         );
       };
 
-      return (
-        <>
-          {isAdminLoggedIn ? (
-            null
-          ) : isLoggedIn && studentData ? (
-            <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
-              <div className="bg-orange-500 text-white text-center p-3">
-                <h2 className="text-2xl font-bold">Hello, {studentData.name}</h2>
-              </div>
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                <div className="col-span-1 flex justify-center items-center">
-                  <img
-                    src={`/avatars/${studentData.id}${studentData.level}.png`}
-                    onError={(e) => {
-                      console.log(studentData.id);
-                      console.log(studentData.level);
-                      e.target.onerror = null;
-                      e.target.src = studentData.sexo === 'Hombre'
-                        ? `/avatars/DefaultH${studentData.level}.png`
-                        : `/avatars/DefaultF${studentData.level}.png`;
-                    }}
-                    alt="avatar"
-                    className="w-full h-auto max-w-60 max-h-90"
-                  />
-                </div>
+      const AdminLoginModal = ({
+        show,
+        onClose,
+        onAdminLoginSuccess,
+        selectedCareer,
+      }) => {
+        const [username, setUsername] = React.useState("");
+        const [password, setPassword] = React.useState("");
 
-                <div className="col-span-1 flex flex-col justify-center items-center text-center space-y-4">
-                  <div className="w-full max-w-xs p-3 text-center">
-                    <div className="text-5xl font-extrabold text-orange-500">Level {studentData.level}</div>
-                  </div>
+        const handleAdminLogin = async () => {
+          const response = await fetch(`${BACKEND_BASE_URL}/api/admin-login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+          });
+          const data = await response.json();
+          if (data.success) {
+            alert(data.message);
+            onAdminLoginSuccess(selectedCareer);
+            onClose();
+          } else {
+            alert(data.error);
+          }
+        };
 
-                  <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow">
-                    <div className="flex justify-between items-center text-md font-semibold text-gray-700">
-                      <span>Coins</span><span className="font-bold text-yellow-500">{studentData.monedas}</span>
-                    </div>
-                    <div className="mt-2">
-                      <div className="flex justify-between items-center text-xs font-semibold text-gray-700 mb-1">
-                        <span>EXP.</span><span>{progress.currentExp}/{progress.requiredExp}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div className="bg-orange-500 h-2.5 rounded-full" style={{ width: `${progress.percentage}%` }}></div>
-                      </div>
-                    </div>
-                  </div>
+        if (!show) return null;
 
-                  <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span>Activities</span><span className="font-bold">{studentData.tareas}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Assists</span><span className="font-bold">{studentData.asistencias}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Games & Challenges</span><span className="font-bold">{studentData.games || 0}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Badges</span>
-                      <span className="font-bold">{Object.keys(studentData.purchases || {}).length}</span>
-                    </div>
-                    <div className="text-[10px] font-light text-gray-600 mt-1">
-                      {Object.entries(studentData.purchases || {}).map(([name, qty], idx) => (
-                        <div key={idx}>{name} x{qty}</div>
-                      ))}
-                    </div>
-                  </div>
-                  {/* New Comments Section */}
-                  <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
-                    <p className="font-bold text-lg">Comments</p>
-                    <div className="w-full bg-gray-50 p-2 rounded-lg border border-gray-200 overflow-y-auto max-h-24 text-sm text-left font-normal whitespace-pre-wrap">
-                      {studentData.comments || 'No comments.'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="px-8 pb-8 flex flex-wrap justify-center w-full gap-4">
-
-                <button className="bg-blue-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 font-semibold" onClick={fetchLeaderboard}>
-                  Leaderboard
-                </button>
-
-                <button className="bg-orange-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 font-semibold" onClick={() => { fetchBadges(); setShowCartModal(true); }}>
-                  Store
-                </button>
-                <button onClick={handleLogout} className="bg-purple-600 text-white px-10 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 font-semibold">
-                  Log Out
-                </button>
-              </div>
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+            <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+              <h2 className="text-2xl font-bold text-center text-gray-800">
+                Administrator Access
+              </h2>
+              <input
+                className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <input
+                type="password"
+                className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                className="bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 w-full font-semibold"
+                onClick={handleAdminLogin}
+              >
+                Log in (Admin)
+              </button>
+              <button
+                className="text-sm text-gray-500 hover:underline mt-2 transition-colors duration-300"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
             </div>
-          ) : (
-            <LoginScreen
-              studentId={studentId}
-              setStudentId={setStudentId}
-              password={password}
-              setPassword={setPassword}
-              handleLogin={handleLogin}
-              setShowRegister={setShowRegister}
-              setShowReset={setShowReset}
-              showCodeField={showCodeField}
-              setShowCodeField={setShowCodeField}
-              resetId={resetId}
-              setResetId={setResetId}
-              resetCode={resetCode}
-              setResetCode={setResetCode}
-              resetPass={resetPass}
-              setResetPass={setResetPass}
-              handleSendResetCode={handleSendResetCode}
-              handleUpdatePassword={handleUpdatePassword}
-              selectedCareer={selectedCareer}
-              setSelectedCareer={setSelectedCareer}
-              setShowAdminLoginModal={setShowAdminLoginModal}
-            />
-          )}
+          </div>
+        );
+      };
 
-          {showCartModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
-              <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform transition-transform duration-300">
-                <h3 className="text-2xl font-bold mb-4 text-gray-800">Badges Store</h3>
-                <p className="mb-4 text-lg">Available coins: <strong className="text-yellow-500">{studentData.monedas}</strong></p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-2">
-                  {badges.map((b, i) => (
-                    <div key={i} className="border p-4 rounded-xl flex flex-col items-center text-center transition-shadow duration-300 hover:shadow-lg">
-                      <img src={`/badges/${b.name.toLowerCase().replace(/\s+/g, '_').normalize('NFD').replace(/[^a-zA-Z0-9_]/g, '')}.png`} alt={b.name} className="w-20 h-20 object-contain mb-2" />
-                      <strong className="text-sm font-semibold">{b.name}</strong>
-                      <span className="text-xs text-gray-500">Avail.: {b.quantity}</span>
-                      <span className="text-xs text-gray-500 mb-2">Price: {b.cost}</span>
-                      <div className="flex gap-2 items-center mt-2">
-                        <button className="bg-red-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center" onClick={() => removeFromCart(b.name)}>-</button>
-                        <span className="text-base font-semibold">{cart[b.name] || 0}</span>
-                        <button className="bg-green-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center" onClick={() => addToCart(b.name, b.quantity)}>+</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-6 text-center">
-                  <p className="text-lg">Total to pay: <strong className="text-yellow-500">{totalCartCost}</strong> coins</p>
-                  <button className="bg-orange-500 text-white px-6 py-3 rounded-full mt-4 disabled:opacity-50 transition-all duration-300 font-semibold" disabled={totalCartCost === 0 || totalCartCost > parseInt(studentData.monedas)} onClick={handlePurchase}>
-                    Buy
-                  </button>
-                  <button className="ml-4 bg-gray-400 text-white px-6 py-3 rounded-full mt-4 transition-all duration-300 font-semibold" onClick={() => setShowCartModal(false)}>
-                    Close
-                  </button>
-                </div>
+      const AdminDashboard = ({
+        show,
+        onClose,
+        studentsData,
+        updateStudentData,
+        selectedCareer,
+        calculateLevel,
+        onRefreshStudents,
+      }) => {
+        if (!show) return null;
+
+        const [editableStudents, setEditableStudents] = React.useState(
+          studentsData || [],
+        );
+
+        React.useEffect(() => {
+          setEditableStudents(studentsData || []);
+        }, [studentsData]);
+
+        const handleFieldChange = (index, field, value) => {
+          const updatedStudents = [...editableStudents];
+          updatedStudents[index] = {
+            ...updatedStudents[index],
+            [field]: value,
+          };
+          setEditableStudents(updatedStudents);
+        };
+
+        const handleUpdateClick = async (student) => {
+          const { id, rowIndex, tareas, monedas, asistencias, games, exp } =
+            student;
+          const response = await fetch(
+            `${BACKEND_BASE_URL}/api/admin/update-student-data`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id,
+                career: selectedCareer,
+                rowIndex,
+                tareas,
+                monedas,
+                asistencias,
+                games,
+                exp,
+              }),
+            },
+          );
+          const data = await response.json();
+          if (data.success) {
+            alert(`Data for ${id} updated successfully.`);
+            if (onRefreshStudents) {
+              await onRefreshStudents(selectedCareer);
+            }
+          } else {
+            alert(data.error);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+            <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-2xl w-full max-w-5xl mx-auto transform transition-transform duration-300 scale-95 hover:scale-100 h-5/6 flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                  Administrator Panel - {selectedCareer}
+                </h3>
+                <button
+                  onClick={onClose}
+                  className="text-red-500 text-xl font-bold"
+                >
+                  X
+                </button>
               </div>
-            </div>
-          )}
-
-          {showLevelUpGif && (
-            <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50">
-              <img src="/gifs/levelup.gif" alt="Level Up!" className="w-full h-full object-contain" />
-            </div>
-          )}
-
-          {showLeaderboard && (
-            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-              <div className="bg-white w-full max-w-2xl p-6 rounded-2xl transform transition-transform duration-500 animate-slideIn">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-2xl font-bold text-gray-800">Leaderboard</h3>
-                  <button onClick={() => setShowLeaderboard(false)} className="text-red-500 text-xl font-bold">X</button>
-                </div>
-                <table className="w-full text-left table-auto border-collapse">
+              {/* Responsive table container */}
+              <div className="flex-grow overflow-y-auto admin-table-container">
+                <table className="w-full text-left table-auto border-collapse admin-table">
                   <thead>
-                    <tr className="text-gray-700 font-semibold border-b">
-                      <th className="p-2">Ranking</th>
-                      <th className="p-2">ID</th>
-                      <th className="p-2">Badges</th>
-                      <th className="p-2">Level</th>
+                    <tr className="bg-gray-200 text-gray-700 font-semibold sticky top-0">
+                      <th className="p-2 border text-sm">ID</th>
+                      <th className="p-2 border text-sm">Name</th>
+                      <th className="p-2 border text-sm w-[100px]">
+                        Tasks
+                      </th>{" "}
+                      {/* Fixed width for mobile */}
+                      <th className="p-2 border text-sm w-[100px]">
+                        Coins
+                      </th>{" "}
+                      {/* Fixed width for mobile */}
+                      <th className="p-2 border text-sm w-[100px]">
+                        Attendance
+                      </th>{" "}
+                      {/* Fixed width for mobile */}
+                      <th className="p-2 border text-sm w-[100px]">Games</th>
+                      <th className="p-2 border text-sm w-[80px]">EXP.</th>{" "}
+                      {/* Fixed width for mobile */}
+                      <th className="p-2 border text-sm w-[80px]">
+                        Level
+                      </th>{" "}
+                      {/* Fixed width for mobile */}
+                      <th className="p-2 border text-sm w-[120px]">
+                        Actions
+                      </th>{" "}
+                      {/* Fixed width for mobile */}
                     </tr>
                   </thead>
                   <tbody>
-                    {leaderboardData.map((student, i) => (
-                      <tr key={i} className="border-b">
-                        <td className="p-2">{student.rank}</td>
-                        <td className="p-2">{student.name}</td>
-                        <td className="p-2">{student.badges}</td>
-                        <td className="p-2">{student.level}</td>
+                    {editableStudents.map((student, index) => (
+                      <tr
+                        key={student.id}
+                        className="border-b hover:bg-gray-50"
+                      >
+                        <td className="p-2 border text-sm" data-label="ID">
+                          {student.id}
+                        </td>
+                        <td className="p-2 border text-sm" data-label="Name">
+                          {student.name}
+                        </td>
+                        <td className="p-2 border" data-label="Tasks">
+                          <div className="flex items-center justify-end md:justify-center">
+                            <button
+                              onClick={() =>
+                                handleFieldChange(
+                                  index,
+                                  "tareas",
+                                  student.tareas - 1,
+                                )
+                              }
+                              className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                            >
+                              -
+                            </button>
+                            <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">
+                              {student.tareas}
+                            </span>
+                            <button
+                              onClick={() =>
+                                handleFieldChange(
+                                  index,
+                                  "tareas",
+                                  student.tareas + 1,
+                                )
+                              }
+                              className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td className="p-2 border" data-label="Coins">
+                          <div className="flex items-center justify-end md:justify-center">
+                            <button
+                              onClick={() =>
+                                handleFieldChange(
+                                  index,
+                                  "monedas",
+                                  student.monedas - 1,
+                                )
+                              }
+                              className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                            >
+                              -
+                            </button>
+                            <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">
+                              {student.monedas}
+                            </span>
+                            <button
+                              onClick={() =>
+                                handleFieldChange(
+                                  index,
+                                  "monedas",
+                                  student.monedas + 1,
+                                )
+                              }
+                              className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td className="p-2 border" data-label="Attendance">
+                          <div className="flex items-center justify-end md:justify-center">
+                            <button
+                              onClick={() =>
+                                handleFieldChange(
+                                  index,
+                                  "asistencias",
+                                  student.asistencias - 1,
+                                )
+                              }
+                              className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                            >
+                              -
+                            </button>
+                            <span className="w-10 sm:w-12 text-center mx-1 border-b py-0.5 text-sm">
+                              {student.asistencias}
+                            </span>
+                            <button
+                              onClick={() =>
+                                handleFieldChange(
+                                  index,
+                                  "asistencias",
+                                  student.asistencias + 1,
+                                )
+                              }
+                              className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td
+                          className="p-2 border text-center"
+                          data-label="Games"
+                        >
+                          <div className="flex items-center justify-end md:justify-center">
+                            <button
+                              onClick={() =>
+                                handleFieldChange(
+                                  index,
+                                  "games",
+                                  student.games - 1,
+                                )
+                              }
+                              className="bg-red-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                            >
+                              -
+                            </button>
+                            <span className="w-full text-center py-0.5 block text-sm">
+                              {student.games}
+                            </span>
+                            <button
+                              onClick={() =>
+                                handleFieldChange(
+                                  index,
+                                  "games",
+                                  student.games + 1,
+                                )
+                              }
+                              className="bg-green-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td
+                          className="p-2 border text-center"
+                          data-label="EXP."
+                        >
+                          <span className="w-full text-center py-0.5 block text-sm">
+                            {student.exp}
+                          </span>
+                        </td>
+                        <td
+                          className="p-2 border text-center"
+                          data-label="Level"
+                        >
+                          {calculateLevel(student.exp)}
+                        </td>
+                        <td
+                          className="p-2 border text-center"
+                          data-label="Actions"
+                        >
+                          <button
+                            className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs hover:bg-blue-600"
+                            onClick={() => handleUpdateClick(student)}
+                          >
+                            Update
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
-          )}
+          </div>
+        );
+      };
 
-          {showRegister && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
-                <h2 className="text-2xl font-bold text-gray-800">Sign up</h2>
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Student ID" id="reg-id" />
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Full name" id="reg-name" />
-                <div className="flex items-center justify-around text-gray-700">
-                  <label className="flex items-center"><input type="radio" name="sexo" value="Hombre" defaultChecked className="mr-2" /> Men</label>
-                  <label className="flex items-center"><input type="radio" name="sexo" value="Mujer" className="mr-2" /> Women</label>
+      const App = () => {
+        const [showLeaderboard, setShowLeaderboard] = React.useState(false);
+        const [leaderboardData, setLeaderboardData] = React.useState([]);
+
+        const fetchLeaderboard = async () => {
+          const response = await fetch(
+            `${BACKEND_BASE_URL}/api/leaderboard?career=${selectedCareer}`,
+          );
+          const data = await response.json();
+          if (data.success) {
+            setLeaderboardData(data.leaderboard);
+            setShowLeaderboard(true);
+          }
+        };
+
+        const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+        const [studentId, setStudentId] = React.useState("");
+        const [password, setPassword] = React.useState("");
+        const [studentData, setStudentData] = React.useState(null);
+        const [badges, setBadges] = React.useState([]);
+        const [cart, setCart] = React.useState({});
+        const [showCartModal, setShowCartModal] = React.useState(false);
+        const [showRegister, setShowRegister] = React.useState(false);
+        const [showReset, setShowReset] = React.useState(false);
+        const [showCodeField, setShowCodeField] = React.useState(false);
+        const [resetId, setResetId] = React.useState("");
+        const [resetCode, setResetCode] = React.useState("");
+        const [resetPass, setResetPass] = React.useState("");
+        const [showLevelUpGif, setShowLevelUpGif] = React.useState(false);
+        const [selectedCareer, setSelectedCareer] = React.useState(
+          "Técnicas Avanzadas de Representación",
+        );
+        const [registerCareer, setRegisterCareer] = React.useState(
+          "Técnicas Avanzadas de Representación",
+        );
+
+        const [isAdminLoggedIn, setIsAdminLoggedIn] = React.useState(false);
+        const [showAdminLoginModal, setShowAdminLoginModal] =
+          React.useState(false);
+        const [adminStudentsData, setAdminStudentsData] = React.useState([]);
+        const [showAdminDashboard, setShowAdminDashboard] =
+          React.useState(false);
+
+        const prevLevelRef = React.useRef(null);
+
+        const levelThresholds = { 0: 0, 1: 10, 2: 25, 3: 50, 4: 75, 5: 100 };
+
+        const calculateLevel = (exp) => {
+          if (exp >= 100) return 5;
+          if (exp >= 75) return 4;
+          if (exp >= 50) return 3;
+          if (exp >= 25) return 2;
+          if (exp >= 10) return 1;
+          return 0;
+        };
+
+        const getLevelProgress = (exp, level) => {
+          const currentLevelExp = levelThresholds[level];
+          const nextLevelExp =
+            levelThresholds[level + 1] === undefined
+              ? 100
+              : levelThresholds[level + 1];
+          const expInLevel = exp - currentLevelExp;
+          const expForNextLevel = nextLevelExp - currentLevelExp;
+          const percentage = (expInLevel / expForNextLevel) * 100;
+          return {
+            percentage: isNaN(percentage) ? 0 : percentage,
+            currentExp: exp,
+            requiredExp: nextLevelExp,
+          };
+        };
+
+        React.useEffect(() => {
+          if (studentData) {
+            const currentLevel = studentData.level;
+            const prevLevel = prevLevelRef.current;
+
+            if (prevLevel !== null && currentLevel > prevLevel) {
+              alert(
+                `Congratulations, you've leveled up!\nPrevious Level: ${prevLevel}\nCurrent Level: ${currentLevel}`,
+              );
+              setShowLevelUpGif(true);
+              setTimeout(() => setShowLevelUpGif(false), 4000);
+            }
+            prevLevelRef.current = currentLevel;
+          }
+        }, [studentData]);
+
+        const handleLogin = async () => {
+          const response = await fetch(`${BACKEND_BASE_URL}/api/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              studentId,
+              password,
+              career: selectedCareer,
+            }),
+          });
+          const data = await response.json();
+          if (data.success) {
+            data.student.level = calculateLevel(data.student.exp);
+            setStudentData(data.student);
+            setIsLoggedIn(true);
+            prevLevelRef.current = data.student.level;
+
+            if (data.levelUpOccurred) {
+              setShowLevelUpGif(true);
+              setTimeout(() => setShowLevelUpGif(false), 4000);
+            }
+          } else {
+            alert(data.error);
+          }
+        };
+
+        const handleLogout = () => {
+          setIsLoggedIn(false);
+          setStudentId("");
+          setPassword("");
+          setStudentData(null);
+          setBadges([]);
+          setCart({});
+          setShowCartModal(false);
+          setShowRegister(false);
+          setShowReset(false);
+          setShowCodeField(false);
+          setResetId("");
+          setResetCode("");
+          setResetPass("");
+          setShowLevelUpGif(false);
+          prevLevelRef.current = null;
+          setSelectedCareer("Técnicas Avanzadas de Representación");
+          setRegisterCareer("Técnicas Avanzadas de Representación");
+          setIsAdminLoggedIn(false);
+          setShowAdminLoginModal(false);
+          setAdminStudentsData([]);
+          setShowAdminDashboard(false);
+        };
+
+        const fetchBadges = async () => {
+          const response = await fetch(
+            `${BACKEND_BASE_URL}/api/badges?career=${selectedCareer}`,
+          );
+          const data = await response.json();
+          setBadges(data.badges || []);
+        };
+
+        const totalCartCost = Object.keys(cart).reduce((total, name) => {
+          const badge = badges.find((b) => b.name === name);
+          return total + (badge?.cost || 0) * (cart[name] || 0);
+        }, 0);
+
+        const addToCart = (name, available) => {
+          const currentQuantity = cart[name] || 0;
+          const badge = badges.find((b) => b.name === name);
+          const newTotal = totalCartCost + (badge?.cost || 0);
+          if (
+            studentData &&
+            currentQuantity < available &&
+            newTotal <= parseInt(studentData.monedas)
+          ) {
+            setCart((prev) => ({ ...prev, [name]: currentQuantity + 1 }));
+          }
+        };
+
+        const removeFromCart = (name) => {
+          setCart((prev) => {
+            const qty = prev[name] || 0;
+            if (qty <= 1) {
+              const { [name]: _, ...rest } = prev;
+              return rest;
+            }
+            return { ...prev, [name]: qty - 1 };
+          });
+        };
+
+        const handlePurchase = async () => {
+          if (!studentData) return;
+
+          const items = Object.keys(cart).map((name) => {
+            const badge = badges.find((b) => b.name === name);
+            return {
+              itemName: name,
+              quantityToBuy: cart[name],
+              itemCost: badge?.cost || 0,
+            };
+          });
+
+          for (const item of items) {
+            const response = await fetch(`${BACKEND_BASE_URL}/api/purchase`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                studentId: studentData.id,
+                studentRowIndex: studentData.rowIndex,
+                ...item,
+                career: selectedCareer,
+              }),
+            });
+            const data = await response.json();
+
+            setStudentData((prev) => {
+              const updatedStudent = {
+                ...prev,
+                monedas: data.newCoins.toString(),
+                purchases: {
+                  ...prev.purchases,
+                  [item.itemName]:
+                    (prev.purchases[item.itemName] || 0) + item.quantityToBuy,
+                },
+              };
+              updatedStudent.level = calculateLevel(updatedStudent.exp);
+              return updatedStudent;
+            });
+
+            setBadges((prevBadges) =>
+              prevBadges.map((b) =>
+                b.name === item.itemName
+                  ? { ...b, quantity: data.newBadgeQuantity }
+                  : b,
+              ),
+            );
+          }
+          setCart({});
+          setShowCartModal(false);
+        };
+
+        const handleSendResetCode = async () => {
+          if (!resetId) return alert("Enter your ID.");
+          try {
+            const res = await fetch(`${BACKEND_BASE_URL}/api/send-reset-code`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: resetId, career: selectedCareer }),
+            });
+            const data = await res.json();
+            alert(data.message || data.error);
+            if (res.ok) setShowCodeField(true);
+          } catch (err) {
+            console.error(err);
+            alert("Error sending code.");
+          }
+        };
+
+        const handleUpdatePassword = async () => {
+          const regex = /^[A-Z0-9]{4}$/;
+          if (!regex.test(resetPass)) {
+            alert("Invalid password. Use only 4 uppercase letters/numbers.");
+            return;
+          }
+          try {
+            const res = await fetch(
+              `${BACKEND_BASE_URL}/api/reset-password-with-code`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: resetId,
+                  code: resetCode,
+                  password: resetPass,
+                  career: selectedCareer,
+                }),
+              },
+            );
+            const data = await res.json();
+            alert(data.message || data.error);
+            if (res.ok) {
+              setShowReset(false);
+              setShowCodeField(false);
+              setResetId("");
+              setResetCode("");
+              setResetPass("");
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Error updating password.");
+          }
+        };
+
+        const progress = studentData
+          ? getLevelProgress(studentData.exp, studentData.level)
+          : { percentage: 0, currentExp: 0, requiredExp: 10 };
+
+        const handleAdminLoginSuccess = async (career) => {
+          setIsAdminLoggedIn(true);
+          await fetchAdminStudentsData(career);
+          setShowAdminDashboard(true);
+          setShowAdminLoginModal(false);
+        };
+
+        const fetchAdminStudentsData = async (career) => {
+          try {
+            const response = await fetch(
+              `${BACKEND_BASE_URL}/api/admin/students?career=${career}`,
+            );
+            const data = await response.json();
+            if (data.success) {
+              setAdminStudentsData(data.students);
+            } else {
+              alert(data.error);
+              setAdminStudentsData([]);
+            }
+          } catch (error) {
+            console.error("Error fetching admin student data:", error);
+            alert("Error loading student data for administrator.");
+            setAdminStudentsData([]);
+          }
+        };
+
+        const updateStudentDataInAdminDashboard = (
+          studentIdToUpdate,
+          newLevel,
+        ) => {
+          setAdminStudentsData((prevStudents) =>
+            prevStudents.map((student) =>
+              student.id === studentIdToUpdate
+                ? { ...student, level: newLevel, exp: student.exp }
+                : student,
+            ),
+          );
+        };
+
+        return (
+          <>
+            {isAdminLoggedIn ? null : isLoggedIn && studentData ? (
+              <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+                <div className="bg-orange-500 text-white text-center p-3">
+                  <h2 className="text-2xl font-bold">
+                    Hello, {studentData.name}
+                  </h2>
                 </div>
+                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  <div className="col-span-1 flex justify-center items-center">
+                    <img
+                      src={`/avatars/${studentData.id}${studentData.level}.png`}
+                      onError={(e) => {
+                        console.log(studentData.id);
+                        console.log(studentData.level);
+                        e.target.onerror = null;
+                        e.target.src =
+                          studentData.sexo === "Hombre"
+                            ? `/avatars/DefaultH${studentData.level}.png`
+                            : `/avatars/DefaultF${studentData.level}.png`;
+                      }}
+                      alt="avatar"
+                      className="w-full h-auto max-w-60 max-h-90"
+                    />
+                  </div>
 
-                <select
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
-                  value={registerCareer}
-                  onChange={(e) => setRegisterCareer(e.target.value)}
-                >
-                  <option value="Técnicas Avanzadas de Representación">Técnicas Avanzadas de Representación</option>
-                  <option value="Analisis de Datos">Analisis de Datos</option>
-                  <option value="Interfaces Hombre-Máquina">Interfaces Hombre-Máquina</option>
-                </select>
+                  <div className="col-span-1 flex flex-col justify-center items-center text-center space-y-4">
+                    <div className="w-full max-w-xs p-3 text-center">
+                      <div className="text-5xl font-extrabold text-orange-500">
+                        Level {studentData.level}
+                      </div>
+                    </div>
 
-                <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Password (2 uppercase letters and 2 numbers)" id="reg-pass" />
-                <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold" onClick={async () => {
-                  const sexo = document.querySelector('input[name="sexo"]:checked').value;
-                  const res = await fetch(`${BACKEND_BASE_URL}/api/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      id: document.getElementById('reg-id').value,
-                      name: document.getElementById('reg-name').value,
-                      sexo,
-                      password: document.getElementById('reg-pass').value,
-                      career: registerCareer
-                    })
-                  });
-                  const data = await res.json();
-                  alert(data.message || data.error);
-                  setShowRegister(false);
-                }}>Register</button>
-                <button className="text-sm text-gray-500 hover:underline transition-colors duration-300" onClick={() => setShowRegister(false)}>Cancel</button>
+                    <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow">
+                      <div className="flex justify-between items-center text-md font-semibold text-gray-700">
+                        <span>Coins</span>
+                        <span className="font-bold text-yellow-500">
+                          {studentData.monedas}
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <div className="flex justify-between items-center text-xs font-semibold text-gray-700 mb-1">
+                          <span>EXP.</span>
+                          <span>
+                            {progress.currentExp}/{progress.requiredExp}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div
+                            className="bg-orange-500 h-2.5 rounded-full"
+                            style={{ width: `${progress.percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span>Activities</span>
+                        <span className="font-bold">{studentData.tareas}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Assists</span>
+                        <span className="font-bold">
+                          {studentData.asistencias}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Games & Challenges</span>
+                        <span className="font-bold">
+                          {studentData.games || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Badges</span>
+                        <span className="font-bold">
+                          {Object.keys(studentData.purchases || {}).length}
+                        </span>
+                      </div>
+                      <div className="text-[10px] font-light text-gray-600 mt-1">
+                        {Object.entries(studentData.purchases || {}).map(
+                          ([name, qty], idx) => (
+                            <div key={idx}>
+                              {name} x{qty}
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                    {/* New Comments Section */}
+                    <div className="w-full max-w-xs p-4 bg-orange-100 rounded-xl shadow text-md font-semibold text-gray-700 space-y-2">
+                      <p className="font-bold text-lg">Comments</p>
+                      <div className="w-full bg-gray-50 p-2 rounded-lg border border-gray-200 overflow-y-auto max-h-24 text-sm text-left font-normal whitespace-pre-wrap">
+                        {studentData.comments || "No comments."}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-8 pb-8 flex flex-wrap justify-center w-full gap-4">
+                  <button
+                    className="bg-blue-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 font-semibold"
+                    onClick={fetchLeaderboard}
+                  >
+                    Leaderboard
+                  </button>
+
+                  <button
+                    className="bg-orange-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 font-semibold"
+                    onClick={() => {
+                      fetchBadges();
+                      setShowCartModal(true);
+                    }}
+                  >
+                    Store
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="bg-purple-600 text-white px-10 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 font-semibold"
+                  >
+                    Log Out
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <LoginScreen
+                studentId={studentId}
+                setStudentId={setStudentId}
+                password={password}
+                setPassword={setPassword}
+                handleLogin={handleLogin}
+                setShowRegister={setShowRegister}
+                setShowReset={setShowReset}
+                showCodeField={showCodeField}
+                setShowCodeField={setShowCodeField}
+                resetId={resetId}
+                setResetId={setResetId}
+                resetCode={resetCode}
+                setResetCode={setResetCode}
+                resetPass={resetPass}
+                setResetPass={setResetPass}
+                handleSendResetCode={handleSendResetCode}
+                handleUpdatePassword={handleUpdatePassword}
+                selectedCareer={selectedCareer}
+                setSelectedCareer={setSelectedCareer}
+                setShowAdminLoginModal={setShowAdminLoginModal}
+              />
+            )}
 
-          {showReset && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
-                <h2 className="text-2xl font-bold text-center text-gray-800">Password Recovery</h2>
-                <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Student ID" value={resetId} onChange={(e) => setResetId(e.target.value)} />
-                <button className="bg-purple-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 w-full font-semibold" onClick={handleSendResetCode}>Send code</button>
-
-                {showCodeField && (
-                  <>
-                    <input className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="Received code" value={resetCode} onChange={(e) => setResetCode(e.target.value)} />
-                    <input type="password" className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300" placeholder="New password (4 uppercase letters/numbers)" value={resetPass} onChange={(e) => setResetPass(e.target.value)} />
-                    <button className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full mt-2 font-semibold" onClick={handleUpdatePassword}>Update password</button>
-                  </>
-                )}
-
-                <button className="text-sm text-gray-500 hover:underline mt-2 transition-colors duration-300" onClick={() => {
-                  setShowReset(false);
-                  setShowCodeField(false);
-                  setResetId('');
-                  setResetCode('');
-                  setResetPass('');
-                }}>Cancel</button>
+            {showCartModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+                <div className="bg-white p-6 rounded-2xl shadow-2xl w-11/12 max-w-2xl mx-auto transform transition-transform duration-300">
+                  <h3 className="text-2xl font-bold mb-4 text-gray-800">
+                    Badges Store
+                  </h3>
+                  <p className="mb-4 text-lg">
+                    Available coins:{" "}
+                    <strong className="text-yellow-500">
+                      {studentData.monedas}
+                    </strong>
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-2">
+                    {badges.map((b, i) => (
+                      <div
+                        key={i}
+                        className="border p-4 rounded-xl flex flex-col items-center text-center transition-shadow duration-300 hover:shadow-lg"
+                      >
+                        <img
+                          src={`/badges/${b.name
+                            .toLowerCase()
+                            .replace(/\s+/g, "_")
+                            .normalize("NFD")
+                            .replace(/[^a-zA-Z0-9_]/g, "")}.png`}
+                          alt={b.name}
+                          className="w-20 h-20 object-contain mb-2"
+                        />
+                        <strong className="text-sm font-semibold">
+                          {b.name}
+                        </strong>
+                        <span className="text-xs text-gray-500">
+                          Avail.: {b.quantity}
+                        </span>
+                        <span className="text-xs text-gray-500 mb-2">
+                          Price: {b.cost}
+                        </span>
+                        <div className="flex gap-2 items-center mt-2">
+                          <button
+                            className="bg-red-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center"
+                            onClick={() => removeFromCart(b.name)}
+                          >
+                            -
+                          </button>
+                          <span className="text-base font-semibold">
+                            {cart[b.name] || 0}
+                          </span>
+                          <button
+                            className="bg-green-400 text-white w-6 h-6 rounded-full text-lg flex items-center justify-center"
+                            onClick={() => addToCart(b.name, b.quantity)}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 text-center">
+                    <p className="text-lg">
+                      Total to pay:{" "}
+                      <strong className="text-yellow-500">
+                        {totalCartCost}
+                      </strong>{" "}
+                      coins
+                    </p>
+                    <button
+                      className="bg-orange-500 text-white px-6 py-3 rounded-full mt-4 disabled:opacity-50 transition-all duration-300 font-semibold"
+                      disabled={
+                        totalCartCost === 0 ||
+                        totalCartCost > parseInt(studentData.monedas)
+                      }
+                      onClick={handlePurchase}
+                    >
+                      Buy
+                    </button>
+                    <button
+                      className="ml-4 bg-gray-400 text-white px-6 py-3 rounded-full mt-4 transition-all duration-300 font-semibold"
+                      onClick={() => setShowCartModal(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <AdminLoginModal
-            show={showAdminLoginModal}
-            onClose={() => setShowAdminLoginModal(false)}
-            onAdminLoginSuccess={handleAdminLoginSuccess}
-            selectedCareer={selectedCareer}
-          />
+            {showLevelUpGif && (
+              <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50">
+                <img
+                  src="/gifs/levelup.gif"
+                  alt="Level Up!"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            )}
 
-          <AdminDashboard
-            show={showAdminDashboard}
-            onClose={handleLogout}
-            studentsData={adminStudentsData}
-            updateStudentData={updateStudentDataInAdminDashboard}
-            selectedCareer={selectedCareer}
-            calculateLevel={calculateLevel}
-            onRefreshStudents={fetchAdminStudentsData}
-          />
-        </>
-      );
-    };
+            {showLeaderboard && (
+              <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                <div className="bg-white w-full max-w-2xl p-6 rounded-2xl transform transition-transform duration-500 animate-slideIn">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-2xl font-bold text-gray-800">
+                      Leaderboard
+                    </h3>
+                    <button
+                      onClick={() => setShowLeaderboard(false)}
+                      className="text-red-500 text-xl font-bold"
+                    >
+                      X
+                    </button>
+                  </div>
+                  <table className="w-full text-left table-auto border-collapse">
+                    <thead>
+                      <tr className="text-gray-700 font-semibold border-b">
+                        <th className="p-2">Ranking</th>
+                        <th className="p-2">ID</th>
+                        <th className="p-2">Badges</th>
+                        <th className="p-2">Level</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboardData.map((student, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="p-2">{student.rank}</td>
+                          <td className="p-2">{student.name}</td>
+                          <td className="p-2">{student.badges}</td>
+                          <td className="p-2">{student.level}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
-</body>
+            {showRegister && (
+              <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+                <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+                  <h2 className="text-2xl font-bold text-gray-800">Sign up</h2>
+                  <input
+                    className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                    placeholder="Student ID"
+                    id="reg-id"
+                  />
+                  <input
+                    className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                    placeholder="Full name"
+                    id="reg-name"
+                  />
+                  <div className="flex items-center justify-around text-gray-700">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="sexo"
+                        value="Hombre"
+                        defaultChecked
+                        className="mr-2"
+                      />{" "}
+                      Men
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="sexo"
+                        value="Mujer"
+                        className="mr-2"
+                      />{" "}
+                      Women
+                    </label>
+                  </div>
 
+                  <select
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                    value={registerCareer}
+                    onChange={(e) => setRegisterCareer(e.target.value)}
+                  >
+                    <option value="Técnicas Avanzadas de Representación">
+                      Técnicas Avanzadas de Representación
+                    </option>
+                    <option value="Analisis de Datos">Analisis de Datos</option>
+                    <option value="Interfaces Hombre-Máquina">
+                      Interfaces Hombre-Máquina
+                    </option>
+                  </select>
+
+                  <input
+                    type="password"
+                    className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                    placeholder="Password (2 uppercase letters and 2 numbers)"
+                    id="reg-pass"
+                  />
+                  <button
+                    className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full font-semibold"
+                    onClick={async () => {
+                      const sexo = document.querySelector(
+                        'input[name="sexo"]:checked',
+                      ).value;
+                      const res = await fetch(
+                        `${BACKEND_BASE_URL}/api/register`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            id: document.getElementById("reg-id").value,
+                            name: document.getElementById("reg-name").value,
+                            sexo,
+                            password: document.getElementById("reg-pass").value,
+                            career: registerCareer,
+                          }),
+                        },
+                      );
+                      const data = await res.json();
+                      alert(data.message || data.error);
+                      setShowRegister(false);
+                    }}
+                  >
+                    Register
+                  </button>
+                  <button
+                    className="text-sm text-gray-500 hover:underline transition-colors duration-300"
+                    onClick={() => setShowRegister(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {showReset && (
+              <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
+                <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+                  <h2 className="text-2xl font-bold text-center text-gray-800">
+                    Password Recovery
+                  </h2>
+                  <input
+                    className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                    placeholder="Student ID"
+                    value={resetId}
+                    onChange={(e) => setResetId(e.target.value)}
+                  />
+                  <button
+                    className="bg-purple-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 w-full font-semibold"
+                    onClick={handleSendResetCode}
+                  >
+                    Send code
+                  </button>
+
+                  {showCodeField && (
+                    <>
+                      <input
+                        className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                        placeholder="Received code"
+                        value={resetCode}
+                        onChange={(e) => setResetCode(e.target.value)}
+                      />
+                      <input
+                        type="password"
+                        className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                        placeholder="New password (4 uppercase letters/numbers)"
+                        value={resetPass}
+                        onChange={(e) => setResetPass(e.target.value)}
+                      />
+                      <button
+                        className="bg-orange-500 text-white px-4 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 w-full mt-2 font-semibold"
+                        onClick={handleUpdatePassword}
+                      >
+                        Update password
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    className="text-sm text-gray-500 hover:underline mt-2 transition-colors duration-300"
+                    onClick={() => {
+                      setShowReset(false);
+                      setShowCodeField(false);
+                      setResetId("");
+                      setResetCode("");
+                      setResetPass("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <AdminLoginModal
+              show={showAdminLoginModal}
+              onClose={() => setShowAdminLoginModal(false)}
+              onAdminLoginSuccess={handleAdminLoginSuccess}
+              selectedCareer={selectedCareer}
+            />
+
+            <AdminDashboard
+              show={showAdminDashboard}
+              onClose={handleLogout}
+              studentsData={adminStudentsData}
+              updateStudentData={updateStudentDataInAdminDashboard}
+              selectedCareer={selectedCareer}
+              calculateLevel={calculateLevel}
+              onRefreshStudents={fetchAdminStudentsData}
+            />
+          </>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
 </html>

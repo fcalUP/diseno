@@ -66,15 +66,46 @@ function calculateLevel(exp) {
 }
 
 // Helper para obtener el nombre de la hoja según la carrera (Actualizado)
-function getSheetName(career) {
+function getSheetNameCandidates(career) {
   const normalizedCareer = `${career || ''}`.trim().toLowerCase();
+  const normalizedCareerNoAccents = normalizedCareer.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  if (normalizedCareer.includes('técnicas') || normalizedCareer.includes('tecnicas') || normalizedCareer === 'tar') return 'TAR';
-  if (normalizedCareer.includes('analisis') || normalizedCareer.includes('análisis') || normalizedCareer.includes('datos')) return 'Analisis de Datos';
-  if (normalizedCareer.includes('interfaces') || normalizedCareer.includes('ihm')) return 'IHM';
-  if (normalizedCareer === 'diseno de la comunicacion' || normalizedCareer.includes('com')) return 'Com';
-  if (normalizedCareer === 'poo') return 'POO';
-  return 'TAR';
+  if (normalizedCareer.includes('técnicas') || normalizedCareer.includes('tecnicas') || normalizedCareer === 'tar') return ['TAR'];
+  if (normalizedCareerNoAccents.includes('analisis') || normalizedCareerNoAccents.includes('datos')) {
+    return ['Analisis de Datos', 'Análisis de Datos', 'Analisis de datos', 'Análisis de datos'];
+  }
+  if (normalizedCareer.includes('interfaces') || normalizedCareer.includes('ihm')) return ['IHM'];
+  if (normalizedCareer === 'diseno de la comunicacion' || normalizedCareer.includes('com')) return ['Com'];
+  if (normalizedCareer === 'poo') return ['POO'];
+  return ['TAR'];
+}
+
+async function getSheetName(career) {
+  const candidates = getSheetNameCandidates(career);
+
+  if (!sheets) return candidates[0];
+
+  try {
+    const metadata = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    const existingSheets = new Set((metadata.data.sheets || []).map((sheet) => sheet.properties?.title).filter(Boolean));
+
+    for (const candidate of candidates) {
+      if (existingSheets.has(candidate)) return candidate;
+    }
+
+    const fallbackSheet = candidates[0];
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: fallbackSheet } } }]
+      }
+    });
+    console.log(`Hoja creada automáticamente: ${fallbackSheet}`);
+    return fallbackSheet;
+  } catch (error) {
+    console.warn(`No se pudo validar la hoja para la carrera "${career}":`, error.message);
+    return candidates[0];
+  }
 }
 
 // ===================================
@@ -89,7 +120,7 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ error: 'ID, contraseña y carrera requeridos.' });
   }
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
 
   try {
     const range = `${sheetName}!A:N`;
@@ -195,7 +226,7 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ error: 'Datos inválidos o incompletos. Contraseña debe ser 4 HEX mayúsculas y carrera requerida.' });
   }
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
 
   try {
     const range = `${sheetName}!A:A`;
@@ -249,7 +280,7 @@ app.post('/api/send-reset-code', async (req, res) => {
     return res.status(400).json({ error: 'ID de alumno y carrera son requeridos.' });
   }
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
 
   try {
     const range = `${sheetName}!A:A`; // Solo necesitas verificar la existencia del ID en la hoja de la carrera
@@ -319,7 +350,7 @@ app.post('/api/reset-password-with-code', async (req, res) => {
     return res.status(400).json({ error: 'Datos inválidos. Asegúrate de usar un código, contraseña válida (4 HEX mayúsculas) y carrera.' });
   }
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
 
   try {
     if (!resetCodes[`${id}-${career}`] || resetCodes[`${id}-${career}`] !== code) {
@@ -395,7 +426,7 @@ app.post('/api/purchase', async (req, res) => {
     return res.status(400).json({ error: 'Datos inválidos o incompletos para la compra' });
   }
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
   const totalCost = quantityToBuy * itemCost;
 
   try {
@@ -519,7 +550,7 @@ app.get('/api/leaderboard', async (req, res) => {
   const { career } = req.query;
   if (!career) return res.status(400).json({ error: 'Carrera requerida.' });
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
   try {
     const range = `${sheetName}!A:J`; // Incluye ID, nombre, sexo, EXP
     const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
@@ -557,7 +588,7 @@ app.post('/api/add-exp', async (req, res) => {
     return res.status(400).json({ error: 'ID de alumno, cantidad de EXP. válida y carrera son requeridos.' });
   }
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
 
   try {
     const range = `${sheetName}!A:K`; // Necesitamos ID, EXP. (J) y LAST_LOGIN_LEVEL (K) en la hoja correcta
@@ -649,7 +680,7 @@ app.get('/api/admin/students', async (req, res) => {
     return res.status(400).json({ error: 'Career is required.' });
   }
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
 
   try {
     // A:N includes ID, Nombre, Sexo, Correo, Password, Homeworks, Coins, Attendance, Badges, EXP, LAST_LOGIN_LEVEL, Games, M (empty), Comments
@@ -694,7 +725,7 @@ app.post('/api/admin/update-student-data', async (req, res) => {
     return res.status(400).json({ error: 'Incomplete data for update.' });
   }
 
-  const sheetName = getSheetName(career);
+  const sheetName = await getSheetName(career);
 
   try {
     const currentStudentRange = `${sheetName}!A${rowIndex}:K${rowIndex}`;
