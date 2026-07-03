@@ -453,15 +453,16 @@ app.post('/api/purchase', async (req, res) => {
       requestBody: { values: [[totalBadgesCount.toString()]] }
     });
 
-    // ====== ✅ Envío de correo con SendGrid ======
-    const sgMail = require('@sendgrid/mail');
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    // ====== ✅ Envío de correo con Resend ======
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
-    const msg = {
-      to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'], // destinatarios
-      from: process.env.EMAIL_FROM,                     // remitente configurado
-      subject: 'Confirmación de compra de insignia',
-      text: `Hola,
+    try {
+      await resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: [`${studentId}@up.edu.mx`, 'fcal@up.edu.mx'], 
+        subject: 'Confirmación de compra de insignia',
+        text: `Hola,
 
 Se ha realizado una compra de insignia:
 
@@ -474,13 +475,10 @@ Se ha realizado una compra de insignia:
 - Monedas restantes: ${newCoins}
 
 Gracias.`,
-    };
-
-    try {
-      await sgMail.send(msg);
-      console.log('📨 Correo enviado correctamente con SendGrid.');
+      });
+      console.log('📨 Correo enviado correctamente con Resend.');
     } catch (emailError) {
-      console.error('⚠️ Error al enviar correo con SendGrid:', emailError.message);
+      console.error('⚠️ Error al enviar correo con Resend:', emailError.message);
       // No detener la compra
     }
 
