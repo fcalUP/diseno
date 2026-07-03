@@ -23,7 +23,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Configuración de Google Sheets
 const SPREADSHEET_ID = '1I6pVLSBav-U7c86FLavh0tikPghLDVrWCFuru-qwQ4Y'; // Tu ID de Spreadsheet
 
-const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+let serviceAccount = null;
+if (process.env.GOOGLE_SERVICE_ACCOUNT) {
+  try {
+    serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+  } catch (error) {
+    console.error('El contenido de GOOGLE_SERVICE_ACCOUNT no es un JSON válido:', error.message);
+  }
+}
+
 const auth = new google.auth.GoogleAuth({
   credentials: serviceAccount,
   scopes: ['https://www.googleapis.com/auth/spreadsheets']
@@ -31,13 +39,17 @@ const auth = new google.auth.GoogleAuth({
 
 let sheets;
 async function initializeGoogleSheetsClient() {
+  if (!serviceAccount) {
+    console.warn('GOOGLE_SERVICE_ACCOUNT no configurado. El servidor arrancará, pero las operaciones con Google Sheets no estarán disponibles.');
+    return;
+  }
+
   try {
     const authClient = await auth.getClient();
     sheets = google.sheets({ version: 'v4', auth: authClient });
     console.log('Cliente de Google Sheets inicializado correctamente.');
   } catch (error) {
-    console.error('Error al inicializar Google Sheets:', error);
-    process.exit(1);
+    console.error('Error al inicializar Google Sheets:', error.message);
   }
 }
 initializeGoogleSheetsClient();
