@@ -80,6 +80,39 @@ function getSheetNameCandidates(career) {
   return ['TAR'];
 }
 
+// ===================================
+// VISIBILIDAD DE INSIGNIAS POR GRUPO
+// ===================================
+// Normaliza texto: minúsculas, sin acentos, sin guiones bajos y sin espacios extra.
+function normalizeLabel(value) {
+  return `${value || ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[_\-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Detecta si la carrera/grupo es "Análisis de Datos" (con o sin acento).
+function isAnalisisDeDatos(career) {
+  const c = normalizeLabel(career);
+  return c.includes('analisis') || c.includes('datos');
+}
+
+// Insignias ocultas por grupo. Cada entrada es una palabra clave:
+// si el nombre normalizado de la insignia la contiene, se oculta.
+const HIDDEN_BADGE_KEYWORDS = {
+  analisisDeDatos: ['internet', 'calculadora']
+};
+
+// Devuelve true si la insignia NO debe mostrarse ni comprarse para esa carrera.
+function isBadgeHiddenForCareer(badgeName, career) {
+  if (!isAnalisisDeDatos(career)) return false;
+  const name = normalizeLabel(badgeName);
+  return HIDDEN_BADGE_KEYWORDS.analisisDeDatos.some((keyword) => name.includes(keyword));
+}
+
 async function getSheetName(career) {
   const candidates = getSheetNameCandidates(career);
 
@@ -403,11 +436,14 @@ app.get('/api/badges', async (req, res) => {
       return res.status(404).json({ error: 'No se encontraron insignias o formato incorrecto.' });
     }
 
-    const badges = rows.slice(1).map(row => ({ // Ignorar encabezado
-      name: row[0],     // Columna A: Nombre de la Insignia
-      quantity: parseInt(row[1]) || 0, // Columna B: Cantidad disponible
-      cost: parseInt(row[2]) || 0      // Columna C: Costo
-    }));
+    const badges = rows.slice(1)
+      .map(row => ({ // Ignorar encabezado
+        name: row[0],     // Columna A: Nombre de la Insignia
+        quantity: parseInt(row[1]) || 0, // Columna B: Cantidad disponible
+        cost: parseInt(row[2]) || 0      // Columna C: Costo
+      }))
+      // Oculta las insignias restringidas para el grupo solicitante
+      .filter(badge => !isBadgeHiddenForCareer(badge.name, career));
 
 res.json({ success: true, badges });
   } catch (error) {
@@ -424,6 +460,11 @@ app.post('/api/purchase', async (req, res) => {
   const { studentId, studentRowIndex, itemName, quantityToBuy, itemCost, career } = req.body;
   if (!studentId || !studentRowIndex || !itemName || typeof quantityToBuy !== 'number' || typeof itemCost !== 'number' || !career) {
     return res.status(400).json({ error: 'Datos inválidos o incompletos para la compra' });
+  }
+
+  // Bloqueo de seguridad: no permitir comprar insignias ocultas para ese grupo
+  if (isBadgeHiddenForCareer(itemName, career)) {
+    return res.status(403).json({ error: 'Esta insignia no está disponible para tu grupo.' });
   }
 
   const sheetName = await getSheetName(career);
