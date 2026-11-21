@@ -4,6 +4,7 @@ import { api, errorMessage } from '../../../lib/api'
 import type { AdminBadge, AdminCourse, BadgeInput } from '../../../lib/types'
 import {
   Button,
+  CLOSE_WHILE_UPLOADING,
   Drawer,
   ImageUpload,
   NumberField,
@@ -13,6 +14,7 @@ import {
   useConfirm,
   useToast,
   useUndo,
+  useUploads,
 } from '../../ui'
 import { CheckList } from './CheckList'
 import { LoadError } from './PageState'
@@ -76,6 +78,7 @@ export function BadgeDrawer({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+  const [uploading, onUploadingChange] = useUploads()
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({ ...f, [key]: value }))
 
@@ -126,7 +129,8 @@ export function BadgeDrawer({
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setShowErrors(true)
-    if (saving || deleting || invalid) return
+    // Con la imagen a medio subir se guardaría la anterior.
+    if (saving || deleting || uploading || invalid) return
     if (badge && Object.keys(changes).length === 0) {
       toast.info('No había cambios que guardar.')
       onClose()
@@ -191,7 +195,9 @@ export function BadgeDrawer({
 
   const requestClose = async () => {
     if (saving || deleting) return
-    if (
+    if (uploading) {
+      if (!(await confirm(CLOSE_WHILE_UPLOADING))) return
+    } else if (
       dirty &&
       !(await confirm({
         title: '¿Descartar los cambios?',
@@ -258,7 +264,7 @@ export function BadgeDrawer({
           <Button variant="ghost" onClick={() => void requestClose()} disabled={saving || deleting}>
             Cancelar
           </Button>
-          <Button type="submit" form={formId} loading={saving} disabled={deleting}>
+          <Button type="submit" form={formId} loading={saving} disabled={deleting || uploading}>
             {badge ? 'Guardar cambios' : 'Crear insignia'}
           </Button>
         </>
@@ -309,6 +315,7 @@ export function BadgeDrawer({
             label="Imagen"
             value={form.imageUrl}
             onChange={(url) => set('imageUrl', url)}
+            onUploadingChange={onUploadingChange}
             previewClassName="h-48 w-full"
           />
           <Toggle

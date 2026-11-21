@@ -488,8 +488,10 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript'
                   - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Instance}'
+              # No admite permisos por recurso. ListCommandInvocations no va: con
+              # --details mostraría la salida de los comandos de otros proyectos.
               - Effect: Allow
-                Action: [ssm:GetCommandInvocation, ssm:ListCommandInvocations]
+                Action: ssm:GetCommandInvocation
                 Resource: '*'
               - Effect: Allow
                 Action: cloudformation:DescribeStacks

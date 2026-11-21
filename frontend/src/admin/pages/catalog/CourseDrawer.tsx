@@ -2,7 +2,19 @@ import { useId, useState, type FormEvent } from 'react'
 import { EyeOff, Trash2 } from 'lucide-react'
 import { api, errorMessage } from '../../../lib/api'
 import type { AdminBadge, AdminCourse, CourseInput } from '../../../lib/types'
-import { Button, Drawer, ImageUpload, Spinner, TextField, Toggle, useConfirm, useToast, useUndo } from '../../ui'
+import {
+  Button,
+  CLOSE_WHILE_UPLOADING,
+  Drawer,
+  ImageUpload,
+  Spinner,
+  TextField,
+  Toggle,
+  useConfirm,
+  useToast,
+  useUndo,
+  useUploads,
+} from '../../ui'
 import { CheckList } from './CheckList'
 import { ChipsInput } from './ChipsInput'
 import { LoginPreview } from './LoginPreview'
@@ -88,6 +100,8 @@ export function CourseDrawer({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+  // Imagen lateral y logo comparten la cuenta de subidas en curso.
+  const [uploading, onUploadingChange] = useUploads()
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({ ...f, [key]: value }))
 
@@ -145,7 +159,8 @@ export function CourseDrawer({
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setShowErrors(true)
-    if (saving || deleting || errors.name || errors.sheetName) return
+    // Con una imagen a medio subir se guardaría la anterior.
+    if (saving || deleting || uploading || errors.name || errors.sheetName) return
     setSaving(true)
     setError('')
     const done: number[] = []
@@ -232,7 +247,9 @@ export function CourseDrawer({
 
   const requestClose = async () => {
     if (saving || deleting) return
-    if (
+    if (uploading) {
+      if (!(await confirm(CLOSE_WHILE_UPLOADING))) return
+    } else if (
       dirty &&
       !(await confirm({
         title: '¿Descartar los cambios?',
@@ -311,7 +328,7 @@ export function CourseDrawer({
           <Button variant="ghost" onClick={() => void requestClose()} disabled={saving || deleting}>
             Cancelar
           </Button>
-          <Button type="submit" form={formId} loading={saving} disabled={deleting}>
+          <Button type="submit" form={formId} loading={saving} disabled={deleting || uploading}>
             {base ? 'Guardar cambios' : 'Crear curso'}
           </Button>
         </>
@@ -372,8 +389,14 @@ export function CourseDrawer({
               label="Imagen lateral"
               value={form.sideImageUrl}
               onChange={(url) => set('sideImageUrl', url)}
+              onUploadingChange={onUploadingChange}
             />
-            <ImageUpload label="Logo" value={form.logoUrl} onChange={(url) => set('logoUrl', url)} />
+            <ImageUpload
+              label="Logo"
+              value={form.logoUrl}
+              onChange={(url) => set('logoUrl', url)}
+              onUploadingChange={onUploadingChange}
+            />
           </div>
           <LoginPreview name={name} sideImageUrl={form.sideImageUrl} logoUrl={form.logoUrl} />
         </section>

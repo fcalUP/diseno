@@ -40,6 +40,9 @@ const (
 
 // stuInternal registra el error y responde 500 sin dar detalles.
 func (a *App) stuInternal(w http.ResponseWriter, where string, err error) {
+	if writeCanceled(w, err) {
+		return
+	}
 	a.Log.Error(where, "err", err)
 	writeError(w, http.StatusInternalServerError, stuMsgInternal)
 }

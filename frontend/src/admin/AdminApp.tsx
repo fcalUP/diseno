@@ -61,6 +61,16 @@ export default function AdminApp() {
     return () => window.removeEventListener(ADMIN_SESSION_EXPIRED, expired)
   }, [])
 
+  // index.html dice lang="en" por el portal de alumnos; el panel está en español.
+  useEffect(() => {
+    const html = document.documentElement
+    const previous = html.lang
+    html.lang = 'es-MX'
+    return () => {
+      html.lang = previous
+    }
+  }, [])
+
   const refresh = useCallback(() => setCheck((n) => n + 1), [])
 
   const logout = useCallback(async () => {

@@ -16,6 +16,12 @@ export AWS_REGION=us-east-1 AWS_PAGER=""
 cloud-init status --wait >/dev/null 2>&1 || true
 
 cd /opt/diseno
+# Un despliegue a la vez: el de CI y un release.sh a mano pueden coincidir.
+exec 9>.lock
+if ! flock -n 9; then
+  echo "Hay otro despliegue en curso en la instancia; reintenta cuando termine." >&2
+  exit 1
+fi
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -33,9 +39,11 @@ if [ -z "$ORIGIN_DOMAIN" ] || [ -z "$ORIGIN_SECRET" ]; then
   echo "Faltan ORIGIN_DOMAIN u ORIGIN_SECRET en /diseno/prod/ (corre deploy/bootstrap.sh)." >&2
   exit 1
 fi
-# Los valores van entre comillas simples, que Compose toma literales.
-if grep -q "'" "$tmp/params"; then
-  echo "Un parámetro de /diseno/prod/ trae comilla simple; no cabe en .env." >&2
+# Los valores van entre comillas simples, que Compose toma literales. No caben
+# comillas simples, saltos de línea ni tabuladores, y el nombre debe servir de variable.
+if grep -q "'" "$tmp/params" ||
+  awk -F'\t' 'NF != 2 || $1 !~ /^\/diseno\/prod\/[A-Za-z_][A-Za-z0-9_]*$/ { m = 1 } END { exit !m }' "$tmp/params"; then
+  echo "Un parámetro de /diseno/prod/ trae comilla simple, salto de línea o tabulador, o su nombre no sirve de variable; no cabe en .env." >&2
   exit 1
 fi
 {
@@ -76,7 +84,7 @@ docker compose pull --quiet || volver
 docker compose up -d --remove-orphans || volver
 # Compose no ve cambios dentro de archivos montados: si cambió el Caddyfile, se reinicia Caddy.
 if [ "$primera" = 0 ] && ! cmp -s Caddyfile Caddyfile.prev; then
-  docker compose restart caddy
+  docker compose restart caddy || volver
 fi
 
 # Hasta 150 s para que el healthcheck de la app diga healthy.

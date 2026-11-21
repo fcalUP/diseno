@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,6 +48,16 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+// writeCanceled contesta si el navegador ya cortó la petición (cambió de página o
+// cerró la pestaña). No es una falla del servidor, así que no va al log como error.
+func writeCanceled(w http.ResponseWriter, err error) bool {
+	if !errors.Is(err, context.Canceled) {
+		return false
+	}
+	writeError(w, http.StatusBadRequest, "La solicitud se canceló.")
+	return true
 }
 
 // pathID lee un id numérico positivo de la ruta ("/students/{id}").

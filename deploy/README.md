@@ -35,6 +35,8 @@ Lo que conviene tener en la cabeza:
   de la instancia y nunca a través de CloudFront.
 - Los secretos están en Parameter Store bajo `/diseno/prod/`. En cada despliegue `deploy.sh` los
   escribe en `/opt/diseno/.env` (modo 600). La instancia no puede leer parámetros de otros proyectos.
+  Cada valor va en una sola línea y sin comillas simples; si alguno no cabe en `.env`, `deploy.sh`
+  se detiene antes de tocar nada.
 
 | Archivo | Qué hace |
 |---|---|
@@ -85,8 +87,9 @@ certificado del origen. En un par de minutos https://design.nexed.dev debe carga
   `<sha de 12>-<run_number>-<run_attempt>`. Las etiquetas de ECR son inmutables; por eso reintentar un
   trabajo genera una nueva.
 
-Nunca corren dos despliegues a la vez (grupo `deploy-prod`) y el rol solo acepta la rama `main` de
-`fcalUP/diseno`.
+Nunca corren dos despliegues de CI a la vez (grupo `deploy-prod`). Si un `release.sh` a mano llega
+mientras otro despliegue sigue en la instancia, `deploy.sh` lo rechaza. El rol solo acepta la rama
+`main` de `fcalUP/diseno`.
 
 Si la app no queda sana en 150 s, `deploy.sh` regresa `.env`, `compose.yml` y el `Caddyfile`
 anteriores, levanta la versión previa y el trabajo sale en rojo. Para volver atrás a propósito, haz
@@ -134,6 +137,10 @@ Los medios no necesitan respaldo aparte: S3 guarda 30 días lo que se borra o se
 ## Cambios de infraestructura
 
 Edita `infra.yaml` y vuelve a correr `bootstrap.sh`. Repetirlo es seguro.
+
+El `UserData` de la instancia solo corre en el primer arranque. Si lo cambias, CloudFormation detiene
+la instancia y la vuelve a arrancar (un par de minutos sin servicio) y aun así no lo ejecuta: el
+cambio solo aplica a una instancia nueva.
 
 El AMI queda fijo en `/diseno/ami`. CloudFormation vuelve a leer ese parámetro en cada actualización, y
 si apuntara al AMI más reciente de AWS, cualquier cambio a la pila podría reemplazar la instancia, con

@@ -19,7 +19,8 @@ COPY backend/ ./
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags "-s -w" -o /out/server ./cmd/server \
     && mkdir /out/data
 
-FROM gcr.io/distroless/static-debian12:nonroot
+# Debian 13: distroless ya no actualiza las imágenes de Debian 12.
+FROM gcr.io/distroless/static-debian13:nonroot
 WORKDIR /app
 COPY --from=api /out/server /app/server
 COPY --from=web /src/frontend/dist /app/web

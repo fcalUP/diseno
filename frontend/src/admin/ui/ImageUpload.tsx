@@ -14,6 +14,8 @@ export interface ImageUploadProps {
   className?: string
   /** Tamaño de la vista previa. */
   previewClassName?: string
+  /** Avisa al empezar y al terminar cada subida; úsalo con useUploads(). */
+  onUploadingChange?: (uploading: boolean) => void
 }
 
 // Sube la imagen directo a S3 (presigned PUT) y entrega la url con onChange.
@@ -25,6 +27,7 @@ export function ImageUpload({
   disabled = false,
   className,
   previewClassName = 'h-40 w-full',
+  onUploadingChange,
 }: ImageUploadProps) {
   const id = useId()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -37,12 +40,14 @@ export function ImageUpload({
     if (!file || locked) return
     setError('')
     setUploading(true)
+    onUploadingChange?.(true)
     try {
       onChange(await uploadImage(file))
     } catch (e) {
       setError(errorMessage(e))
     } finally {
       setUploading(false)
+      onUploadingChange?.(false)
     }
   }
 
@@ -60,6 +65,7 @@ export function ImageUpload({
       <button
         type="button"
         disabled={locked}
+        aria-busy={uploading || undefined}
         aria-labelledby={`${id}-label ${id}-action`}
         aria-describedby={`${id}-hint`}
         onClick={() => inputRef.current?.click()}

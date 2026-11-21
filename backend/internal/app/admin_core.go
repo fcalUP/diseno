@@ -43,6 +43,9 @@ func (a *App) admFail(w http.ResponseWriter, what string, err error) {
 		writeError(w, he.status, he.msg)
 		return
 	}
+	if writeCanceled(w, err) {
+		return
+	}
 	a.Log.Error(what, "err", err)
 	writeError(w, http.StatusInternalServerError, "Error interno del servidor.")
 }

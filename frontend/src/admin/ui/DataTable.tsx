@@ -76,9 +76,11 @@ export function DataTable<T, K extends string | number>({
   const th =
     'sticky top-0 z-10 whitespace-nowrap border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500'
 
+  // relative: sin él los textos sr-only de las celdas se posicionan contra la página y
+  // la ensanchan en celulares aunque la tabla tenga su propio scroll.
   return (
     <div
-      className={cx('overflow-auto rounded-2xl border border-gray-100 bg-white shadow-sm', className)}
+      className={cx('relative overflow-auto rounded-2xl border border-gray-100 bg-white shadow-sm', className)}
       aria-busy={loading || undefined}
     >
       <table className="w-full border-separate border-spacing-0 text-sm">

@@ -20,7 +20,8 @@ const kinds = {
 const MAX_VISIBLE = 5
 let lastId = 0
 
-// Provee useToast() y pinta los avisos abajo a la derecha.
+// Provee useToast() y pinta los avisos arriba al centro. Abajo a la derecha tapaban el pie de
+// los cajones ("Guardar") y los botones de cada fila, y un clic ahí caía en "Deshacer".
 export function Toaster({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([])
 
@@ -53,7 +54,7 @@ export function Toaster({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2"
+        className="pointer-events-none fixed inset-x-0 top-4 z-[60] mx-auto flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2"
       >
         {items.map((t) => (
           <ToastView key={t.id} item={t} onDismiss={dismiss} onUndo={runUndo} />

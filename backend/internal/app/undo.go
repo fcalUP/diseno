@@ -73,6 +73,9 @@ func undoDBError(err error) error {
 func (a *App) undoWriteError(w http.ResponseWriter, what string, err error) {
 	var ue *undoError
 	if !errors.As(err, &ue) {
+		if writeCanceled(w, err) {
+			return
+		}
 		a.Log.Error(what, "err", err)
 		writeError(w, http.StatusInternalServerError, "Error interno del servidor.")
 		return

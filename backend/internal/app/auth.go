@@ -128,6 +128,9 @@ func (a *App) requireActive(kind, query string, h func(http.ResponseWriter, *htt
 				return
 			}
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				if writeCanceled(w, err) {
+					return
+				}
 				a.Log.Error("verificar sesión", "kind", kind, "err", err)
 				writeError(w, http.StatusInternalServerError, "Error interno del servidor.")
 				return

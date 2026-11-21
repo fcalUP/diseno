@@ -30,6 +30,7 @@ import {
   useConfirm,
   useToast,
   useUndo,
+  useUploads,
 } from '../ui'
 import { ChipsInput } from './system/ChipsInput'
 import { parseSpreadsheetId, sheetUrl, spreadsheetIdError } from './system/google'
@@ -60,8 +61,13 @@ function emailError(v: string): string | undefined {
 function senderError(v: string): string | undefined {
   const t = v.trim()
   if (!t) return 'Escribe el correo del remitente.'
-  const named = /^[^<>]*<([^<>]+)>$/.exec(t)
-  return EMAIL_RE.test(named ? named[1].trim() : t)
+  const named = /^([^<>]*)<([^<>]+)>$/.exec(t)
+  // Sin comillas el nombre no puede llevar , ; : @ [ ] (el servidor lo rechaza).
+  const name = named?.[1].trim() ?? ''
+  if (name && !/^"[^"\\]*"$/.test(name) && /[,;:@[\]"\\]/.test(name)) {
+    return 'Si el nombre lleva comas u otros signos, ponlo entre comillas: "Diseño, UP" <avisos@dominio.mx>.'
+  }
+  return EMAIL_RE.test(named ? named[2].trim() : t)
     ? undefined
     : 'Usa un correo (avisos@dominio.mx) o Nombre <avisos@dominio.mx>.'
 }
@@ -504,6 +510,8 @@ function ResetCodeSection({ settings, save }: SectionProps) {
 
 function LevelUpSection({ settings, save }: SectionProps) {
   const d = useDraft(pick(settings, ['levelUpGifUrl'] as const))
+  // Mientras sube el GIF nuevo, guardar mandaría el anterior.
+  const [uploading, onUploadingChange] = useUploads()
   const url = d.draft.levelUpGifUrl
   const urlError = url && !url.startsWith('/media/') ? 'La imagen debe estar subida al portal.' : undefined
   return (
@@ -515,7 +523,7 @@ function LevelUpSection({ settings, save }: SectionProps) {
     >
       <SectionForm
         dirty={d.dirty}
-        invalid={Boolean(urlError)}
+        invalid={Boolean(urlError) || uploading}
         onReset={d.reset}
         onSubmit={() => save(d.patch, 'Animación de nivel guardada.')}
       >
@@ -523,6 +531,7 @@ function LevelUpSection({ settings, save }: SectionProps) {
           label="GIF de subida de nivel"
           value={url}
           onChange={(u) => d.set('levelUpGifUrl', u)}
+          onUploadingChange={onUploadingChange}
           previewClassName="h-48 w-full sm:w-80"
           hint="GIF, PNG, JPG o WEBP de máximo 20 MB."
         />
