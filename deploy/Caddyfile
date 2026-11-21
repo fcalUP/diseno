@@ -1,0 +1,37 @@
+# Caddy en la instancia: certificado de Let's Encrypt para el origen y proxy a
+# la app. Solo atiende a CloudFront, que manda X-Origin-Verify; además el grupo
+# de seguridad deja entrar al 443 nada más a las IP de CloudFront.
+{
+	admin off
+}
+
+{$ORIGIN_DOMAIN} {
+	tls {
+		issuer acme {
+			# Vacío = cuenta ACME sin correo.
+			email "{$ACME_EMAIL}"
+			# Let's Encrypt no llega al 443; valida por el 80.
+			disable_tlsalpn_challenge
+		}
+	}
+
+	log {
+		output stdout
+		format filter {
+			# El secreto del origen no se escribe en los registros.
+			request>headers>X-Origin-Verify delete
+			wrap json
+		}
+	}
+
+	@sinSecreto not header X-Origin-Verify "{$ORIGIN_SECRET}"
+	respond @sinSecreto 403
+
+	encode zstd gzip
+	request_body {
+		max_size 1MB
+	}
+	reverse_proxy app:8080 {
+		header_up -X-Origin-Verify
+	}
+}

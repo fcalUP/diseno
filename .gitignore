@@ -9,3 +9,4 @@ service-account-key.json
 /backend/server
 /backend/bin/
 coverage/
+.claude/

@@ -1,0 +1,48 @@
+# Desarrollo local.
+#   docker compose up -d                  solo Postgres, en 127.0.0.1:5433
+#   docker compose --profile full up -d   además la imagen de producción en http://localhost:8080
+# Con go run y Vite (lo normal), el API usa:
+#   DATABASE_URL=postgres://diseno:diseno@localhost:5433/diseno?sslmode=disable
+# El 5432 se queda libre para el Postgres de Homebrew.
+name: diseno
+
+services:
+  db:
+    image: public.ecr.aws/docker/library/postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: diseno
+      POSTGRES_PASSWORD: diseno
+      POSTGRES_DB: diseno
+    ports:
+      - 127.0.0.1:5433:5432
+    volumes:
+      # Postgres 18 guarda los datos en /var/lib/postgresql/18/docker.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U diseno -d diseno]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    profiles: [full]
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://diseno:diseno@db:5432/diseno?sslmode=disable
+      SESSION_SECRET: solo-para-desarrollo-local-no-usar-en-produccion
+      PUBLIC_URL: http://localhost:8080
+      STORAGE_DRIVER: local
+      MEDIA_DIR: /app/data/media
+      MEDIA_SEED_DIR: /seed/media
+    ports:
+      - 127.0.0.1:8080:8080
+    volumes:
+      - ./seed/media:/seed/media:ro
+      - media:/app/data
+
+volumes:
+  pgdata:
+  media:

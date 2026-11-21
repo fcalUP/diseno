@@ -1,6 +1,6 @@
 module github.com/fcalUP/diseno/backend
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.21

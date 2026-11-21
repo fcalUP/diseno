@@ -1,0 +1,17 @@
+# La imagen solo necesita frontend/ y backend/.
+.git
+.github
+.claude
+.vscode
+.data
+docs
+legacy
+seed
+deploy
+public
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+backend/server
+backend/bin

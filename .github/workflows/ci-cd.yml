@@ -1,0 +1,106 @@
+# Pruebas en cada push y PR; solo un push a main despliega. GitHub asume el rol
+# diseno-github-deploy por OIDC (deploy/infra.yaml): no hay llaves de AWS guardadas.
+# El humo se prueba dentro de la instancia (deploy.sh), no por CloudFront: el WAF
+# compartido le pone CAPTCHA a las IP de los runners.
+name: ci-cd
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        # Docker Hub: los runners agotan el límite anónimo de ECR Public.
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: diseno
+          POSTGRES_PASSWORD: solo-ci
+          POSTGRES_DB: diseno
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U diseno"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: gofmt
+        run: |
+          sin_formato="$(gofmt -l .)"
+          if [ -n "$sin_formato" ]; then
+            echo "Falta gofmt en:"
+            echo "$sin_formato"
+            exit 1
+          fi
+      - run: go vet ./...
+      - run: go test ./...
+        env:
+          DATABASE_URL: postgres://diseno:solo-ci@localhost:5432/diseno?sslmode=disable
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::113380982662:role/diseno-github-deploy
+          aws-region: us-east-1
+      - uses: docker/setup-buildx-action@v4
+      # buildx corre en un paso run y necesita las variables del caché de Actions,
+      # que GitHub solo les pasa a las acciones de JavaScript.
+      - name: Caché de Actions para buildx
+        uses: actions/github-script@v9
+        with:
+          script: |
+            for (const k of ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_RESULTS_URL', 'ACTIONS_CACHE_URL', 'ACTIONS_CACHE_SERVICE_V2']) {
+              if (process.env[k]) core.exportVariable(k, process.env[k])
+            }
+      - name: Imagen y despliegue
+        env:
+          BUILD_CACHE: --cache-from type=gha --cache-to type=gha,mode=max,ignore-error=true
+        run: TAG="${GITHUB_SHA::12}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}" deploy/release.sh
