@@ -448,14 +448,26 @@ export interface ImportStatus {
   lastImport: AuditEntry | null
 }
 
+export interface ImportInclude {
+  students: boolean
+  badges: boolean
+  purchases: boolean
+  media: boolean
+}
+
+export type ImportMode = 'upsert' | 'create_only'
+
 export interface ImportSource {
-  spreadsheetId?: string
+  spreadsheetId?: string // también acepta la url completa de la hoja
   credentialsJson?: string // service account de un solo uso; no se guarda
+  // Opcionales en la vista previa; si faltan se simula todo en modo upsert.
+  include?: ImportInclude
+  mode?: ImportMode
 }
 
 export interface ImportRunRequest extends ImportSource {
-  include: { students: boolean; badges: boolean; purchases: boolean; media: boolean }
-  mode: 'upsert' | 'create_only'
+  include: ImportInclude
+  mode: ImportMode
 }
 
 export interface ImportCourseReport {
@@ -470,9 +482,9 @@ export interface ImportCourseReport {
 }
 
 export interface MediaImportReport {
-  avatars: number
-  badgeImages: number
-  courseImages: number
+  avatars: number // casillas nuevas en avatars (nunca reemplaza las existentes)
+  badgeImages: number // insignias sin imagen que recibieron legacy/badges/{slug}.png
+  courseImages: number // siempre 0: los cursos ya traen sus imágenes desde la semilla
 }
 
 export interface ImportReport {
@@ -481,7 +493,9 @@ export interface ImportReport {
   spreadsheetTitle: string
   sheetsFound: string[]
   courses: ImportCourseReport[]
-  badges: { rows: number; created: number; updated: number; unchanged: number }
+  // skipped: repetidas, sin nombre válido o ya existentes en modo create_only.
+  badges: { rows: number; created: number; updated: number; unchanged: number; skipped: number }
+  // skipped: ya importadas antes o filas incompletas; unmatched: sin alumno.
   purchases: { rows: number; created: number; skipped: number; unmatched: number }
   media: MediaImportReport
   warnings: string[]
