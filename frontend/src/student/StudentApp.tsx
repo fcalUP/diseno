@@ -162,7 +162,14 @@ function Portal({ config, session }: Boot) {
   const fetchBadges = async () => {
     // El servidor ya quita las insignias ocultas para el curso de la sesión.
     const data = await settle(api.badges())
-    setBadges(data.success ? data.badges : [])
+    if (data.success) {
+      setBadges(data.badges)
+      return
+    }
+    setBadges([])
+    // La tienda pudo cerrarse mientras el alumno tenía la sesión abierta.
+    setShowCartModal(false)
+    alert(data.error)
   }
 
   const totalCartCost = badges.reduce(
