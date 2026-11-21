@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos propios de la versión anterior, copiados tal cual. */
+body {
+  font-family: "Poppins", sans-serif;
+}
+
+@keyframes slideIn {
+  0% {
+    transform: perspective(1000px) rotateY(70deg) translateZ(-300px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: perspective(1000px) rotateY(0deg) translateZ(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  0% {
+    transform: perspective(1000px) rotateY(0deg) translateZ(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: perspective(1000px) rotateY(70deg) translateZ(-300px);
+    opacity: 0;
+  }
+}
+
+.animate-slideIn {
+  animation: slideIn 0.6s ease-out forwards;
+}
+
+.animate-slideOut {
+  animation: slideOut 0.6s ease-in forwards;
+}
+
+/* Tabla del panel rápido de administrador en celulares */
+@media (max-width: 767px) {
+  .admin-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-table {
+    min-width: 350px;
+  }
+
+  .admin-table thead,
+  .admin-table tbody,
+  .admin-table th,
+  .admin-table td,
+  .admin-table tr {
+    display: block;
+  }
+
+  .admin-table thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  .admin-table tr {
+    border: 1px solid #ddd;
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-table td {
+    border: none;
+    border-bottom: 1px solid #eee;
+    position: relative;
+    padding-left: 50%;
+    text-align: right;
+    font-size: 0.875rem;
+  }
+
+  .admin-table td:before {
+    position: absolute;
+    top: 0;
+    left: 6px;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: bold;
+    content: attr(data-label);
+  }
+
+  .admin-table td:nth-of-type(1):before {
+    content: "ID";
+  }
+
+  .admin-table td:nth-of-type(2):before {
+    content: "Name";
+  }
+
+  .admin-table td:nth-of-type(3):before {
+    content: "Tasks";
+  }
+
+  .admin-table td:nth-of-type(4):before {
+    content: "Coins";
+  }
+
+  .admin-table td:nth-of-type(5):before {
+    content: "Attendance";
+  }
+
+  .admin-table td:nth-of-type(6):before {
+    content: "Games";
+  }
+
+  .admin-table td:nth-of-type(7):before {
+    content: "EXP.";
+  }
+
+  .admin-table td:nth-of-type(8):before {
+    content: "Level";
+  }
+
+  .admin-table td:nth-of-type(9):before {
+    content: "Actions";
+  }
+
+  .admin-table .flex.items-center {
+    justify-content: flex-end;
+  }
+}
