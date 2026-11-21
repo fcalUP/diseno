@@ -39,6 +39,8 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-Admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
+      # SDK del WAF compartido (su URL de integración); mantiene vivo el token del navegador.
+      WAF_SDK_URL: https://d7033e2e59b9.edge.sdk.awswaf.com/d7033e2e59b9/b75dc5bf6c71/challenge.js
     healthcheck:
       test: [CMD, /app/server, -healthcheck]
       interval: 10s

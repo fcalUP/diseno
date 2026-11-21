@@ -76,6 +76,20 @@ export const CHUNK_SIZE = 50
 // Se dispara cuando una ruta del panel responde 401 (la sesión expiró o la cerraron).
 export const ADMIN_SESSION_EXPIRED = 'admin-session-expired'
 
+// En producción el servidor agrega el SDK del WAF (challenge.js). Su fetch adjunta el
+// token y resuelve retos en segundo plano; sin él se usa el fetch normal. Solo para el
+// API propio: a S3 no hay que mandarle el encabezado del token.
+declare global {
+  interface Window {
+    AwsWafIntegration?: { fetch: typeof fetch }
+  }
+}
+
+function apiFetch(path: string, init: RequestInit): Promise<Response> {
+  const waf = window.AwsWafIntegration
+  return waf ? waf.fetch(path, init) : fetch(path, init)
+}
+
 async function request(method: 'GET' | Method, path: string, body?: unknown) {
   const headers: Record<string, string> = { Accept: 'application/json' }
   let payload: string | undefined
@@ -87,7 +101,7 @@ async function request(method: 'GET' | Method, path: string, body?: unknown) {
   if (payload && new Blob([payload]).size > MAX_BODY_BYTES) {
     throw new ApiError('Los datos son demasiado grandes para enviarlos de una vez (máximo 8 KB).', 413)
   }
-  const res = await fetch(path, { method, headers, body: payload, credentials: 'same-origin' })
+  const res = await apiFetch(path, { method, headers, body: payload, credentials: 'same-origin' })
   const text = await res.text()
   let data: unknown = null
   if (text) {

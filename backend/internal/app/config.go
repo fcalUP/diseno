@@ -25,6 +25,8 @@ type Config struct {
 	S3Prefix             string // termina en "/"
 	AWSRegion            string
 	UploadOrigin         string // origen de S3 para connect-src de la CSP
+	WafSDKURL            string // challenge.js del WAF; vacío = no se inyecta
+	WafSDKOrigin         string // su origen, para la CSP
 	AdminUsername        string
 	AdminPassword        string
 	ResendAPIKey         string // respaldo si no está en Ajustes
@@ -45,6 +47,7 @@ func LoadConfig() (Config, error) {
 		S3Prefix:             envOr("S3_PREFIX", "media/"),
 		AWSRegion:            envOr("AWS_REGION", "us-east-1"),
 		UploadOrigin:         strings.TrimRight(envOr("UPLOAD_ORIGIN", ""), "/"),
+		WafSDKURL:            envOr("WAF_SDK_URL", ""),
 		AdminUsername:        envOr("ADMIN_USERNAME", "Admin"),
 		AdminPassword:        os.Getenv("ADMIN_PASSWORD"), // tal cual, puede llevar espacios
 		ResendAPIKey:         envOr("RESEND_API_KEY", ""),
@@ -69,6 +72,13 @@ func LoadConfig() (Config, error) {
 	}
 	if u, err := url.Parse(c.PublicURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		errs = append(errs, fmt.Errorf("PUBLIC_URL inválida: %q", c.PublicURL))
+	}
+	if c.WafSDKURL != "" {
+		if u, err := url.Parse(c.WafSDKURL); err != nil || u.Scheme != "https" || u.Host == "" {
+			errs = append(errs, fmt.Errorf("WAF_SDK_URL inválida: %q", c.WafSDKURL))
+		} else {
+			c.WafSDKOrigin = "https://" + u.Host
+		}
 	}
 	if !strings.HasSuffix(c.S3Prefix, "/") {
 		c.S3Prefix += "/"

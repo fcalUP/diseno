@@ -160,11 +160,17 @@ func (a *App) logRequests(next http.Handler) http.Handler {
 }
 
 func (a *App) csp() string {
-	connect := "'self'"
+	connect, script := "'self'", "'self'"
 	if a.Cfg.UploadOrigin != "" {
 		connect += " " + a.Cfg.UploadOrigin
 	}
-	return "default-src 'self'; img-src 'self' data: blob:; " +
+	// El SDK del WAF baja su script y resuelve los retos contra su propio dominio.
+	if a.Cfg.WafSDKOrigin != "" {
+		connect += " " + a.Cfg.WafSDKOrigin
+		script += " " + a.Cfg.WafSDKOrigin
+	}
+	return "default-src 'self'; script-src " + script + "; worker-src 'self' blob:; " +
+		"img-src 'self' data: blob:; " +
 		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
 		"font-src https://fonts.gstatic.com; connect-src " + connect + "; " +
 		"frame-ancestors 'none'; base-uri 'self'; form-action 'self'"

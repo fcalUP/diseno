@@ -62,3 +62,23 @@ func TestSPAWithoutWebDir(t *testing.T) {
 		}
 	}
 }
+
+func TestSPAInyectaSDKDelWAF(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<html><head><title>x</title></head><body></body></html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a := appNoDB(t)
+	a.Cfg.WebDir = dir
+	a.Cfg.WafSDKURL = "https://ejemplo.edge.sdk.awswaf.com/a/b/challenge.js"
+	a.Cfg.WafSDKOrigin = "https://ejemplo.edge.sdk.awswaf.com"
+	rec := httptest.NewRecorder()
+	a.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/alumnos", nil))
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `<script src="https://ejemplo.edge.sdk.awswaf.com/a/b/challenge.js" defer></script></head>`) {
+		t.Fatalf("index sin el script del WAF: %d %s", rec.Code, body)
+	}
+	if csp := rec.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'self' https://ejemplo.edge.sdk.awswaf.com") {
+		t.Fatalf("CSP sin el dominio del WAF: %s", csp)
+	}
+}

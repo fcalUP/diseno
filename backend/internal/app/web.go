@@ -1,6 +1,9 @@
 package app
 
 import (
+	"bytes"
+	"html"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -34,10 +37,40 @@ func (a *App) spaHandler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		a.serveIndex(w, r, web)
+	})
+}
+
+// serveIndex manda index.html; con WAF_SDK_URL le agrega el script del WAF para que
+// el navegador renueve su token solo y las llamadas al API no caigan en un reto.
+func (a *App) serveIndex(w http.ResponseWriter, r *http.Request, web *os.Root) {
+	if a.Cfg.WafSDKURL == "" {
 		if !serveFile(w, r, web, "index.html", "no-cache") {
 			http.NotFound(w, r)
 		}
-	})
+		return
+	}
+	f, err := web.Open("index.html")
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	page, err := io.ReadAll(f)
+	if err != nil {
+		http.Error(w, "Error interno del servidor.", http.StatusInternalServerError)
+		return
+	}
+	tag := `<script src="` + html.EscapeString(a.Cfg.WafSDKURL) + `" defer></script>`
+	page = bytes.Replace(page, []byte("</head>"), []byte(tag+"</head>"), 1)
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeContent(w, r, "index.html", info.ModTime(), bytes.NewReader(page))
 }
 
 func webCache(name string) string {
