@@ -1,5 +1,9 @@
 # Despliegue de diseno
 
+Para retomar el desarrollo, empieza por [AGENTS.md](../AGENTS.md), la
+[guía de validación](../docs/validacion.md) y el
+[registro de estado y decisiones](../docs/estado-y-decisiones.md).
+
 Todo vive en la cuenta 113380982662 (perfil `ivan-admin`), región `us-east-1`, en una sola pila de
 CloudFormation llamada `diseno` ([`infra.yaml`](infra.yaml)). La instancia va en la VPC por defecto
 (`vpc-07a9d9ca49e59006d`), aparte de las VPC de Portal.
@@ -104,6 +108,16 @@ Si la app no queda sana en 150 s, `deploy.sh` regresa `.env`, `compose.yml` y el
 anteriores, levanta la versión previa y el trabajo sale en rojo. Para volver atrás a propósito, haz
 `git revert` del commit y empuja a `main`.
 
+Ese rollback restaura código y configuración, **no deshace migraciones SQL** ya confirmadas ni
+escrituras de usuarios. Una migración nueva debe conservar la compatibilidad necesaria con la
+imagen anterior; recuperar datos exige un respaldo y el procedimiento de restauración.
+
+Un push que solo cambie Markdown también dispara este flujo. Para una entrega exclusivamente
+documental se puede omitir ese CI con `[skip ci]` en el mensaje del commit, según la
+[documentación de GitHub](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs).
+No lo uses para cambios de código o infraestructura. En un PR con checks obligatorios, omitir el
+workflow los deja pendientes y puede impedir el merge; usa el flujo normal en ese caso.
+
 Las acciones van fijadas al commit, con la versión en un comentario (`@<sha> # v7.0.1`): una etiqueta
 se puede mover y el trabajo `deploy` corre con el rol de AWS. Para subir una de versión, busca el
 commit de la etiqueta nueva y cambia el SHA y el comentario:
@@ -174,7 +188,9 @@ Los medios no necesitan respaldo aparte: S3 guarda 30 días lo que se borra o se
 
 ## Cambios de infraestructura
 
-Edita `infra.yaml` y vuelve a correr `bootstrap.sh`. Repetirlo es seguro.
+Edita `infra.yaml` y vuelve a correr `bootstrap.sh` después de revisar el cambio propuesto.
+Repetirlo sin cambios conserva los valores existentes; una edición de infraestructura puede
+reemplazar recursos o interrumpir el servicio. Revisa especialmente la instancia y su disco.
 
 El `UserData` de la instancia solo corre en el primer arranque. Si lo cambias, CloudFormation detiene
 la instancia y la vuelve a arrancar (un par de minutos sin servicio) y aun así no lo ejecuta: el

@@ -16,6 +16,22 @@ cuando haga falta, con el mismo formato de columnas de siempre.
 
 Sitio: https://design.nexed.dev · Panel: https://design.nexed.dev/admin
 
+## Para desarrollar o retomar con una IA
+
+Empieza por [AGENTS.md](AGENTS.md). Estas memorias están versionadas con el proyecto:
+
+| Documento | Cuándo leerlo |
+|---|---|
+| [Arquitectura y flujos](docs/arquitectura.md) | Para entender datos, sesiones, materias, imágenes, tienda e importaciones. |
+| [Validación](docs/validacion.md) | Para levantar el entorno, elegir pruebas y revisar los flujos afectados. |
+| [Estado y decisiones](docs/estado-y-decisiones.md) | Para retomar el trabajo sin perder decisiones del producto ni confundir estado histórico con estado actual. |
+| [Contrato HTTP](docs/routes_contract.md) | Al modificar rutas, permisos, cuerpos JSON o respuestas. |
+| [Especificación funcional](docs/spec.md) | Como referencia de comportamiento y del panel. |
+| [Operación en AWS](deploy/README.md) | Para despliegues, secretos, respaldos, diagnóstico y recuperación. |
+
+Comprueba el código y el estado real antes de actuar; las memorias no guardan credenciales.
+Actualiza el documento correspondiente cuando cambies un flujo o una decisión.
+
 ## Qué hay en el repo
 
 | Carpeta | Qué es |
@@ -35,7 +51,7 @@ Nada de esto requiere tocar código:
   asistencias, juegos y EXP en lote, activar o desactivar, mover de curso, restablecer contraseñas.
 - **Avatares**: una imagen por nivel para cada alumno, más los avatares predeterminados listos
   desde el primer arranque y editables desde el panel.
-- **Cursos**: cuáles aparecen en el login, en qué orden, su imagen lateral y su logo, y de qué
+- **Cursos**: cuáles están activos, en qué orden aparecen, su imagen lateral y su logo, y de qué
   pestaña del Sheets se importan.
 - **Insignias**: nombre, costo, existencias, imagen y en qué cursos se ven.
 - **Compras**: historial con filtros; cualquier compra se puede deshacer (devuelve monedas y
@@ -71,26 +87,41 @@ Hace falta Go 1.26, Node 24 y Docker (o un Postgres propio).
 
 ```sh
 docker compose up -d                      # Postgres 18 en 127.0.0.1:5433
+```
 
-cd backend
+En una terminal para el API, desde la raíz del repo:
+
+```sh
+(cd backend && \
 DATABASE_URL='postgres://diseno:diseno@localhost:5433/diseno?sslmode=disable' \
-SESSION_SECRET="$(openssl rand -hex 32)" \
+SESSION_SECRET='<secreto-local-estable-de-al-menos-32-caracteres>' \
 ADMIN_PASSWORD='una-contraseña-larga' \
+MEDIA_DIR=../.data/media \
 MEDIA_SEED_DIR=../seed/media \
-go run ./cmd/server                       # API en :8080
+go run ./cmd/server)                      # API en :8080
+```
 
-cd frontend && npm ci && npm run dev      # http://localhost:5173 y /admin
+En otra terminal, también desde la raíz:
+
+```sh
+(cd frontend && npm ci && npm run dev)     # http://localhost:5173 y /admin
 ```
 
 El primer arranque crea las tablas, los cursos y niveles iniciales y el usuario `Admin` con
 `ADMIN_PASSWORD`. Las imágenes se guardan en disco (`MEDIA_DIR`) en vez de S3.
+Genera un secreto propio para el entorno local, consérvalo fuera de Git y reutilízalo entre
+arranques; cambiarlo impide descifrar los secretos de Ajustes guardados con el valor anterior.
 
 Antes de subir cambios:
 
 ```sh
-cd frontend && npm run lint && npm run build
-cd backend && gofmt -l . && go vet ./... && go test ./...   # con DATABASE_URL apunta a una base de prueba
+(cd frontend && npm run lint && npm run build)
+(cd backend && test -z "$(gofmt -l .)" && go vet ./... && \
+  DATABASE_URL='postgres://diseno:diseno@localhost:5433/diseno?sslmode=disable' go test ./...)
 ```
+
+Estos comandos usan exclusivamente el Postgres local de desarrollo. La guía de
+[validación](docs/validacion.md) explica los esquemas aislados y las comprobaciones según el cambio.
 
 ## Producción
 

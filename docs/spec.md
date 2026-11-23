@@ -1,8 +1,12 @@
-# Migration spec (agent-facing source of truth)
+# Especificación funcional y técnica
 
-This file is the contract every implementation agent follows. If something here conflicts
-with your instincts, follow this file. If something is genuinely missing, choose the simplest
-option consistent with it and note it in your final report.
+Referencia del sistema implementado, actualizada el 23 de noviembre de 2026. Para retomar,
+lee primero [AGENTS.md](../AGENTS.md), [arquitectura](arquitectura.md) y
+[validación](validacion.md). El contrato de rutas y sesiones está en
+[routes_contract.md](routes_contract.md); las formas JSON están en
+[types.ts](../frontend/src/lib/types.ts). Verifica siempre el código correspondiente al
+cambio. Este documento ya no asigna archivos a agentes de la migración ni describe stubs
+pendientes; las instrucciones actuales del usuario tienen prioridad.
 
 ## 0. What the product is
 
@@ -22,7 +26,7 @@ New stack:
 - `frontend/`: React 19 + Vite 8 + TypeScript 6.0 + ESLint 10 (flat config) + Tailwind CSS
   **3.4** (v3 on purpose: the legacy markup uses v3-only utilities like `bg-opacity-60`; v4
   would change the look). React Router 8 (declarative mode, `import ... from "react-router"`),
-  `lucide-react` icons for the admin panel only.
+  `lucide-react` icons in the admin panel and the course selection controls.
 - `backend/`: Go 1.26, stdlib `net/http` (Go 1.22+ method patterns), `pgx/v5` (pgxpool),
   `golang.org/x/crypto/bcrypt`, `golang.org/x/oauth2/google` + plain REST for Google Sheets,
   `aws-sdk-go-v2` (s3 + presign) for media. No web framework, no ORM, no codegen.
@@ -32,92 +36,48 @@ New stack:
 
 ## 1. Hard rules
 
-1. **Student-facing design must not change.** Port `legacy/index.html` markup and Tailwind
-   classes verbatim (same texts, same alerts, same layout, same English copy). Only data
-   sources change (API instead of hardcoded values) and real bugs get fixed (listed in §7).
-   User-requested exception: remove course selection from login, add course cards after
-   multi-course login and a course switcher in the student navbar, using the existing style.
-2. **Nothing configurable lives in code.** Courses, which courses appear in the login
-   dropdown, side image/logo per course, badges, per-course badge visibility, level
+1. **Preserve the student-facing design.** The reference is `legacy/index.html` markup
+   and Tailwind classes. The implemented exceptions requested by the user are automatic
+   course detection, course cards, the navbar switcher and custom pickers. Keep their
+   current behavior and the existing style unless a new change is requested. Section 7
+   records the legacy bugs already corrected during migration.
+2. **Configuration belongs in the panel.** Active courses, side image/logo per course,
+   badges, per-course badge visibility, level
    thresholds, feature toggles, email sender/CC, password rule and its texts, reset-code TTL,
    level-up GIF, spreadsheet ID, Google credentials, Resend key, admin users: all editable
    from the admin UI. Code holds only *defaults* used to seed the DB.
-3. **Everything an admin changes is logged and can be undone/redone** from the UI
-   (activity log + "Deshacer" toast after each mutation). Activate/deactivate toggles
-   instead of destructive deletes wherever a toggle makes sense.
+3. **Admin changes use the existing audit and undo/redo system** from the UI.
+   Respect operations marked not undoable (such as changes only to secret settings) and
+   conflict checks. Prefer activate/deactivate toggles where the product already offers them.
 4. **Every JSON request body must stay under 8 KB.** The shared WAF blocks larger bodies
    for this host. The frontend chunks bulk operations (≤ 50 rows per request) and never
    uploads files through the API: files go straight to S3 with a presigned PUT.
 5. Admin panel copy is **Spanish** (Mexico). Student UI copy stays exactly as legacy
    (mostly English). Backend error messages keep the legacy Spanish strings where they exist.
 6. Code comments in Spanish, short, written like a person (no AI filler, no emojis).
-7. Laziest correct solution: stdlib first, no new dependencies beyond those listed, no
-   speculative abstractions. Never skip validation, auth, error handling or accessibility.
-8. Use the context7 MCP tools to check current library APIs before writing code against
-   them (React Router 8, pgx v5, aws-sdk-go-v2, typescript-eslint, Tailwind 3).
+7. Prefer the standard library and existing dependencies. Justify new dependencies against
+   the requested behavior and maintainability; avoid speculative abstractions. Preserve
+   validation, authentication, error handling and accessibility.
+8. Check installed versions and lockfiles before changing dependency APIs. Use the official
+   documentation or Context7 when available; do not make the work depend on a tool that
+   is absent from the next developer's environment.
+9. Use the existing custom pickers, including keyboard and touch behavior. Do not restore
+   visible native selects when changing forms; see `frontend/src/components/CustomSelect.tsx`.
 
-## 2. Repository layout and file ownership
+## 2. Repository layout
 
-```
-backend/
-  go.mod                          module github.com/fcalUP/diseno/backend
-  cmd/server/main.go              [BF] wiring, flags (-healthcheck), graceful shutdown
-  internal/app/
-    app.go                        [BF] App struct, New(), Routes() — ALL routes registered here
-    config.go                     [BF] env config
-    http.go                       [BF] JSON helpers, middleware, clientIP, errors
-    auth.go                       [BF] tokens, cookies, password hashing, require* middleware
-    ratelimit.go                  [BF] in-memory limiter
-    settings.go                   [BF] typed settings with defaults + secret encryption
-    levels.go                     [BF] levels cache + CalcLevel
-    audit.go                      [BF] Audit() recording API (insert only)
-    storage.go                    [BF] Storage interface + local + s3 implementations
-    web.go                        [BF] SPA static serving + local /media serving
-    migrate.go                    [BF] embedded migration runner
-    migrations/0001_init.sql      [ORCH] schema (already written — do not change without reason)
-    migrations/0002_seed.sql      [ORCH] default data
-    util.go                       [BF] slugify, normalizeLabel, parseIntLoose, random helpers
-    student.go                    [B1] public config + student endpoints
-    mail.go                       [B1] Resend client + email templates
-    admin_core.go                 [B2] admin login/logout/me, quick dashboard endpoints, stats
-    admin_students.go             [B2] students CRUD, generate, bulk, password
-    admin_catalog.go              [B2] courses, badges, visibility, levels, avatars
-    admin_misc.go                 [B2] purchases admin, settings, admins, uploads
-    undo.go                       [B2] undo/redo engine + audit list endpoints
-    sheets.go                     [B3] Google Sheets REST client
-    importer.go                   [B3] import preview/run/jobs + legacy media import
-    *_test.go                     owner of the matching file
-frontend/
-  index.html, vite.config.ts, eslint.config.js, tailwind.config.js, postcss.config.js,
-  tsconfig*.json                  [ORCH] already written
-  src/main.tsx                    [FF]
-  src/App.tsx                     [FF] router: "/" → student app, "/admin/*" → admin app
-  src/index.css                   [ORCH] Tailwind + legacy custom CSS (already written)
-  src/lib/types.ts                [ORCH] API types (the contract) — do not change shapes
-  src/lib/api.ts                  [FF] typed fetch client, one function per endpoint
-  src/lib/level.ts                [FF] calcLevel/getLevelProgress from levels config
-  src/student/*                   [F1] legacy UI port (+ quick admin modal from legacy)
-  src/admin/AdminApp.tsx          [FF] admin routes + auth guard + login page
-  src/admin/AdminLayout.tsx       [FF] sidebar/topbar shell
-  src/admin/ui/*                  [FF] shared kit (see §6)
-  src/admin/pages/Dashboard.tsx, Students.tsx, StudentDrawer.tsx, GenerateStudents.tsx,
-                  Avatars.tsx                                   [F2a]
-  src/admin/pages/Courses.tsx, Badges.tsx, Purchases.tsx, Levels.tsx   [F2b]
-  src/admin/pages/Import.tsx, Activity.tsx, Settings.tsx, Admins.tsx  [F2c]
-deploy/                           [I1] CloudFormation, Caddyfile, compose, scripts
-Dockerfile, .dockerignore, docker-compose.yml (local dev), .github/workflows/ci-cd.yml  [I1]
-seed/media/legacy/                legacy images, synced to s3://<bucket>/media/legacy/
-legacy/                           old code, reference only (deleted at the end)
-```
-Agents only edit files they own. If you need something from a file you don't own, use the
-signature promised in §5/§6; if it's missing, write a minimal local helper in your own file.
+See the source map in [arquitectura.md](arquitectura.md) and the change map in
+[AGENTS.md](../AGENTS.md). The application is implemented in `frontend/` and `backend/`;
+`legacy/` remains a reference and `deploy/` holds production operations. There are no
+current file owners named BF/B1/B2/FF; remaining labels in comments are historical.
 
 ## 3. Data model
 
 See `backend/internal/app/migrations/0001_init.sql` (authoritative). Summary:
 - `courses(id, name unique, sheet_name unique, sheet_aliases text[], side_image_url, logo_url,
   hidden_badge_keywords text[], active, sort_order, timestamps)`.
-  `active` = appears in login/registration dropdown. `hidden_badge_keywords`: when a badge is
+  `active` controls public course choices and access to that course; inactive courses are
+  excluded from automatic login and switching. `hidden_badge_keywords`: when a badge is
   created (admin or import) and its normalized name contains one of these, it starts hidden
   for that course. Seed: "Analisis de Datos" → {internet, calculadora} (legacy behavior).
 - `students(id, course_id, code, name, sexo, email, password_hash, tareas, monedas,
@@ -150,10 +110,13 @@ General:
   header is present it must equal `PUBLIC_URL` (or be a localhost origin when
   `PUBLIC_URL` is http://localhost...). Otherwise 403.
 - Bodies limited to 64 KB server-side (WAF caps at 8 KB in production anyway).
-- Sessions: HMAC-signed cookies. Student cookie `diseno_alumno`, admin cookie `diseno_admin`.
+- Sessions: HMAC-signed cookies with a password version and a source enrollment for
+  multicourse login (see the routes contract). Student cookie `diseno_alumno`, admin cookie
+  `diseno_admin`.
   HttpOnly, SameSite=Lax, Path=/, Secure when `COOKIE_SECURE=true`, 12 h lifetime.
-- Every admin mutation response includes `auditId` (number) or `batchId` (string) so the UI
-  can offer "Deshacer".
+- Auditable admin mutations return `auditId` (number) or `batchId` (string) for the
+  applicable undo flow. Authentication, upload tickets and import job creation have their
+  own responses; secret-only changes are not undoable.
 - TypeScript shapes for every response are in `frontend/src/lib/types.ts`. Go JSON tags must
   match those field names exactly (camelCase).
 
@@ -163,8 +126,9 @@ General:
 |---|---|---|---|
 | GET `/api/health` | – | – | `{ok:true}` (checks DB ping) |
 | GET `/api/config` | – | – | `PublicConfig` |
-| POST `/api/login` | – | `{studentId, password, career}` | `LoginResponse`, sets student cookie |
+| POST `/api/login` | – | `{studentId, password, career?}` | `LoginResponse`, sets student cookie |
 | GET `/api/me` | student | – | `LoginResponse` |
+| POST `/api/switch-course` | student | `{courseId}` | `LoginResponse`, updates selected enrollment |
 | POST `/api/logout` | – | `{}` | `{success:true}` clears cookie |
 | POST `/api/register` | – | `{id, name, sexo, password, career}` | 201 `{message}` |
 | POST `/api/send-reset-code` | – | `{id, career}` | `{message}` |
@@ -173,16 +137,19 @@ General:
 | POST `/api/purchase` | student | `PurchaseRequest` | `PurchaseResponse` |
 | GET `/api/leaderboard` | student | – | `{success, leaderboard: LeaderboardRow[]}` |
 
-Behavior details (B1):
+Behavior details:
 - `career` is the course **name** (what the dropdown shows). Resolve it against active
   courses; unknown/inactive → 400 `{"error":"Carrera no válida."}`.
-- Login: missing fields → 400 `ID, contraseña y carrera requeridos.`; wrong code/password →
-  401 `Credenciales inválidas.`; inactive student → 403 `Tu cuenta está desactivada.`;
-  rate limited → 429 `Demasiados intentos. Intenta de nuevo en unos minutos.`
-  Lockout per (course, code): 10 failures in 15 min. Per IP: 100 attempts per 5 min.
-  On success: compute level; `levelUpOccurred = level > last_login_level`; if
-  `level != last_login_level` store the new value; set `last_login_at`; set cookie.
-- `/api/me` does the same level-up check (so the GIF shows after a refresh too).
+- Login: requires student ID and password; missing fields → 400 `ID y contraseña requeridos.`;
+  wrong credentials → 401; inactive matching enrollment → 403; rate limiting → 429.
+  An active enrollment's password authenticates the identity across all its active courses,
+  even when imported passwords differ. One course opens directly; multiple courses set
+  `requiresCourseSelection`. Optional legacy `career` selects an enrolled course directly.
+  Login, `/api/me` and `/api/switch-course` return `courses` plus the existing student data.
+  Pending selection persists across reloads and does not consume a visit or level animation.
+  Switching preserves the source credential and expiration, and resets course-specific UI
+  state. See [the full session and rate-limit contract](routes_contract.md).
+- `/api/me` preserves the selected course and checks level-up only after a course is chosen.
 - Register: validates trimmed `id`, `name`, `sexo`, `password` against the
   `passwordPattern` setting, course active. Disabled → 403 `El registro está cerrado.`
   Invalid → 400 legacy text `Datos inválidos o incompletos. Contraseña debe ser 4 HEX
@@ -191,7 +158,8 @@ Behavior details (B1):
   Rate limit 20/hour/IP.
 - Reset: disabled → 403 `La recuperación de contraseña está desactivada.` Unknown student →
   404 legacy text. Code = 6 random digits (crypto/rand), stored as SHA-256 hex in
-  `reset_codes` with TTL from settings, 5 wrong attempts invalidate it. Email to the
+  `reset_codes` with TTL from settings; 5 wrong attempts invalidate it until expiry.
+  Resending a still-valid code keeps its failed-attempt count. Email to the
   student's `email` (fallback `code@domain`) plus `emailCc`, legacy HTML body. Email failure
   is logged, response is still 200 (legacy). Limits: 3 sends/hour per student, 20/hour/IP.
   Reset with code: legacy messages; success updates hash, deletes code, audit entry.
@@ -222,9 +190,13 @@ Behavior details (B1):
 | GET `/api/admin/students?career=&courseId=&q=&active=` | – | `{success:true, students: AdminStudent[]}` |
 | POST `/api/admin/update-student-data` | `{id, tareas, monedas, asistencias, games, exp}` | `{success:true, message, newLevel, auditId}` |
 
-- Admin login limits: 10 failures/15 min per username, 30 attempts/15 min per IP.
+- Admin login limits: 10 attempts/15 min per (username, network), 100/15 min per username,
+  30/15 min per network. Success clears the matching username/network counter; see
+  routes_contract.md.
 - On boot, if `admins` is empty, create `ADMIN_USERNAME` (default `Admin`) with
   `ADMIN_PASSWORD`; if that env is empty generate a random one and log it once.
+  Production Compose requires a supplied `ADMIN_PASSWORD`; existing accounts are never
+  reset by changing the bootstrap parameter.
 - Admin edits never touch `last_login_level`; the student sees the level-up GIF on the next
   login, like when the professor edited EXP in the sheet.
 
@@ -291,7 +263,7 @@ Activity log
   summary}`; 409 `{error, conflict:true, fields}` when the record changed since.
 - `POST audit/batch/{batchId}/undo|redo {force?}` → `{success, done, failed:[{id,error}]}`.
 
-Import (B3)
+Import
 - `GET import/status` → `ImportStatus`.
 - `POST import/preview {spreadsheetId?, credentialsJson?}` → `ImportReport` (dry run,
   synchronous).
@@ -307,136 +279,36 @@ Import (B3)
 `WEB_DIR`=./web, `STORAGE_DRIVER`=local|s3, `MEDIA_DIR`=./data/media, `MEDIA_SEED_DIR`
 (optional, local fallback for reads, e.g. ../seed/media), `S3_BUCKET`, `S3_PREFIX`=media/,
 `AWS_REGION`=us-east-1, `UPLOAD_ORIGIN` (S3 endpoint origin for CSP connect-src, optional),
-`ADMIN_USERNAME`=Admin, `ADMIN_PASSWORD`, `RESEND_API_KEY` and `GOOGLE_SERVICE_ACCOUNT`
+`WAF_SDK_URL` (optional integration script), `ADMIN_USERNAME`=Admin, `ADMIN_PASSWORD`, `RESEND_API_KEY` and `GOOGLE_SERVICE_ACCOUNT`
 (fallbacks when not set in the UI).
 
-### 5.2 Signatures BF must provide (used by B1/B2/B3)
-```go
-type App struct {
-    Cfg     Config
-    DB      *pgxpool.Pool
-    Store   Storage
-    Limiter *Limiter
-    Log     *slog.Logger
-    Mail    Mailer          // set by New(); B1 implements resendMailer in mail.go
-    // BF may add private fields (settings cache, levels cache, import jobs registry hooks)
-}
-func New(ctx context.Context, cfg Config, db *pgxpool.Pool, log *slog.Logger) (*App, error)
-func (a *App) Routes() http.Handler
+### 5.2 Shared helpers and exact signatures
 
-// http.go
-func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool // writes 400 on error
-func writeJSON(w http.ResponseWriter, status int, v any)
-func writeError(w http.ResponseWriter, status int, msg string)
-func clientIP(r *http.Request, trustProxy bool) string
-func pathID(r *http.Request, name string) (int64, bool)               // r.PathValue + parse
+The helpers already exist. Read [routes_contract.md](routes_contract.md), then the relevant
+source in `backend/internal/app/`: `app.go`, `auth.go`, `http.go`, `settings.go`, `levels.go`,
+`audit.go`, `storage.go`, `util.go` and `mail.go`. Avoid copying an old prototype into a new
+file. In particular, session creation includes a password hash; session authorization also
+checks the database, and bcrypt runs through the application's concurrency limit.
 
-// auth.go
-type Session struct{ Kind string; ID int64; Exp int64 }               // Kind "alumno"|"admin"
-func (a *App) setSession(w http.ResponseWriter, kind string, id int64)
-func (a *App) clearSession(w http.ResponseWriter, kind string)
-func (a *App) studentID(r *http.Request) (int64, bool)
-func (a *App) adminID(r *http.Request) (int64, bool)
-func (a *App) requireStudent(h func(w http.ResponseWriter, r *http.Request, studentID int64)) http.HandlerFunc
-func (a *App) requireAdmin(h func(w http.ResponseWriter, r *http.Request, adminID int64)) http.HandlerFunc
-func hashPassword(pw string) (string, error)                          // bcrypt cost 10
-func checkPassword(hash, pw string) bool
-func randomToken(nBytes int) string                                   // hex
-// requireStudent/requireAdmin also verify the row still exists and is active.
-
-// ratelimit.go
-func (l *Limiter) Allow(key string, max int, window time.Duration) bool   // counts attempts
-func (l *Limiter) Fail(key string, max int, window time.Duration) bool    // counts failures; false when over
-func (l *Limiter) Blocked(key string, max int, window time.Duration) bool // check without counting
-func (l *Limiter) Reset(key string)
-
-// settings.go
-type Settings struct { /* every field of AdminSettings, plain values, plus: */
-    ResendAPIKey string; GoogleServiceAccount string  // decrypted, "" when unset (env fallback applied)
-    ResendSource, GoogleSource string                  // "db"|"env"|"none"
-}
-func (a *App) Settings(ctx context.Context) (Settings, error)         // cached, invalidated on write
-func (a *App) SaveSettings(ctx context.Context, tx pgx.Tx, patch map[string]any) error // keys = settings keys below; secrets encrypted here
-func (a *App) invalidateSettings()
-// Settings keys (DB key → default):
-// registration_enabled true, password_reset_enabled true, store_enabled true,
-// leaderboard_enabled true, level_up_animation_enabled true, purchase_email_enabled true,
-// email_from "onboarding@resend.dev", email_cc ["fcal@up.edu.mx"],
-// student_email_domain "up.edu.mx", password_pattern "^[A-Z0-9]{4}$",
-// password_hint_register "Password (2 uppercase letters and 2 numbers)",
-// password_hint_reset "New password (4 uppercase letters/numbers)",
-// password_error "Invalid password. Use only 4 uppercase letters/numbers.",
-// reset_code_ttl_minutes 10, level_up_gif_url "/media/legacy/gifs/levelup.gif",
-// spreadsheet_id "1I6pVLSBav-U7c86FLavh0tikPghLDVrWCFuru-qwQ4Y",
-// resend_api_key (secret), google_service_account (secret)
-// Secrets: AES-256-GCM, key = SHA-256("diseno-settings:" + SESSION_SECRET), stored as JSON
-// string "enc:v1:" + base64(nonce|ciphertext).
-
-// levels.go
-type Level struct{ Level int `json:"level"`; MinExp int `json:"minExp"` }
-func (a *App) Levels(ctx context.Context) ([]Level, error)            // cached, sorted
-func (a *App) invalidateLevels()
-func CalcLevel(exp int, levels []Level) int
-
-// audit.go
-type AuditEntry struct {
-    ActorType  string  // "admin" | "student" | "system"
-    ActorID    *int64
-    ActorLabel string  // username, student code, or "sistema"
-    Action     string  // create|update|delete|purchase|revert|restore|import|undo|redo|login...
-    Entity     string  // student|course|badge|visibility|level|avatar|setting|admin|purchase|import
-    EntityID   string  // "" when not applicable; avatar = "code:level"
-    Summary    string  // Spanish, human readable
-    Before     any     // snapshot or nil (marshalled to jsonb)
-    After      any
-    BatchID    string  // "" or uuid
-    Undoable   bool
-    RevertsID  *int64
-}
-func (a *App) Audit(ctx context.Context, q DBTX, e AuditEntry) (int64, error)
-type DBTX interface { Exec(...); Query(...); QueryRow(...) } // satisfied by pgxpool.Pool and pgx.Tx
-func newBatchID() string                                               // uuid v4 string
-// Snapshot helper (rows as JSON objects with snake_case column names, as to_jsonb returns):
-func snapshotRow(ctx context.Context, q DBTX, table string, id any) (map[string]any, error)
-
-// storage.go
-type ObjectInfo struct{ Key string; Size int64; ContentType string }
-type Storage interface {
-    PresignUpload(ctx context.Context, key, contentType string, size int64) (url string, headers map[string]string, err error)
-    Stat(ctx context.Context, key string) (ObjectInfo, error)   // ErrNotFound when missing
-    List(ctx context.Context, prefix string) ([]ObjectInfo, error)
-}
-var ErrNotFound = errors.New("not found")
-func mediaURL(key string) string            // "/media/" + key
-func mediaKey(url string) (string, bool)    // inverse; false if not a /media/ url
-
-// util.go
-func normalizeLabel(s string) string        // legacy normalizeLabel: NFD strip accents, lower, [_-]→space, collapse
-func slugify(name string) string            // legacy badge file name: lower, spaces→_, strip accents, keep [a-z0-9_]
-func parseIntLoose(s string) int            // JS parseInt semantics, NaN → 0
-func randomDigits(n int) string
-func generatePassword(pattern string) (string, error) // 2 letters + 2 digits shuffled, must match pattern
-```
-`Mailer` (B1, mail.go): `type Mailer interface{ Send(ctx context.Context, m Mail) error }`,
-`type Mail struct{ From string; To []string; Subject, HTML, Text string }`. BF declares the
-interface and a `noopMailer` in app.go so things compile before B1 lands; B1 provides
-`newResendMailer(a *App) Mailer` and BF's `New()` calls it (B1 also edits that one line).
+Settings are overrides stored in PostgreSQL, with defaults in `settings.go`. Secret settings
+use AES-GCM with a key derived from `SESSION_SECRET`; rotating that secret requires a plan to
+recover or re-encrypt stored settings. Settings and levels caches expire after one minute
+and are invalidated after successful edits. See the architecture document for details.
 
 ### 5.3 Routes
-BF registers every route of §4 in `Routes()` pointing at methods named after the handler,
-e.g. `a.handleLogin`, `a.handleAdminStudentsList`, and creates **stub implementations**
-(`writeError(w, 501, "pendiente")`) in the owner's file so the package compiles. Owners
-replace their stubs. Handler names are fixed in `routes_contract.md` (written by BF next to
-this file) so owners know exactly which methods to implement.
+
+`Routes()` in [app.go](../backend/internal/app/app.go) registers the implemented handlers.
+Keep it synchronized with the route table, TypeScript types and API client when changing
+an endpoint. Do not add placeholder handlers for existing features.
 
 ### 5.4 Middleware order
 recover → request log (method, path, status, duration; never log bodies or secrets) →
 security headers (`X-Content-Type-Options: nosniff`, `Referrer-Policy:
 strict-origin-when-cross-origin`, `X-Frame-Options: DENY`, CSP below) → body limit →
 CSRF/origin check for /api mutations → mux.
-CSP: `default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'
-https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'
-{UPLOAD_ORIGIN}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`.
+CSP is built in `http.go` from the application's own origin, Google Fonts, the configured
+upload origin and the optional WAF SDK origin. Keep the SDK's script and connection domains
+working; do not relax CSP broadly to fix a broken resource.
 
 ### 5.5 Static serving (web.go)
 - `/assets/*` from WEB_DIR with `Cache-Control: public, max-age=31536000, immutable`.
@@ -445,7 +317,7 @@ https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 's
 - `GET /media/*` only when `STORAGE_DRIVER=local`: serve from MEDIA_DIR, then MEDIA_SEED_DIR.
   In production CloudFront serves `/media/*` from S3; the app never sees it.
 
-### 5.6 Audit and undo (B2 implements undo.go; BF only records)
+### 5.6 Audit and undo
 `audit_log(id, at, actor_type, actor_id, actor_label, action, entity, entity_id, summary,
 before jsonb, after jsonb, batch_id uuid, undoable bool, undone_at, undone_by, reverts_id)`.
 Snapshot formats (what goes in before/after):
@@ -467,20 +339,22 @@ Undo semantics:
 - purchase/restore → revert; revert → restore.
 - Redo applies the opposite. Each undo/redo writes its own entry (`action` undo|redo,
   `reverts_id`), toggles `undone_at` on the original, and is itself not undoable.
-- Batch undo/redo processes entries newest first, continues on errors, reports failures.
+- Batch undo processes entries newest first; redo processes them oldest first. General
+  batches continue on errors and report partial failures. An import summary reverts its
+  associated entries within a transaction; see undo.go for its conflict behavior.
 - Audit API never returns `password_hash` or secret values (strip keys named
   `password_hash`, `code_hash`).
 
 ## 6. Frontend internals
 
 ### 6.1 Contract
-`src/lib/types.ts` holds every request/response type. `src/lib/api.ts` (FF) exports:
+`src/lib/types.ts` holds every request/response type. `src/lib/api.ts` exports:
 ```ts
 export class ApiError extends Error { status: number; data: unknown }
 export async function apiGet<T>(path: string): Promise<T>
 export async function apiSend<T>(method: 'POST'|'PUT'|'PATCH'|'DELETE', path: string, body?: unknown): Promise<T>
 export async function uploadImage(file: File): Promise<string>  // returns /media/... url
-export const api = { config(), login(b), me(), logout(), register(b), sendResetCode(b),
+export const api = { config(), login(b), me(), switchCourse(courseId), logout(), register(b), sendResetCode(b),
   resetPassword(b), badges(career), purchase(b), leaderboard(), admin: { login(b), logout(),
   me(), ...one method per admin endpoint } }
 ```
@@ -489,13 +363,13 @@ return the parsed body for any status instead of throwing (keep legacy `alert(da
 flows working); admin helpers throw `ApiError` with the server's `error` message.
 `uploadImage` validates type/size client-side, asks for a ticket, PUTs the file, returns url.
 
-### 6.2 Admin UI kit (`src/admin/ui/`, FF)
+### 6.2 Admin UI kit (`src/admin/ui/`)
 Tailwind only, Poppins inherited, consistent with legacy colors (orange-500 primary,
 purple-600 secondary, blue-600 admin accents, gray-50 surfaces, rounded-2xl cards, shadow).
 Components (named exports, props typed):
 `Button` (variants primary|secondary|ghost|danger, size sm|md, loading), `IconButton`,
 `Card`, `PageHeader` (title, subtitle, actions), `Toggle` (accessible switch, label),
-`TextField`, `NumberField`, `TextArea`, `Select`, `SearchInput`, `Badge`/`Pill`,
+`TextField`, `NumberField`, `TextArea`, `Select` (wraps shared `CustomSelect`), `SearchInput`, `Badge`/`Pill`,
 `Modal` (focus trap-lite, Esc closes, aria), `Drawer` (right side panel), `ConfirmDialog`
 (+ `useConfirm()` promise hook), `Toaster` + `useToast()` → `toast.success(msg, {undo?:
 () => Promise<void>})` shows a "Deshacer" button when `undo` is given, `EmptyState`,
@@ -504,13 +378,13 @@ state, value = url, onChange(url), allows clearing), `DataTable` (columns config
 header, row selection with checkboxes, empty state, responsive horizontal scroll),
 `Tabs`, `Stat` (KPI tile).
 Hooks: `useAsync(fn, deps)` → `{data, error, loading, reload}`, `useUndo()` →
-`(ref: {auditId?: number; batchId?: string}) => Promise<void>` that calls the audit
+`(ref: {auditId?: number; batchId?: string}) => Promise<boolean>` that calls the audit
 undo endpoint and toasts the result (handles 409 by asking to force).
 
 ### 6.3 Admin pages (Spanish)
 Sidebar order: Resumen, Alumnos, Generar alumnos, Avatares, Cursos, Insignias, Compras,
 Niveles, Importar, Actividad, Ajustes, Administradores. Every list has search/filters,
-toggles for `active`, and every mutation shows a toast with "Deshacer".
+toggles for `active`, and auditable mutations offer "Deshacer" where supported.
 - Resumen: KPIs, per-course table, low stock badges, recent activity with undo.
 - Alumnos: course tabs/filter, search, active filter, table (avatar thumb, ID, nombre, nivel,
   EXP, monedas, tareas, asistencias, juegos, insignias, activo toggle, acciones), row click
@@ -541,7 +415,7 @@ toggles for `active`, and every mutation shows a toast with "Deshacer".
   only), password rule + texts, TTL, level-up GIF upload, Google Sheets ID + credentials.
 - Administradores: list, active toggle, create, change password, delete.
 
-## 7. Legacy bugs to fix during the port (and nothing else)
+## 7. Legacy bugs corrected during migration (historical reference)
 - AdminDashboard called hooks after an early return (rules of hooks).
 - After a purchase the UI read `data.newBadgeQuantity` (undefined); use the response.
 - Purchase errors were ignored (UI crashed reading `data.newCoins`); alert the error instead.
