@@ -25,7 +25,7 @@ fi
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-for f in compose.yml Caddyfile backup.sh; do
+for f in compose.yml Caddyfile backup.sh smoke.py; do
   aws s3 cp --only-show-errors "s3://$BUCKET/deploy/$TAG/$f" "$tmp/$f"
 done
 
@@ -33,12 +33,14 @@ aws ssm get-parameters-by-path --path /diseno/prod/ --with-decryption \
   --query 'Parameters[].[Name,Value]' --output text > "$tmp/params"
 param() { awk -F'\t' -v k="/diseno/prod/$1" '$1 == k { print $2 }' "$tmp/params"; }
 
+for nombre in POSTGRES_PASSWORD SESSION_SECRET ADMIN_PASSWORD ORIGIN_DOMAIN ORIGIN_SECRET; do
+  if [ -z "$(param "$nombre")" ]; then
+    echo "Falta $nombre en /diseno/prod/ (corre deploy/bootstrap.sh)." >&2
+    exit 1
+  fi
+done
 ORIGIN_DOMAIN=$(param ORIGIN_DOMAIN)
 ORIGIN_SECRET=$(param ORIGIN_SECRET)
-if [ -z "$ORIGIN_DOMAIN" ] || [ -z "$ORIGIN_SECRET" ]; then
-  echo "Faltan ORIGIN_DOMAIN u ORIGIN_SECRET en /diseno/prod/ (corre deploy/bootstrap.sh)." >&2
-  exit 1
-fi
 # Los valores van entre comillas simples, que Compose toma literales. No caben
 # comillas simples, saltos de línea ni tabuladores, y el nombre debe servir de variable.
 if grep -q "'" "$tmp/params" ||
@@ -51,6 +53,10 @@ fi
   echo "APP_IMAGE='$REPO_URI:$TAG'"
   echo "S3_BUCKET='$BUCKET'"
 } > "$tmp/.env"
+
+# Valida antes de reemplazar la versión en uso. En particular, producción siempre
+# necesita ADMIN_PASSWORD: si falta, el backend generaría una y la escribiría al log.
+docker compose --env-file "$tmp/.env" -f "$tmp/compose.yml" config --quiet
 
 aws ecr get-login-password | docker login --username AWS --password-stdin "${REPO_URI%%/*}" >/dev/null
 
@@ -69,6 +75,8 @@ install -m 755 "$tmp/backup.sh" backup.sh
 
 volver() {
   echo "Regreso a la versión anterior." >&2
+  # Esta salida acaba en el log público de GitHub Actions: solo va la app, cuyo
+  # registro no trae IP. El de Caddy sí las trae (CloudFront-Viewer-Address).
   docker compose logs --no-color --tail 60 app >&2 || true
   if [ "$primera" = 0 ]; then
     for f in .env compose.yml Caddyfile backup.sh; do
@@ -114,11 +122,13 @@ for _ in $(seq 24); do
 done
 if [ -n "$caddy_ok" ]; then
   echo "Caddy responde por HTTPS en $ORIGIN_DOMAIN"
+  SMOKE_BASE_URL="https://$ORIGIN_DOMAIN" SMOKE_CONNECT_HOST=127.0.0.1 \
+    SMOKE_PUBLIC_URL=https://design.nexed.dev SMOKE_ORIGIN_SECRET="$ORIGIN_SECRET" \
+    SMOKE_REQUIRE_WEB=1 python3 "$tmp/smoke.py" || volver
 elif [ "$primera" = 1 ]; then
   echo "AVISO: Caddy aún no responde por HTTPS; quizá el certificado sigue en trámite (docker compose logs caddy)." >&2
 else
-  docker compose logs --no-color --tail 40 caddy >&2 || true
-  echo "Caddy no responde por HTTPS en $ORIGIN_DOMAIN." >&2
+  echo "Caddy no responde por HTTPS en $ORIGIN_DOMAIN; lee su registro por Session Manager (docker compose logs caddy, ver deploy/README.md)." >&2
   volver
 fi
 

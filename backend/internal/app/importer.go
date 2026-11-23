@@ -772,6 +772,10 @@ func (r *impRun) courseTab(c impCourse, titles []string, used map[string]string)
 	return ""
 }
 
+// impText limpia una celda de una sola línea. La hoja vieja se acepta tal cual
+// (sin las reglas del registro), pero sin caracteres de control.
+func impText(s string) string { return strings.TrimSpace(stripControl(s)) }
+
 // impCells lee celdas sin salirse de la fila: Sheets omite las vacías del final.
 func impCells(row []string) func(int) string {
 	return func(i int) string {
@@ -847,7 +851,7 @@ func (r *impRun) importStudents(tabs map[int64]*impTab) error {
 			cr.Rows++
 			cell := impCells(cells)
 			where := fmt.Sprintf("%s, fila %d", tab.name, n+1)
-			code := strings.TrimSpace(cell(0))
+			code := impText(cell(0))
 			if code == "" {
 				cr.Skipped++
 				r.warn("%s: sin código de alumno; se omitió.", where)
@@ -865,11 +869,11 @@ func (r *impRun) importStudents(tabs map[int64]*impTab) error {
 				cr.Skipped++
 				continue
 			}
-			row.name = strings.TrimSpace(cell(1))
-			if row.sexo = strings.TrimSpace(cell(2)); row.sexo == "" {
+			row.name = impText(cell(1))
+			if row.sexo = impText(cell(2)); row.sexo == "" {
 				row.sexo = "N/A"
 			}
-			if row.email = strings.TrimSpace(cell(3)); row.email == "" {
+			if row.email = impText(cell(3)); row.email == "" {
 				row.email = code + "@" + r.settings.StudentEmailDomain
 			}
 			row.password = cell(4)
@@ -888,7 +892,7 @@ func (r *impRun) importStudents(tabs map[int64]*impTab) error {
 		}
 	}
 
-	impResolvePasswords(rows, r.opt.dry, r.settings.PasswordPattern)
+	r.a.impResolvePasswords(r.ctx, rows, r.opt.dry, r.settings.PasswordPattern)
 	for _, row := range rows {
 		if row.err != nil {
 			return row.err
@@ -914,15 +918,19 @@ func (r *impRun) importStudents(tabs map[int64]*impTab) error {
 }
 
 // impResolvePasswords decide el hash de cada fila. bcrypt tarda decenas de
-// milisegundos por llamada, así que se reparte entre los núcleos.
-func impResolvePasswords(rows []*impStudentRow, dry bool, pattern string) {
+// milisegundos por llamada, así que se reparte entre los núcleos con los
+// turnos de la app. sem deja a lo más GOMAXPROCS filas esperando turno: un
+// login que llega a media importación no queda detrás de cientos de ellas.
+func (a *App) impResolvePasswords(ctx context.Context, rows []*impStudentRow, dry bool, pattern string) {
 	sem := make(chan struct{}, runtime.GOMAXPROCS(0))
 	var wg sync.WaitGroup
 	for _, row := range rows {
 		wg.Go(func() {
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			row.resolvePassword(dry, pattern)
+			if err := a.withBcrypt(ctx, func() { row.resolvePassword(dry, pattern) }); err != nil {
+				row.err = err
+			}
 		})
 	}
 	wg.Wait()
@@ -1250,7 +1258,7 @@ func (r *impRun) importPurchases(tab *impTab) error {
 		cell := impCells(cells)
 		where := fmt.Sprintf("%s, fila %d", tab.name, n+1)
 		date := impSpaces(cell(0))
-		code := strings.TrimSpace(cell(1))
+		code := impText(cell(1)) // igual que en importStudents, para que casen
 		badgeName := strings.TrimSpace(cell(2))
 		qtyRaw := strings.TrimSpace(cell(3))
 		career := strings.TrimSpace(cell(4))

@@ -266,7 +266,27 @@ func TestAdmAdmins(t *testing.T) {
 	if msg := e.fails("DELETE", self, nil, http.StatusBadRequest); msg != "No puedes eliminar tu propia cuenta." {
 		t.Fatalf("borrarse: %q", msg)
 	}
-	e.call("PATCH", self, map[string]any{"password": "clave-nueva-123"}, http.StatusOK)
+	// Cambiar la propia contraseña cierra las otras sesiones; esta sigue con una cookie nueva (M2).
+	oldCookie := e.cookie
+	rec = e.do("PATCH", self, map[string]any{"password": "clave-nueva-123"}, oldCookie)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cambiar la propia contraseña: %d %s", rec.Code, rec.Body)
+	}
+	e.cookie = nil
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == "diseno_admin" && c.Value != "" {
+			e.cookie = c
+		}
+	}
+	if e.cookie == nil {
+		t.Fatal("cambiar la propia contraseña no renovó la cookie")
+	}
+	if rec := e.do("GET", "/api/admin/me", nil, oldCookie); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("la cookie de antes del cambio: %d", rec.Code)
+	}
+	if rec := e.do("GET", "/api/admin/me", nil, e.cookie); rec.Code != http.StatusOK {
+		t.Fatalf("la cookie renovada: %d", rec.Code)
+	}
 
 	// Al desactivar a otro admin su sesión deja de servir.
 	if got := admReq[adminResp](e, "PATCH", other, map[string]any{"active": false}, http.StatusOK); got.Admin.Active {

@@ -1,5 +1,6 @@
 import type { LevelProgress } from '../lib/level'
-import type { PublicConfig, Student } from '../lib/types'
+import type { PublicConfig, PublicCourse, Student } from '../lib/types'
+import CourseSwitcher from './CourseSwitcher'
 
 interface StudentDashboardProps {
   studentData: Student
@@ -8,6 +9,12 @@ interface StudentDashboardProps {
   fetchLeaderboard: () => void
   openStore: () => void
   handleLogout: () => void
+  courses: PublicCourse[]
+  currentCourse: PublicCourse
+  courseBusy: boolean
+  courseError: string
+  onSwitchCourse: (courseId: number) => void
+  onChooseCourse: () => void
 }
 
 export default function StudentDashboard({
@@ -17,9 +24,19 @@ export default function StudentDashboard({
   fetchLeaderboard,
   openStore,
   handleLogout,
+  courses,
+  currentCourse,
+  courseBusy,
+  courseError,
+  onSwitchCourse,
+  onChooseCourse,
 }: StudentDashboardProps) {
   return (
-    <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+    <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl">
+      <nav aria-label="Course navigation" className="flex items-center border-b border-gray-100 px-3 py-2 sm:px-5">
+        <CourseSwitcher courses={courses} currentCourse={currentCourse} busy={courseBusy} onSelect={onSwitchCourse} onChooseCourse={onChooseCourse} />
+      </nav>
+      {courseError && <p role="alert" className="px-6 py-3 text-sm text-red-600">{courseError}</p>}
       <div className="bg-orange-500 text-white text-center p-3">
         <h2 className="text-2xl font-bold">
           Hello, {studentData.name}
@@ -117,6 +134,7 @@ export default function StudentDashboard({
           <button
             className="bg-blue-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-all duration-300 font-semibold"
             onClick={fetchLeaderboard}
+            disabled={courseBusy}
           >
             Leaderboard
           </button>
@@ -126,6 +144,7 @@ export default function StudentDashboard({
           <button
             className="bg-orange-500 text-white px-10 py-3 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-300 font-semibold"
             onClick={openStore}
+            disabled={courseBusy}
           >
             Store
           </button>

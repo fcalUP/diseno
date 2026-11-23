@@ -44,7 +44,7 @@ func newImpTester(t *testing.T) impTester {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	a.setSession(rec, kindAdmin, id)
+	a.setSession(rec, kindAdmin, id, "x")
 	return impTester{t: t, a: a, h: a.Routes(), cookie: rec.Result().Cookies()[0]}
 }
 
@@ -438,6 +438,10 @@ func TestImportCreateOnly(t *testing.T) {
 func TestImportPreviewWritesNothing(t *testing.T) {
 	c := newImpTester(t)
 	newImpFake(t, impLegacyTabs())
+	baseline := map[string]int{}
+	for _, table := range []string{"students", "badges", "purchases", "avatars", "course_hidden_badges", "audit_log"} {
+		baseline[table] = c.count(`select count(*) from ` + table)
+	}
 
 	// Sin include ni mode simula todo, incluida la media heredada.
 	rep := c.preview(map[string]any{"credentialsJson": impCredentials()})
@@ -455,9 +459,9 @@ func TestImportPreviewWritesNothing(t *testing.T) {
 	if rep.Media.Avatars == 0 || !impHasWarning(rep, "02798126.png", "nivel 6") {
 		t.Fatalf("media simulada: %+v", rep.Media)
 	}
-	for _, table := range []string{"students", "badges", "purchases", "avatars", "course_hidden_badges", "audit_log"} {
-		if n := c.count(`select count(*) from ` + table); n != 0 {
-			t.Fatalf("la vista previa escribió %d filas en %s", n, table)
+	for table, before := range baseline {
+		if n := c.count(`select count(*) from ` + table); n != before {
+			t.Fatalf("la vista previa cambió %s de %d a %d filas", table, before, n)
 		}
 	}
 
@@ -664,9 +668,11 @@ func TestImportMedia(t *testing.T) {
 	if code := c.do("POST", "/api/admin/import/media", nil, &res); code != http.StatusOK {
 		t.Fatalf("media: %d %+v", code, res)
 	}
-	// Todos los archivos menos el de nivel 6 y la casilla que ya estaba ocupada.
+	// Omite el nivel 6, la casilla ocupada y los defaults que ya instaló la migración.
 	total := impSeedFiles(t, "avatars")
-	if res.Media.Avatars != total-2 || res.Media.BadgeImages != 1 || res.Media.CourseImages != 0 || res.BatchID == nil {
+	defaults := c.count(`select count(distinct url) from avatars where code in ('DefaultH', 'DefaultF')`)
+	wantAvatars := total - 2 - defaults
+	if res.Media.Avatars != wantAvatars || res.Media.BadgeImages != 1 || res.Media.CourseImages != 0 || res.BatchID == nil {
 		t.Fatalf("media importada: %+v de %d archivos", res, total)
 	}
 	if !slices.ContainsFunc(res.Warnings, func(w string) bool { return strings.Contains(w, "02798126.png") && strings.Contains(w, "nivel 6") }) {
@@ -696,10 +702,10 @@ func TestImportMedia(t *testing.T) {
 	if images["calculadora"] != "/media/legacy/badges/calculadora.png" || images["pista_practico"] != "/media/u/2026/11/pista.png" || images["sin_archivo"] != "" {
 		t.Fatalf("imágenes de insignias: %v", images)
 	}
-	if n := c.count(`select count(*) from audit_log where batch_id = $1 and undoable and actor_label = 'profe'`, *res.BatchID); n != total-2+1 {
+	if n := c.count(`select count(*) from audit_log where batch_id = $1 and undoable and actor_label = 'profe'`, *res.BatchID); n != wantAvatars+1 {
 		t.Fatalf("entradas de bitácora del lote: %d", n)
 	}
-	if n := c.count(`select count(*) from audit_log where batch_id = $1 and entity = 'avatar' and entity_id = 'DefaultH:3'`, *res.BatchID); n != 1 {
+	if n := c.count(`select count(*) from audit_log where batch_id = $1 and entity = 'avatar' and entity_id = '0251412:1'`, *res.BatchID); n != 1 {
 		t.Fatal("el avatar se audita con entity_id código:nivel")
 	}
 

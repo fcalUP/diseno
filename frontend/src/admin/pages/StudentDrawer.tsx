@@ -348,6 +348,7 @@ function StudentPanel({ studentId, initial, onClose, onChanged }: PanelProps) {
                 <SexoField
                   key={student.updatedAt}
                   value={form.sexo}
+                  legacyValue={student.sexo}
                   onChange={(v) => set('sexo', v)}
                   error={errors.sexo}
                 />

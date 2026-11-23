@@ -14,6 +14,21 @@ export const COUNTERS: { key: CounterField; label: string }[] = [
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// Mismas reglas que el API para altas y campos editados; lo importado sin cambios se conserva.
+export function studentCodeError(code: string): string | undefined {
+  if (!/^[A-Za-z0-9._-]{1,40}$/.test(code)) {
+    return 'El ID solo puede llevar letras sin acento, números, punto, guion y guion bajo (máximo 40).'
+  }
+  if (/^default[hf]$/i.test(code)) return 'Ese ID está reservado para los avatares predeterminados.'
+  return undefined
+}
+
+export function studentNameError(name: string): string | undefined {
+  if (Array.from(name).length > 200) return 'El nombre es demasiado largo (máximo 200 caracteres).'
+  if (/[\p{Cc}\u202a-\u202e\u2066-\u2069]/u.test(name)) return 'El nombre tiene caracteres no permitidos.'
+  return undefined
+}
+
 // El alumno ve los comentarios en su perfil. Con este tope el PATCH no llega a los 8 KB del WAF.
 export const MAX_COMMENTS = 3000
 
@@ -168,14 +183,17 @@ export function validateStudent(f: StudentForm): FormErrors {
   const e: FormErrors = {}
   if (!f.courseId) e.courseId = 'Elige un curso.'
   const code = f.code.trim()
-  if (!code) e.code = 'Escribe la matrícula.'
-  else if (/\s/.test(code)) e.code = 'La matrícula no puede llevar espacios.'
-  if (!f.name.trim()) e.name = 'Escribe el nombre.'
-  if (!f.sexo.trim()) e.sexo = 'Elige Hombre o Mujer, o escribe otro valor.'
+  const codeError = code ? studentCodeError(code) : 'Escribe la matrícula.'
+  if (codeError) e.code = codeError
+  const nameError = f.name.trim() ? studentNameError(f.name) : 'Escribe el nombre.'
+  if (nameError) e.name = nameError
+  if (!/^(hombre|mujer)$/i.test(f.sexo.trim())) e.sexo = 'Usa Hombre o Mujer; los otros valores heredados se pueden conservar sin cambios.'
   const email = f.email.trim()
   if (email && !EMAIL_RE.test(email)) e.email = 'El correo no es válido.'
   for (const { key } of COUNTERS) {
-    if (!Number.isInteger(f[key]) || f[key] < 0) e[key] = 'Usa un número entero de 0 en adelante.'
+    if (!Number.isInteger(f[key]) || f[key] < 0 || f[key] > 2_147_483_647) {
+      e[key] = 'Usa un número entero entre 0 y 2147483647.'
+    }
   }
   return e
 }

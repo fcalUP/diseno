@@ -59,13 +59,15 @@ export interface Student {
 export interface LoginRequest {
   studentId: string
   password: string
-  career: string
+  career?: string // compatibilidad con clientes que ya eligieron curso
 }
 
 export interface LoginResponse {
   success: true
   student: Student
   levelUpOccurred: boolean
+  courses: PublicCourse[]
+  requiresCourseSelection: boolean
 }
 
 export interface RegisterRequest {

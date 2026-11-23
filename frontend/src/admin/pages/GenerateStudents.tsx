@@ -396,7 +396,7 @@ export default function GenerateStudents() {
                     contraseña.
                   </p>
                   <p>Sirve copiar y pegar desde Sheets o Excel, o separar con punto y coma o coma.</p>
-                  <p>Sexo: Hombre o Mujer (también H o M). Otro texto se guarda tal cual.</p>
+                  <p>Sexo: Hombre o Mujer (también H o M). Si lo dejas vacío se usa Hombre.</p>
                   <p>Sin contraseña se genera una. Con encabezado (ID, Nombre, Correo…) las columnas van en cualquier orden.</p>
                 </div>
               </div>

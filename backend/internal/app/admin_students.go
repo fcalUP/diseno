@@ -257,8 +257,8 @@ type admStudentInput struct {
 }
 
 // admStudentSet valida los campos que vienen y los devuelve como columna → valor.
-// current es la fila actual (nil al crear): un sexo o correo importado raro que
-// no cambia se respeta, para no impedir guardar lo demás.
+// current es la fila actual (nil al crear): un ID, nombre, sexo o correo
+// importado raro que no cambia se respeta, para no impedir guardar lo demás.
 func admStudentSet(in admStudentInput, current map[string]any) (map[string]any, error) {
 	bad := func(msg string) (map[string]any, error) { return nil, admBad(http.StatusBadRequest, msg) }
 	set := map[string]any{}
@@ -270,8 +270,9 @@ func admStudentSet(in admStudentInput, current map[string]any) (map[string]any, 
 		switch {
 		case code == "":
 			return bad("Falta el ID del alumno.")
-		case utf8.RuneCountInString(code) > 50:
-			return bad("El ID del alumno es demasiado largo (máximo 50 caracteres).")
+		case current != nil && code == admStr(current, "code"):
+		case !codeRe.MatchString(code):
+			return bad(msgBadCode)
 		case strings.EqualFold(code, "DefaultH") || strings.EqualFold(code, "DefaultF"):
 			return bad("Ese ID está reservado para los avatares predeterminados.")
 		}
@@ -284,6 +285,9 @@ func admStudentSet(in admStudentInput, current map[string]any) (map[string]any, 
 		}
 		if utf8.RuneCountInString(name) > 200 {
 			return bad("El nombre es demasiado largo (máximo 200 caracteres).")
+		}
+		if strings.ContainsFunc(name, badNameRune) && (current == nil || name != admStr(current, "name")) {
+			return bad(msgBadName)
 		}
 		set["name"] = name
 	}
@@ -387,7 +391,7 @@ func (a *App) handleAdminStudentCreate(w http.ResponseWriter, r *http.Request, a
 		a.admFail(w, "crear alumno", err)
 		return
 	}
-	hash, err := hashPassword(pw)
+	hash, err := a.hashPasswordCtx(ctx, pw)
 	if err != nil {
 		a.admFail(w, "crear alumno", err)
 		return
@@ -523,12 +527,13 @@ func (a *App) handleAdminStudentsGenerate(w http.ResponseWriter, r *http.Request
 		todo = append(todo, &pending{set: set, code: code, pw: pw})
 	}
 
-	// bcrypt tarda; en paralelo, 50 filas no se vuelven varios segundos.
+	// bcrypt tarda; en paralelo (con los turnos de la app), 50 filas no se
+	// vuelven varios segundos.
 	var wg sync.WaitGroup
 	for _, p := range todo {
 		wg.Go(func() {
 			var hash string
-			hash, p.err = hashPassword(p.pw)
+			hash, p.err = a.hashPasswordCtx(ctx, p.pw)
 			p.set["password_hash"] = hash
 		})
 	}
@@ -675,7 +680,8 @@ func (a *App) handleAdminStudentPassword(w http.ResponseWriter, r *http.Request,
 		a.admFail(w, "cambiar contraseña", err)
 		return
 	}
-	hash, err := hashPassword(pw)
+	// La contraseña nueva cambia pwVersion: las sesiones abiertas del alumno caen.
+	hash, err := a.hashPasswordCtx(ctx, pw)
 	if err != nil {
 		a.admFail(w, "cambiar contraseña", err)
 		return

@@ -21,7 +21,7 @@ func TestCanceledRequestIsNotAnError(t *testing.T) {
 
 	sid := e.student(e.courseID("TAR"), "C001", "Cancela", 0, 0)
 	rec := httptest.NewRecorder()
-	e.a.setSession(rec, kindStudent, sid)
+	e.a.setSession(rec, kindStudent, sid, "x") // e.student guarda el hash "x"
 	stu := rec.Result().Cookies()[0]
 
 	ctx, cancel := context.WithCancel(context.Background())

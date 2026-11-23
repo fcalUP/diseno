@@ -239,6 +239,7 @@ func TestStuConfig(t *testing.T) {
 
 func TestStuLogin(t *testing.T) {
 	e := stuSetup(t)
+	e.exec("delete from avatars") // este caso prueba explícitamente el comportamiento sin defaults
 	id := e.student(stuTAR, "A001", "AB12")
 	e.exec(`update students set name = 'Ana', sexo = 'Mujer', email = 'ana@up.edu.mx', monedas = 7, tareas = 3,
 		asistencias = 4, games = 2, exp = 12, comments = 'Bien' where id = $1`, id)
@@ -248,10 +249,9 @@ func TestStuLogin(t *testing.T) {
 	e.exec(`insert into avatars (code, level, url) values
 		('DefaultF', 1, '/media/f1.png'), ('DefaultH', 1, '/media/h1.png'), ('A001', 2, '/media/a2.png')`)
 
-	const fields = "ID, contraseña y carrera requeridos."
+	const fields = "ID y contraseña requeridos."
 	e.want(e.loginReq(stuTAR, "A001", ""), http.StatusBadRequest, fields)
 	e.want(e.loginReq(stuTAR, "  ", "AB12"), http.StatusBadRequest, fields)
-	e.want(e.loginReq("", "A001", "AB12"), http.StatusBadRequest, fields)
 	e.want(e.loginReq("No existe", "A001", "AB12"), http.StatusBadRequest, stuMsgCareer)
 	e.want(e.loginReq("POO", "A001", "AB12"), http.StatusBadRequest, stuMsgCareer) // curso inactivo
 	e.want(e.loginReq(stuTAR, "A001", "AB13"), http.StatusUnauthorized, "Credenciales inválidas.")
@@ -260,7 +260,7 @@ func TestStuLogin(t *testing.T) {
 
 	rec := e.loginReq(stuTAR, " A001 ", "AB12")
 	body := e.want(rec, http.StatusOK, "")
-	stuKeys(t, body, "success", "student", "levelUpOccurred")
+	stuKeys(t, body, "success", "student", "levelUpOccurred", "courses", "requiresCourseSelection")
 	var cookie *http.Cookie
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == "diseno_alumno" {
@@ -395,7 +395,7 @@ func TestStuMeAndLogout(t *testing.T) {
 	var before, after time.Time
 	e.scan("select last_login_at from students where id = $1", []any{id}, &before)
 	me := e.want(e.call("GET", "/api/me", nil, cookie), http.StatusOK, "")
-	stuKeys(t, me, "success", "student", "levelUpOccurred")
+	stuKeys(t, me, "success", "student", "levelUpOccurred", "courses", "requiresCourseSelection")
 	if me["success"] != true || !reflect.DeepEqual(me["student"], login["student"]) {
 		t.Fatalf("/api/me: %v\nlogin: %v", me, login)
 	}
@@ -548,17 +548,20 @@ func TestStuPasswordReset(t *testing.T) {
 		t.Fatalf("código guardado: %s intentos=%d vigencia=%v", hash, attempts, ttlOK)
 	}
 
-	// Cinco errores lo invalidan, aunque después llegue el bueno.
+	// Cinco errores lo invalidan, aunque después llegue el bueno. La fila se queda
+	// hasta vencer: mientras, no se manda otro código (ni gasta un envío).
 	for range 5 {
 		e.want(reset(wrong(code), "NP34"), http.StatusUnauthorized, stuMsgBadCode)
 	}
-	if n := codes(); n != 0 {
-		t.Fatalf("el código siguió vivo tras 5 errores (%d)", n)
-	}
 	e.want(reset(code, "NP34"), http.StatusUnauthorized, stuMsgBadCode)
+	e.want(send("E005"), http.StatusTooManyRequests, stuMsgTooMany)
 
-	// Uno vencido tampoco sirve y se borra.
+	// Uno vencido tampoco sirve y se borra. Al vencer el quemado ya se puede pedir otro.
+	e.exec("update reset_codes set expires_at = now() - interval '1 second' where student_id = $1", id)
 	code, _ = sendOK()
+	if n := e.num("select attempts from reset_codes where student_id = $1", id); n != 0 {
+		t.Fatalf("un código nuevo tras vencer debe empezar en 0 intentos: %d", n)
+	}
 	e.exec("update reset_codes set expires_at = now() - interval '1 second' where student_id = $1", id)
 	e.want(reset(code, "NP34"), http.StatusUnauthorized, stuMsgBadCode)
 	if n := codes(); n != 0 {

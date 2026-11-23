@@ -4,7 +4,7 @@ import { Link, type LinkProps } from 'react-router'
 import { Check, Copy, RefreshCw, TriangleAlert } from 'lucide-react'
 import { calcLevel, getLevelProgress } from '../../../lib/level'
 import type { Level } from '../../../lib/types'
-import { Button, Spinner, TextField, cx, focusRing, useToast } from '../../ui'
+import { Button, Spinner, cx, focusRing, useToast } from '../../ui'
 import { copyText, formatNumber, initials } from './util'
 
 const avatarSizes = { sm: 'h-9 w-9 text-xs', md: 'h-12 w-12 text-sm', lg: 'h-16 w-16 text-lg' }
@@ -84,13 +84,13 @@ export function PasswordReveal({ password, title = 'Contraseña nueva' }: { pass
 
 const isPreset = (v: string) => v === 'Hombre' || v === 'Mujer'
 
-// Hombre / Mujer como en el registro del portal, o cualquier otro texto.
-export function SexoField({ value, onChange, error }: { value: string; onChange: (value: string) => void; error?: string }) {
+// Las altas usan Hombre / Mujer; una edición puede conservar su valor importado original.
+export function SexoField({ value, onChange, error, legacyValue }: { value: string; onChange: (value: string) => void; error?: string; legacyValue?: string }) {
   const id = useId()
-  const [other, setOther] = useState(() => !isPreset(value))
+  const legacy = legacyValue !== undefined && !isPreset(legacyValue) ? legacyValue : undefined
   const radio = cx('h-4 w-4 cursor-pointer accent-orange-500', focusRing)
   return (
-    <fieldset aria-describedby={error && !other ? `${id}-error` : undefined}>
+    <fieldset aria-describedby={error ? `${id}-error` : undefined}>
       <legend className="mb-1 block text-sm font-medium text-gray-700">Sexo</legend>
       <div className="flex min-h-[2.375rem] flex-wrap items-center gap-x-5 gap-y-2">
         {(['Hombre', 'Mujer'] as const).map((s) => (
@@ -99,42 +99,24 @@ export function SexoField({ value, onChange, error }: { value: string; onChange:
               type="radio"
               name={id}
               className={radio}
-              checked={!other && value === s}
-              onChange={() => {
-                setOther(false)
-                onChange(s)
-              }}
+              checked={value === s}
+              onChange={() => onChange(s)}
             />
             {s}
           </label>
         ))}
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+        {legacy !== undefined && <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700">
           <input
             type="radio"
             name={id}
             className={radio}
-            checked={other}
-            onChange={() => {
-              setOther(true)
-              if (isPreset(value)) onChange('')
-            }}
+            checked={value === legacy}
+            onChange={() => onChange(legacy)}
           />
-          Otro
-        </label>
+          {legacy || 'Sin valor'} (heredado)
+        </label>}
       </div>
-      {other && (
-        <TextField
-          label="Sexo (otro)"
-          hideLabel
-          placeholder="Escribe cuál"
-          value={value}
-          maxLength={40}
-          onChange={(e) => onChange(e.target.value)}
-          error={error}
-          className="mt-2"
-        />
-      )}
-      {error && !other && (
+      {error && (
         <p id={`${id}-error`} className="mt-1 text-xs text-red-600">
           {error}
         </p>

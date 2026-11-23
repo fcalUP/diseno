@@ -6,6 +6,7 @@ import type {
   LeaderboardRow,
   LoginResponse,
   PublicConfig,
+  PublicCourse,
   StoreBadge,
   Student,
 } from '../lib/types'
@@ -17,6 +18,7 @@ import RegisterModal from './RegisterModal'
 import ResetModal from './ResetModal'
 import StoreModal from './StoreModal'
 import StudentDashboard from './StudentDashboard'
+import CourseSelector from './CourseSelector'
 import { matchesPattern, settle } from './util'
 
 interface Boot {
@@ -73,7 +75,10 @@ function Portal({ config, session }: Boot) {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardRow[]>([])
 
   const fetchLeaderboard = async () => {
+    if (switchingRef.current) return
+    const epoch = courseEpoch.current
     const data = await settle(api.leaderboard())
+    if (epoch !== courseEpoch.current) return
     if (data.success) {
       setLeaderboardData(data.leaderboard)
       setShowLeaderboard(true)
@@ -83,6 +88,8 @@ function Portal({ config, session }: Boot) {
   const [isLoggedIn, setIsLoggedIn] = useState(session !== null)
   const [studentId, setStudentId] = useState('')
   const [password, setPassword] = useState('')
+  const [loggingIn, setLoggingIn] = useState(false)
+  const [loginError, setLoginError] = useState('')
   const [studentData, setStudentData] = useState<Student | null>(() =>
     session ? withLevel(session.student) : null,
   )
@@ -100,6 +107,12 @@ function Portal({ config, session }: Boot) {
   )
   const [selectedCareer, setSelectedCareer] = useState(firstCourse)
   const [registerCareer, setRegisterCareer] = useState(firstCourse)
+  const [availableCourses, setAvailableCourses] = useState<PublicCourse[]>(session?.courses ?? [])
+  const [showCourseSelection, setShowCourseSelection] = useState(session?.requiresCourseSelection ?? false)
+  const [canReturnToCourse, setCanReturnToCourse] = useState(false)
+  const [switchingCourseId, setSwitchingCourseId] = useState<number | null>(null)
+  const [courseError, setCourseError] = useState('')
+  const [buying, setBuying] = useState(false)
 
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false)
@@ -108,6 +121,11 @@ function Portal({ config, session }: Boot) {
 
   // Evita mandar la misma compra dos veces con un doble clic.
   const buyingRef = useRef(false)
+  const loggingInRef = useRef(false)
+  const switchingRef = useRef(false)
+  // Las respuestas que pertenecían a otra materia o una sesión cerrada se descartan.
+  const courseEpoch = useRef(0)
+  const pendingLevelUp = useRef<string | null>(null)
 
   // El GIF de subida de nivel se quita solo a los 4 segundos.
   useEffect(() => {
@@ -117,24 +135,86 @@ function Portal({ config, session }: Boot) {
   }, [showLevelUpGif])
 
   const handleLogin = async () => {
-    const data = await settle(
-      api.login({ studentId, password, career: selectedCareer }),
-    )
+    if (loggingInRef.current) return
+    loggingInRef.current = true
+    setLoggingIn(true)
+    setLoginError('')
+    const data = await settle(api.login({ studentId, password }))
+    loggingInRef.current = false
+    setLoggingIn(false)
     if (data.success) {
+      courseEpoch.current += 1
       setStudentData(withLevel(data.student))
+      setAvailableCourses(data.courses)
+      setShowCourseSelection(data.requiresCourseSelection)
+      setCanReturnToCourse(false)
+      setCourseError('')
       setIsLoggedIn(true)
-      if (data.levelUpOccurred && levelUpGif) setShowLevelUpGif(true)
+      setPassword('')
+      if (data.requiresCourseSelection) pendingLevelUp.current = data.levelUpOccurred ? data.student.career : null
+      else if (data.levelUpOccurred && levelUpGif) setShowLevelUpGif(true)
     } else {
-      alert(data.error)
+      setLoginError(data.error)
     }
+  }
+
+  const clearCourseContext = () => {
+    setBadges([])
+    setCart({})
+    setShowCartModal(false)
+    setShowLeaderboard(false)
+    setLeaderboardData([])
+    setShowLevelUpGif(false)
+  }
+
+  const handleSwitchCourse = async (courseId: number) => {
+    if (switchingRef.current || buyingRef.current) return
+    switchingRef.current = true
+    setSwitchingCourseId(courseId)
+    setCourseError('')
+    const epoch = ++courseEpoch.current
+    clearCourseContext()
+    const data = await settle(api.switchCourse(courseId))
+    switchingRef.current = false
+    setSwitchingCourseId(null)
+    if (epoch !== courseEpoch.current) return
+    if (!data.success) {
+      setCourseError(data.error)
+      return
+    }
+    setStudentData(withLevel(data.student))
+    setAvailableCourses(data.courses)
+    setShowCourseSelection(false)
+    setCanReturnToCourse(false)
+    if (levelUpGif && (data.levelUpOccurred || pendingLevelUp.current === data.student.career)) setShowLevelUpGif(true)
+    pendingLevelUp.current = null
+  }
+
+  const chooseCourse = () => {
+    if (switchingRef.current || buyingRef.current) return
+    courseEpoch.current += 1
+    clearCourseContext()
+    setCourseError('')
+    setCanReturnToCourse(true)
+    setShowCourseSelection(true)
   }
 
   // Todo vuelve al estado inicial, igual que el handleLogout de antes.
   const resetState = () => {
+    courseEpoch.current += 1
+    pendingLevelUp.current = null
     setIsLoggedIn(false)
     setStudentId('')
     setPassword('')
     setStudentData(null)
+    setAvailableCourses([])
+    setShowCourseSelection(false)
+    setCanReturnToCourse(false)
+    setSwitchingCourseId(null)
+    setCourseError('')
+    setLoginError('')
+    setShowLeaderboard(false)
+    setLeaderboardData([])
     setBadges([])
     setCart({})
     setShowCartModal(false)
@@ -154,14 +234,18 @@ function Portal({ config, session }: Boot) {
   }
 
   const handleLogout = async () => {
+    if (switchingRef.current || buyingRef.current) return
     // Si la petición falla, igual se sale en este navegador.
     await settle(api.logout())
     resetState()
   }
 
   const fetchBadges = async () => {
+    if (switchingRef.current) return
+    const epoch = courseEpoch.current
     // El servidor ya quita las insignias ocultas para el curso de la sesión.
     const data = await settle(api.badges())
+    if (epoch !== courseEpoch.current) return
     if (data.success) {
       setBadges(data.badges)
       return
@@ -204,7 +288,8 @@ function Portal({ config, session }: Boot) {
 
   // Una sola compra con todo el carrito; el servidor la aplica completa o nada.
   const handlePurchase = async () => {
-    if (!studentData || buyingRef.current) return
+    if (!studentData || buyingRef.current || switchingRef.current) return
+    const epoch = courseEpoch.current
 
     // Sólo lo que sigue en la tienda; lo demás no suma al total que ve el alumno.
     const items = badges.flatMap((b) => {
@@ -213,8 +298,11 @@ function Portal({ config, session }: Boot) {
     })
 
     buyingRef.current = true
+    setBuying(true)
     const data = await settle(api.purchase({ items }))
     buyingRef.current = false
+    setBuying(false)
+    if (epoch !== courseEpoch.current) return
     if (!data.success) {
       alert(data.error)
       return
@@ -311,7 +399,17 @@ function Portal({ config, session }: Boot) {
 
   return (
     <>
-      {isAdminLoggedIn ? null : isLoggedIn && studentData ? (
+      {isAdminLoggedIn ? null : isLoggedIn && studentData && showCourseSelection ? (
+        <CourseSelector
+          courses={availableCourses}
+          studentName={studentData.name}
+          busyCourseId={switchingCourseId}
+          error={courseError}
+          onSelect={handleSwitchCourse}
+          onLogout={handleLogout}
+          onBack={canReturnToCourse ? () => { setShowCourseSelection(false); setCourseError('') } : undefined}
+        />
+      ) : isLoggedIn && studentData ? (
         <StudentDashboard
           studentData={studentData}
           progress={getLevelProgress(studentData.exp, studentData.level, levels)}
@@ -322,6 +420,12 @@ function Portal({ config, session }: Boot) {
             setShowCartModal(true)
           }}
           handleLogout={handleLogout}
+          courses={availableCourses}
+          currentCourse={availableCourses.find((c) => c.name === studentData.career) ?? { id: 0, name: studentData.career, logoUrl: '', sideImageUrl: '' }}
+          courseBusy={switchingCourseId !== null || buying}
+          courseError={courseError}
+          onSwitchCourse={handleSwitchCourse}
+          onChooseCourse={chooseCourse}
         />
       ) : (
         <LoginScreen
@@ -332,10 +436,10 @@ function Portal({ config, session }: Boot) {
           password={password}
           setPassword={setPassword}
           handleLogin={handleLogin}
+          loading={loggingIn}
+          error={loginError}
           setShowRegister={setShowRegister}
           setShowReset={setShowReset}
-          selectedCareer={selectedCareer}
-          setSelectedCareer={setSelectedCareer}
           setShowAdminLoginModal={setShowAdminLoginModal}
         />
       )}
@@ -382,6 +486,9 @@ function Portal({ config, session }: Boot) {
 
       {showReset && (
         <ResetModal
+          courses={courses}
+          selectedCareer={selectedCareer}
+          setSelectedCareer={setSelectedCareer}
           resetId={resetId}
           setResetId={setResetId}
           showCodeField={showCodeField}
@@ -401,6 +508,8 @@ function Portal({ config, session }: Boot) {
         onClose={() => setShowAdminLoginModal(false)}
         onAdminLoginSuccess={handleAdminLoginSuccess}
         selectedCareer={selectedCareer}
+        courses={courses}
+        setSelectedCareer={setSelectedCareer}
       />
 
       {showAdminDashboard && (

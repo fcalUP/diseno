@@ -2,7 +2,7 @@
 // ID, Nombre, Sexo[, correo][, contraseña]. Columnas separadas por tabulador (lo que
 // copia Sheets o Excel), punto y coma o coma. El encabezado es opcional y, si está,
 // manda el orden de las columnas.
-import { EMAIL_RE, fold } from './util'
+import { EMAIL_RE, fold, studentCodeError, studentNameError } from './util'
 
 export type PasteField = 'code' | 'name' | 'sexo' | 'email' | 'password'
 
@@ -150,8 +150,16 @@ export function validateRows(
   return rows.map((r) => {
     const errors: string[] = []
     if (!r.code) errors.push('Falta el ID.')
-    else if (/\s/.test(r.code)) errors.push('El ID no puede llevar espacios.')
+    else {
+      const error = studentCodeError(r.code)
+      if (error) errors.push(error)
+    }
     if (!r.name) errors.push('Falta el nombre.')
+    else {
+      const error = studentNameError(r.name)
+      if (error) errors.push(error)
+    }
+    if (r.sexo && r.sexo !== 'Hombre' && r.sexo !== 'Mujer') errors.push('Sexo inválido. Usa Hombre o Mujer (también H o M).')
     if (r.email && !EMAIL_RE.test(r.email)) errors.push('El correo no es válido.')
     if (r.password && re && !re.test(r.password)) errors.push('La contraseña no cumple la regla de Ajustes.')
     if (r.code) {

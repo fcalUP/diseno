@@ -7,6 +7,82 @@ body {
   font-family: "Poppins", sans-serif;
 }
 
+/* Los selectores usan los colores del portal y controles dibujados por la app. */
+.custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  background-color: white;
+  text-align: left;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  vertical-align: middle;
+  border: 1px solid #cbd5e1;
+  background-color: #fff;
+  color: var(--picker-accent, #2563eb);
+  cursor: pointer;
+  transition: background-color 120ms, border-color 120ms, box-shadow 120ms;
+}
+
+input[type="checkbox"] { border-radius: 0.25rem; }
+input[type="radio"] { border-radius: 50%; }
+.accent-orange-500 { --picker-accent: #f97316; }
+input[type="checkbox"]:checked,
+input[type="checkbox"]:indeterminate,
+input[type="radio"]:checked {
+  border-color: currentColor;
+  background-color: currentColor;
+}
+
+input[type="checkbox"]::before,
+input[type="radio"]::before {
+  content: "";
+  display: block;
+  background: white;
+  transform: scale(0);
+}
+
+input[type="checkbox"]::before {
+  width: 0.65rem;
+  height: 0.65rem;
+  clip-path: polygon(14% 44%, 0 59%, 37% 94%, 100% 21%, 83% 7%, 35% 65%);
+}
+
+input[type="checkbox"]:indeterminate::before {
+  width: 0.55rem;
+  height: 2px;
+  clip-path: none;
+  transform: scale(1);
+}
+
+input[type="radio"]::before { width: 0.4rem; height: 0.4rem; border-radius: 50%; }
+input[type="checkbox"]:checked::before,
+input[type="radio"]:checked::before { transform: scale(1); }
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled { opacity: 0.45; cursor: not-allowed; }
+input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+@media (forced-colors: active) {
+  input[type="checkbox"], input[type="radio"] { forced-color-adjust: none; border-color: CanvasText; }
+  input[type="checkbox"]:checked, input[type="checkbox"]:indeterminate, input[type="radio"]:checked { background: Highlight; border-color: Highlight; }
+  input[type="checkbox"]::before, input[type="radio"]::before { background: HighlightText; }
+}
+
 @keyframes slideIn {
   0% {
     transform: perspective(1000px) rotateY(70deg) translateZ(-300px);

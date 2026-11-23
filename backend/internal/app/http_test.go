@@ -120,11 +120,17 @@ func TestClientIP(t *testing.T) {
 	}{
 		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "1.2.3.4:443"}), false, "10.0.0.1"},
 		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "1.2.3.4:443"}), true, "1.2.3.4"},
-		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "[2001:db8::1]:443"}), true, "2001:db8::1"},
-		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "2001:db8::1:443"}), true, "2001:db8::1"},
+		// Regresión (H1): una IPv6 cuenta como su /64, venga de donde venga.
+		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "[2001:db8::1]:443"}), true, "2001:db8::"},
+		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "2001:db8::1:443"}), true, "2001:db8::"},
+		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "[2001:db8:1:2:aaaa:bbbb:cccc:dddd]:443"}), true, "2001:db8:1:2::"},
+		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "[2001:db8:1:3::1]:443"}), true, "2001:db8:1:3::"},
+		{req("10.0.0.1:5000", map[string]string{"X-Forwarded-For": "2001:db8:1:2::ffff"}), true, "2001:db8:1:2::"},
+		{req("10.0.0.1:5000", map[string]string{"CloudFront-Viewer-Address": "[::ffff:1.2.3.4]:443"}), true, "1.2.3.4"},
 		{req("10.0.0.1:5000", map[string]string{"X-Forwarded-For": "5.6.7.8, 10.0.0.2"}), true, "5.6.7.8"},
 		{req("10.0.0.1:5000", map[string]string{"X-Forwarded-For": "basura"}), true, "10.0.0.1"},
-		{req("[::1]:5000", nil), true, "::1"},
+		{req("[2001:db8:9:9::5]:5000", nil), false, "2001:db8:9:9::"},
+		{req("[::1]:5000", nil), true, "::"},
 	}
 	for i, c := range cases {
 		if got := clientIP(c.r, c.trust); got != c.want {

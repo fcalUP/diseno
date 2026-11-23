@@ -7,9 +7,40 @@ import (
 	"math/big"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"golang.org/x/text/unicode/norm"
 )
+
+// codeRe es la forma de una matrícula nueva (registro y panel). Va en el correo
+// (matrícula@dominio) y en la llave de los avatares: sin espacios, comas ni
+// saltos de línea. Lo importado de la hoja vieja no pasa por aquí.
+var codeRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,40}$`)
+
+const (
+	msgBadCode = "El ID solo puede llevar letras sin acento, números, punto, guion y guion bajo (máximo 40)."
+	msgBadName = "El nombre tiene caracteres no permitidos."
+)
+
+// badNameRune: caracteres de control y marcas de dirección (U+202A–U+202E,
+// U+2066–U+2069), que pueden voltear el texto en el leaderboard o en un correo.
+func badNameRune(r rune) bool {
+	return unicode.IsControl(r) || (r >= 0x202A && r <= 0x202E) || (r >= 0x2066 && r <= 0x2069)
+}
+
+// stripControl quita los caracteres de control; los que son espacio (tab,
+// salto de línea) quedan como un espacio para no pegar palabras.
+func stripControl(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case !unicode.IsControl(r):
+			return r
+		case unicode.IsSpace(r):
+			return ' '
+		}
+		return -1
+	}, s)
+}
 
 // isJSSpace replica \s de JavaScript (y lo que quita String.prototype.trim).
 func isJSSpace(r rune) bool {

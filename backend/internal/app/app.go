@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -25,6 +26,9 @@ type App struct {
 
 	sessionKey  []byte
 	settingsKey []byte
+
+	// bcryptSem limita cuántos bcrypt corren a la vez (ver withBcrypt en auth.go).
+	bcryptSem chan struct{}
 
 	settingsMu sync.Mutex
 	settings   *Settings
@@ -64,6 +68,7 @@ func New(ctx context.Context, cfg Config, db *pgxpool.Pool, log *slog.Logger) (*
 		Limiter:     NewLimiter(),
 		sessionKey:  deriveKey("diseno-session:", cfg.SessionSecret),
 		settingsKey: deriveKey("diseno-settings:", cfg.SessionSecret),
+		bcryptSem:   make(chan struct{}, max(2, runtime.NumCPU())),
 	}
 	var err error
 	if cfg.StorageDriver == "s3" {
@@ -95,6 +100,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /api/config", a.handleConfig)
 	mux.HandleFunc("POST /api/login", a.handleLogin)
 	mux.HandleFunc("GET /api/me", st(a.handleMe))
+	mux.HandleFunc("POST /api/switch-course", st(a.handleSwitchCourse))
 	mux.HandleFunc("POST /api/logout", a.handleLogout)
 	mux.HandleFunc("POST /api/register", a.handleRegister)
 	mux.HandleFunc("POST /api/send-reset-code", a.handleSendResetCode)

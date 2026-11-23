@@ -48,7 +48,7 @@ func TestSessionCookie(t *testing.T) {
 	a.Cfg.CookieSecure = true
 
 	rec := httptest.NewRecorder()
-	a.setSession(rec, kindStudent, 42)
+	a.setSession(rec, kindStudent, 42, "h")
 	c := rec.Result().Cookies()[0]
 	if c.Name != "diseno_alumno" || !c.HttpOnly || !c.Secure || c.SameSite != http.SameSiteLaxMode ||
 		c.Path != "/" || c.MaxAge != 12*3600 {
@@ -97,7 +97,7 @@ func TestRequireActiveRow(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	a.setSession(rec, kindStudent, id)
+	a.setSession(rec, kindStudent, id, "x")
 	cookie := rec.Result().Cookies()[0]
 
 	var got int64

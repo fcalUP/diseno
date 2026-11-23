@@ -207,6 +207,7 @@ export const api = {
   // ---- Público / alumno: nunca lanzan por status, sólo por fallas de red ----
   config: () => studentCall<PublicConfig>('GET', '/api/config'),
   login: (b: LoginRequest) => studentCall<LoginResponse>('POST', '/api/login', b),
+  switchCourse: (courseId: number) => studentCall<LoginResponse>('POST', '/api/switch-course', { courseId }),
   me: () => studentCall<LoginResponse>('GET', '/api/me'),
   logout: () => studentCall<Ok>('POST', '/api/logout', {}),
   register: (b: RegisterRequest) => studentCall<MessageResponse>('POST', '/api/register', b),

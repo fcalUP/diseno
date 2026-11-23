@@ -6,6 +6,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: diseno - EC2 con Docker Compose detras de CloudFront y el WAF compartido; medios en S3.
 
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@3
+
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -47,6 +51,15 @@ Parameters:
   OidcProviderArn:
     Type: String
     Default: arn:aws:iam::113380982662:oidc-provider/token.actions.githubusercontent.com
+  # Valor de X-Origin-Verify. bootstrap.sh lo lee de /diseno/prod/ORIGIN_SECRET
+  # (SecureString): CloudFront no admite {{resolve:ssm-secure}} en sus encabezados.
+  # Sin asterisco (en Caddy es comodín) ni comillas (no cabría en .env).
+  OriginSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    AllowedPattern: '^[A-Za-z0-9_-]+$'
+    ConstraintDescription: al menos 32 letras, numeros, guiones o guiones bajos
 
 Resources:
   # Medios (media/), respaldos (backups/) y paquetes de despliegue (deploy/).
@@ -201,6 +214,51 @@ Resources:
       InstanceProfileName: diseno-ec2
       Roles: [!Ref InstanceRole]
 
+  # Llave de los secretos de /diseno/prod/. Con la aws/ssm cualquier rol de la cuenta
+  # que lea un parámetro lo descifra; con esta, solo la instancia y los usuarios de IAM
+  # con permiso de KMS (el administrador que corre bootstrap.sh). Se conserva si se
+  # borra la pila: sin ella los parámetros ya no se podrían leer.
+  ParamsKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    # KMS rechaza un rol que IAM aún no propaga; el perfil da ese tiempo en una pila nueva.
+    DependsOn: InstanceProfile
+    Properties:
+      Description: diseno - secretos de /diseno/prod/ en Parameter Store
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CuentaPorIAM
+            Effect: Allow
+            Principal: {AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'}
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: InstanciaPorSSM
+            Effect: Allow
+            Principal: {AWS: !GetAtt InstanceRole.Arn}
+            Action: kms:Decrypt
+            Resource: '*'
+            Condition:
+              StringEquals: {kms:ViaService: !Sub 'ssm.${AWS::Region}.amazonaws.com'}
+          # Hay roles de EC2 de otros proyectos con kms:Decrypt sobre cualquier llave
+          # vía SSM: por la delegación a IAM de arriba leerían estos secretos.
+          - Sid: NingunOtroRol
+            Effect: Deny
+            Principal: '*'
+            Action: [kms:Decrypt, kms:ReEncryptFrom]
+            Resource: '*'
+            Condition:
+              ArnLike: {aws:PrincipalArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/*'}
+              ArnNotEquals: {aws:PrincipalArn: !GetAtt InstanceRole.Arn}
+
+  ParamsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/diseno
+      TargetKeyId: !Ref ParamsKey
+
   Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -354,6 +412,23 @@ Resources:
             - CloudFront-Viewer-Address
             - CloudFront-Viewer-Country
 
+  # Lo subido se sirve desde el dominio del sitio: si alguien sube un SVG o un HTML
+  # con código, que no corra ni se pueda enmarcar.
+  MediaHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: diseno-media
+        Comment: Medios de diseno - sin scripts ni marcos
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox"
+            Override: true
+          ContentTypeOptions: {Override: true}
+          FrameOptions: {FrameOption: DENY, Override: true}
+          ReferrerPolicy: {ReferrerPolicy: same-origin, Override: true}
+          StrictTransportSecurity: {AccessControlMaxAgeSec: 31536000, Override: true}
+
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -375,7 +450,7 @@ Resources:
             # Caddy rechaza con 403 lo que no traiga este encabezado.
             OriginCustomHeaders:
               - HeaderName: X-Origin-Verify
-                HeaderValue: '{{resolve:ssm:/diseno/prod/ORIGIN_SECRET}}'
+                HeaderValue: !Ref OriginSecret
             CustomOriginConfig:
               OriginProtocolPolicy: https-only
               OriginSSLProtocols: [TLSv1.2]
@@ -407,7 +482,7 @@ Resources:
             TargetOriginId: media
             ViewerProtocolPolicy: redirect-to-https
             CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
-            ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
+            ResponseHeadersPolicyId: !Ref MediaHeadersPolicy
             Compress: true
         # CloudFront guarda los errores 10 s por defecto; así cada error de la
         # API llega fresco del origen.

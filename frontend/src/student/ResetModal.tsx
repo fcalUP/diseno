@@ -1,3 +1,6 @@
+import type { PublicCourse } from '../lib/types'
+import { CustomSelect } from '../components/CustomSelect'
+
 interface ResetModalProps {
   resetId: string
   setResetId: (value: string) => void
@@ -10,6 +13,9 @@ interface ResetModalProps {
   handleSendResetCode: () => void
   handleUpdatePassword: () => void
   onCancel: () => void
+  courses: PublicCourse[]
+  selectedCareer: string
+  setSelectedCareer: (career: string) => void
 }
 
 export default function ResetModal({
@@ -24,6 +30,9 @@ export default function ResetModal({
   handleSendResetCode,
   handleUpdatePassword,
   onCancel,
+  courses,
+  selectedCareer,
+  setSelectedCareer,
 }: ResetModalProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 transition-opacity duration-300">
@@ -36,6 +45,15 @@ export default function ResetModal({
         <h2 id="reset-title" className="text-2xl font-bold text-center text-gray-800">
           Password Recovery
         </h2>
+        <CustomSelect
+          aria-label="Course"
+          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+          value={selectedCareer}
+          onChange={(e) => setSelectedCareer(e.target.value)}
+          disabled={showCodeField}
+        >
+          {courses.map((course) => <option key={course.id} value={course.name}>{course.name}</option>)}
+        </CustomSelect>
         <input
           className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
           placeholder="Student ID"

@@ -285,6 +285,7 @@ func TestCatLevels(t *testing.T) {
 
 func TestCatAvatars(t *testing.T) {
 	e := undoSetup(t)
+	e.exec("delete from avatars") // el CRUD se comprueba desde un catálogo vacío
 	e.newStudent("0241234", 0)
 	up := catUpload(e, "u/2026/11/avatar.png")
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CustomSelect } from '../components/CustomSelect'
 import { api, errorMessage } from '../lib/api'
 import type { PublicConfig } from '../lib/types'
 
@@ -33,7 +34,7 @@ export default function RegisterModal({
       return
     }
     alert(data.message || data.error)
-    onClose()
+    if (data.error === undefined) onClose()
   }
 
   return (
@@ -84,7 +85,7 @@ export default function RegisterModal({
           </label>
         </div>
 
-        <select
+        <CustomSelect
           aria-label="Course"
           className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
           value={registerCareer}
@@ -95,7 +96,7 @@ export default function RegisterModal({
               {c.name}
             </option>
           ))}
-        </select>
+        </CustomSelect>
 
         <input
           type="password"

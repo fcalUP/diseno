@@ -44,7 +44,8 @@ docker buildx build --platform linux/arm64 --provenance=false --push \
 aws s3 sync --size-only --only-show-errors seed/media/legacy "s3://$BUCKET/media/legacy"
 
 for f in deploy/compose.prod.yml:compose.yml deploy/Caddyfile:Caddyfile \
-  deploy/instance/backup.sh:backup.sh deploy/instance/deploy.sh:deploy.sh; do
+  deploy/instance/backup.sh:backup.sh deploy/instance/deploy.sh:deploy.sh \
+  deploy/instance/smoke.py:smoke.py; do
   aws s3 cp --only-show-errors "${f%%:*}" "s3://$BUCKET/deploy/$TAG/${f##*:}"
 done
 

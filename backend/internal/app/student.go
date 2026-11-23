@@ -4,10 +4,12 @@ package app
 // servidor viejo cuando existían.
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -33,9 +35,17 @@ const (
 	stuMsgStoreOff = "La tienda está cerrada."
 	stuMsgBadBuy   = "Datos inválidos o incompletos para la compra"
 
-	stuLoginMaxFails = 10 // fallos por (curso, matrícula) dentro de la ventana
+	// Login: el bloqueo fino va por (cuenta, red) para que nadie deje fuera a
+	// otro desde su casa; el tope por cuenta frena a quien reparte intentos
+	// entre muchas redes. Una "red" es la IPv4 o la /64 de IPv6 (clientIP).
+	stuLoginMax      = 10  // intentos por (curso, matrícula, red) en la ventana
+	stuLoginAcctMax  = 100 // intentos por (curso, matrícula) desde cualquier red
+	stuLoginIPMax    = 100 // intentos por red cada stuLoginIPWindow
 	stuLoginWindow   = 15 * time.Minute
+	stuLoginIPWindow = 5 * time.Minute
 	stuResetMaxFails = 5 // intentos fallidos que invalidan un código
+
+	stuMsgOtherCourse = "Ese ID ya está registrado en otro curso. Usa la misma contraseña de ese curso o pide al profesor que te inscriba."
 )
 
 // stuInternal registra el error y responde 500 sin dar detalles.
@@ -159,27 +169,108 @@ type stuStudentJSON struct {
 	Games            int            `json:"games"`
 	Exp              int            `json:"exp"`
 	Level            int            `json:"level"`
-	Purchases        map[string]int `json:"purchases"`
+	Purchases        stuPurchaseMap `json:"purchases"`
 	Comments         string         `json:"comments"`
 	AvatarURL        string         `json:"avatarUrl"`
 	DefaultAvatarURL string         `json:"defaultAvatarUrl"`
 }
 
 type stuLoginJSON struct {
-	Success         bool           `json:"success"`
-	Student         stuStudentJSON `json:"student"`
-	LevelUpOccurred bool           `json:"levelUpOccurred"`
+	Success                 bool              `json:"success"`
+	Student                 stuStudentJSON    `json:"student"`
+	LevelUpOccurred         bool              `json:"levelUpOccurred"`
+	Courses                 []stuPublicCourse `json:"courses"`
+	RequiresCourseSelection bool              `json:"requiresCourseSelection"`
+}
+
+// Una matrícula identifica al mismo alumno entre cursos. Las contraseñas
+// heredadas pueden diferir: basta comprobar una inscripción activa, sin cambiar
+// las claves de las demás. La sesión conserva cuál comprobó la contraseña.
+type stuEnrollment struct {
+	ID     int64
+	Hash   string
+	Active bool
+	Course stuPublicCourse
+}
+
+func (a *App) stuEnrollments(ctx context.Context, code string) ([]stuEnrollment, error) {
+	rows, err := a.DB.Query(ctx, `select s.id, s.password_hash, s.active,
+		c.id, c.name, c.side_image_url, c.logo_url from students s
+		join courses c on c.id = s.course_id where s.code = $1 and c.active
+		order by c.sort_order, c.name, c.id`, code)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (stuEnrollment, error) {
+		var e stuEnrollment
+		err := row.Scan(&e.ID, &e.Hash, &e.Active, &e.Course.ID, &e.Course.Name, &e.Course.SideImageURL, &e.Course.LogoURL)
+		return e, err
+	})
+}
+
+func stuEnrollmentCourses(enrollments []stuEnrollment) []stuPublicCourse {
+	courses := []stuPublicCourse{}
+	for _, e := range enrollments {
+		if e.Active {
+			courses = append(courses, e.Course)
+		}
+	}
+	return courses
+}
+
+// stuCourses no necesita hashes: /me consulta los datos vigentes sin volver a
+// comprobar bcrypt ni cambiar la materia seleccionada en la cookie.
+func (a *App) stuCourses(ctx context.Context, code string) ([]stuPublicCourse, error) {
+	rows, err := a.DB.Query(ctx, `select c.id, c.name, c.side_image_url, c.logo_url
+		from students s join courses c on c.id = s.course_id
+		where s.code = $1 and s.active and c.active order by c.sort_order, c.name, c.id`, code)
+	if err != nil {
+		return nil, err
+	}
+	courses, err := pgx.CollectRows(rows, pgx.RowToStructByPos[stuPublicCourse])
+	if courses == nil {
+		courses = []stuPublicCourse{}
+	}
+	return courses, err
+}
+
+// stuPurchaseMap sale como Record<string, number> pero en el orden de la
+// primera compra de cada insignia, como lo listaba el servidor viejo (un map
+// de Go saldría en orden alfabético).
+type stuPurchaseMap []stuPurchaseSum
+
+type stuPurchaseSum struct {
+	Name string
+	Qty  int
+}
+
+func (m stuPurchaseMap) MarshalJSON() ([]byte, error) {
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for i, p := range m {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		k, err := json.Marshal(p.Name)
+		if err != nil {
+			return nil, err
+		}
+		b.Write(k)
+		b.WriteByte(':')
+		b.WriteString(strconv.Itoa(p.Qty))
+	}
+	b.WriteByte('}')
+	return b.Bytes(), nil
 }
 
 // stuPurchases suma por nombre de insignia lo comprado sin revertir.
-func stuPurchases(ctx context.Context, q DBTX, studentID int64) (map[string]int, error) {
-	out := map[string]int{}
-	var name string
-	var qty int
+func stuPurchases(ctx context.Context, q DBTX, studentID int64) (stuPurchaseMap, error) {
+	out := stuPurchaseMap{}
+	var p stuPurchaseSum
 	rows, _ := q.Query(ctx, `select badge_name, sum(quantity) from purchases
-		where student_id = $1 and reverted_at is null group by badge_name`, studentID)
-	_, err := pgx.ForEachRow(rows, []any{&name, &qty}, func() error {
-		out[name] = qty
+		where student_id = $1 and reverted_at is null group by badge_name order by min(id)`, studentID)
+	_, err := pgx.ForEachRow(rows, []any{&p.Name, &p.Qty}, func() error {
+		out = append(out, p)
 		return nil
 	})
 	return out, err
@@ -189,7 +280,7 @@ func stuPurchases(ctx context.Context, q DBTX, studentID int64) (map[string]int,
 // subida cuando el nivel actual pasa del último que vio. Ese nivel se guarda
 // cuando cambia y en login también se anota last_login_at. Si el alumno ya no
 // existe devuelve pgx.ErrNoRows.
-func (a *App) stuLoad(ctx context.Context, id int64, login bool) (stuStudentJSON, bool, error) {
+func (a *App) stuLoad(ctx context.Context, id int64, login, recordVisit bool) (stuStudentJSON, bool, error) {
 	var st stuStudentJSON
 	levels, err := a.Levels(ctx)
 	if err != nil {
@@ -211,7 +302,7 @@ func (a *App) stuLoad(ctx context.Context, id int64, login bool) (stuStudentJSON
 		return st, false, err
 	}
 	st.Level = CalcLevel(st.Exp, levels)
-	if st.Level != last || login {
+	if recordVisit && (st.Level != last || login) {
 		// Sin updated_at: entrar no es editar al alumno.
 		_, err = tx.Exec(ctx, `update students set last_login_level = $2,
 			last_login_at = case when $3::boolean then now() else last_login_at end
@@ -250,7 +341,17 @@ func (a *App) stuLoad(ctx context.Context, id int64, login bool) (stuStudentJSON
 	if err := tx.Commit(ctx); err != nil {
 		return st, false, err
 	}
-	return st, st.Level > last, nil
+	return st, recordVisit && st.Level > last, nil
+}
+
+// Llaves del login. La red va al final tras "@", que no sale en una IP: una
+// matrícula inventada no puede chocar con la llave de otra cuenta.
+func stuLoginKey(courseID int64, code, ip string) string {
+	return "stu-login:" + strconv.FormatInt(courseID, 10) + ":" + code + "@" + ip
+}
+
+func stuLoginAcctKey(courseID int64, code string) string {
+	return "stu-login-acct:" + strconv.FormatInt(courseID, 10) + ":" + code
 }
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -263,63 +364,103 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code, pw := strings.TrimSpace(req.StudentID), strings.TrimSpace(req.Password)
-	if code == "" || pw == "" || strings.TrimSpace(req.Career) == "" {
-		writeError(w, http.StatusBadRequest, "ID, contraseña y carrera requeridos.")
+	if code == "" || pw == "" {
+		writeError(w, http.StatusBadRequest, "ID y contraseña requeridos.")
 		return
 	}
-	if !a.Limiter.Allow("stu-login-ip:"+clientIP(r, a.Cfg.TrustProxy), 100, 5*time.Minute) {
+	ip := clientIP(r, a.Cfg.TrustProxy)
+	if !a.Limiter.Allow("stu-login-ip:"+ip, stuLoginIPMax, stuLoginIPWindow) {
 		writeError(w, http.StatusTooManyRequests, stuMsgTooMany)
 		return
 	}
 	ctx := r.Context()
-	courseID, ok, err := a.stuCourseID(ctx, req.Career)
-	if err != nil {
-		a.stuInternal(w, "login: curso", err)
-		return
+	var courseID int64
+	if strings.TrimSpace(req.Career) != "" {
+		id, ok, err := a.stuCourseID(ctx, req.Career)
+		if err != nil {
+			a.stuInternal(w, "login: curso", err)
+			return
+		}
+		if !ok {
+			writeError(w, http.StatusBadRequest, stuMsgCareer)
+			return
+		}
+		courseID = id
 	}
-	if !ok {
-		writeError(w, http.StatusBadRequest, stuMsgCareer)
-		return
-	}
-	lockKey := "stu-login:" + strconv.FormatInt(courseID, 10) + ":" + code
-	if a.Limiter.Blocked(lockKey, stuLoginMaxFails, stuLoginWindow) {
-		writeError(w, http.StatusTooManyRequests, stuMsgTooMany)
-		return
+	// Se cuenta antes de bcrypt (una ráfaga en paralelo no pasa completa) y en
+	// este orden: los intentos que la red ya no puede hacer no gastan el tope
+	// de la cuenta.
+	for _, id := range slices.Compact([]int64{0, courseID}) {
+		if !a.Limiter.Allow(stuLoginKey(id, code, ip), stuLoginMax, stuLoginWindow) ||
+			!a.Limiter.Allow(stuLoginAcctKey(id, code), stuLoginAcctMax, stuLoginWindow) {
+			writeError(w, http.StatusTooManyRequests, stuMsgTooMany)
+			return
+		}
 	}
 
-	var id int64
-	var hash string
-	var active bool
-	err = a.DB.QueryRow(ctx, "select id, password_hash, active from students where course_id = $1 and code = $2",
-		courseID, code).Scan(&id, &hash, &active)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	enrollments, err := a.stuEnrollments(ctx, code)
+	if err != nil {
 		a.stuInternal(w, "login: buscar alumno", err)
 		return
 	}
-	// Sin alumno el hash queda vacío y checkPassword gasta el mismo tiempo.
-	if !checkPassword(hash, pw) {
-		a.Limiter.Fail(lockKey, stuLoginMaxFails, stuLoginWindow)
+	var auth, selected *stuEnrollment
+	var inactiveMatch bool
+	if !a.publicBcrypt(w, r, func() {
+		if len(enrollments) == 0 {
+			checkPassword("", pw) // mismo costo para matrículas inexistentes
+		}
+		for i := range enrollments {
+			e := &enrollments[i]
+			if e.Course.ID == courseID || (courseID == 0 && selected == nil && e.Active) {
+				selected = e
+			}
+			if auth == nil && checkPassword(e.Hash, pw) {
+				if e.Active {
+					auth = e
+				} else {
+					inactiveMatch = true
+				}
+			}
+		}
+	}) {
+		return
+	}
+	if auth == nil {
+		if inactiveMatch {
+			writeError(w, http.StatusForbidden, stuMsgInactive)
+			return
+		}
 		writeError(w, http.StatusUnauthorized, "Credenciales inválidas.")
 		return
 	}
-	if !active {
+	if selected == nil {
+		writeError(w, http.StatusUnauthorized, "Credenciales inválidas.")
+		return
+	}
+	if !selected.Active {
 		writeError(w, http.StatusForbidden, stuMsgInactive)
 		return
 	}
-	a.Limiter.Reset(lockKey)
+	a.Limiter.Reset(stuLoginKey(0, code, ip))
+	a.Limiter.Reset(stuLoginKey(courseID, code, ip))
 
-	st, levelUp, err := a.stuLoad(ctx, id, true)
+	courses := stuEnrollmentCourses(enrollments)
+	pending := courseID == 0 && len(courses) > 1
+	st, levelUp, err := a.stuLoad(ctx, selected.ID, true, !pending)
 	if err != nil {
 		a.stuInternal(w, "login: cargar alumno", err)
 		return
 	}
-	a.setSession(w, kindStudent, id)
-	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Student: st, LevelUpOccurred: levelUp})
+	a.writeSession(w, Session{Kind: kindStudent, ID: selected.ID, AuthID: auth.ID, Code: code,
+		Exp: time.Now().Add(sessionTTL).Unix(), PwV: a.pwVersion(auth.Hash), SelectPending: pending})
+	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Student: st, LevelUpOccurred: levelUp,
+		Courses: courses, RequiresCourseSelection: pending})
 }
 
 // handleMe repite la revisión de subida de nivel, así el GIF también sale al recargar.
 func (a *App) handleMe(w http.ResponseWriter, r *http.Request, studentID int64) {
-	st, levelUp, err := a.stuLoad(r.Context(), studentID, false)
+	s, _ := a.session(r, kindStudent)
+	st, levelUp, err := a.stuLoad(r.Context(), studentID, false, !s.SelectPending)
 	if errors.Is(err, pgx.ErrNoRows) {
 		a.clearSession(w, kindStudent)
 		writeError(w, http.StatusUnauthorized, sessionExpired)
@@ -329,7 +470,57 @@ func (a *App) handleMe(w http.ResponseWriter, r *http.Request, studentID int64) 
 		a.stuInternal(w, "me: cargar alumno", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Student: st, LevelUpOccurred: levelUp})
+	courses, err := a.stuCourses(r.Context(), st.ID)
+	if err != nil {
+		a.stuInternal(w, "me: materias", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Student: st, LevelUpOccurred: levelUp,
+		Courses: courses, RequiresCourseSelection: s.SelectPending})
+}
+
+func (a *App) handleSwitchCourse(w http.ResponseWriter, r *http.Request, studentID int64) {
+	var req struct {
+		CourseID int64 `json:"courseId"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if req.CourseID <= 0 {
+		writeError(w, http.StatusBadRequest, "Elige una materia válida.")
+		return
+	}
+	ctx := r.Context()
+	var id int64
+	err := a.DB.QueryRow(ctx, `select target.id from students current
+		join students target on target.code = current.code
+		join courses c on c.id = target.course_id
+		where current.id = $1 and target.course_id = $2 and target.active and c.active`, studentID, req.CourseID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusForbidden, "No tienes acceso a esa materia.")
+		return
+	}
+	if err != nil {
+		a.stuInternal(w, "cambiar materia: inscripción", err)
+		return
+	}
+	s, _ := a.session(r, kindStudent) // requireStudent ya revisó origen, matrícula y versión
+	st, levelUp, err := a.stuLoad(ctx, id, s.SelectPending || id != studentID, true)
+	if err != nil {
+		a.stuInternal(w, "cambiar materia: alumno", err)
+		return
+	}
+	courses, err := a.stuCourses(ctx, st.ID)
+	if err != nil {
+		a.stuInternal(w, "cambiar materia: materias", err)
+		return
+	}
+	if s.AuthID == 0 {
+		s.AuthID = s.ID
+	}
+	s.ID, s.Code, s.SelectPending = id, st.ID, false
+	a.writeSession(w, s) // conserva vencimiento y credencial de origen
+	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Student: st, LevelUpOccurred: levelUp, Courses: courses})
 }
 
 func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -366,10 +557,18 @@ func (a *App) handleRegister(w http.ResponseWriter, r *http.Request) {
 	// Los topes de largo evitan nombres enormes en el leaderboard. DefaultH y
 	// DefaultF son los avatares predeterminados, no pueden ser matrículas.
 	if code == "" || name == "" || sexo == "" || career == "" || !a.stuPasswordOK(s.PasswordPattern, pw) ||
-		utf8.RuneCountInString(code) > 40 || utf8.RuneCountInString(name) > 120 || utf8.RuneCountInString(sexo) > 20 ||
+		utf8.RuneCountInString(name) > 120 || utf8.RuneCountInString(sexo) > 20 ||
 		strings.EqualFold(code, "DefaultH") || strings.EqualFold(code, "DefaultF") {
 		writeError(w, http.StatusBadRequest,
 			"Datos inválidos o incompletos. Contraseña debe ser 4 HEX mayúsculas y carrera requerida.")
+		return
+	}
+	if !codeRe.MatchString(code) {
+		writeError(w, http.StatusBadRequest, msgBadCode)
+		return
+	}
+	if strings.ContainsFunc(name, badNameRune) {
+		writeError(w, http.StatusBadRequest, msgBadName)
 		return
 	}
 	courseID, ok, err := a.stuCourseID(ctx, career)
@@ -385,7 +584,46 @@ func (a *App) handleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusTooManyRequests, stuMsgTooMany)
 		return
 	}
-	hash, err := hashPassword(pw)
+
+	// Los avatares van por matrícula: si ya está inscrita en otro curso, solo
+	// entra quien sabe la contraseña de alguna de esas inscripciones. Esos
+	// intentos tienen su propio tope por matrícula para no abrir otra vía de
+	// adivinar contraseñas.
+	var taken bool
+	var others []string
+	err = a.DB.QueryRow(ctx, `select coalesce(bool_or(course_id = $2), false),
+			coalesce(array_agg(password_hash) filter (where course_id <> $2), '{}')
+		from students where code = $1`, code, courseID).Scan(&taken, &others)
+	if err != nil {
+		a.stuInternal(w, "registro: inscripciones", err)
+		return
+	}
+	if taken {
+		writeError(w, http.StatusConflict, "El ID de alumno ya existe.")
+		return
+	}
+	if len(others) > 0 && !a.Limiter.Allow("stu-register-code:"+code, 10, stuLoginWindow) {
+		writeError(w, http.StatusTooManyRequests, stuMsgTooMany)
+		return
+	}
+	var hash string
+	owner := len(others) == 0
+	if !a.publicBcrypt(w, r, func() {
+		for _, h := range others {
+			if owner = checkPassword(h, pw); owner {
+				break
+			}
+		}
+		if owner {
+			hash, err = hashPassword(pw)
+		}
+	}) {
+		return
+	}
+	if !owner {
+		writeError(w, http.StatusConflict, stuMsgOtherCourse)
+		return
+	}
 	if err != nil {
 		a.stuInternal(w, "registro: hash", err)
 		return
@@ -476,9 +714,11 @@ func (a *App) handleSendResetCode(w http.ResponseWriter, r *http.Request) {
 	}
 	var id int64
 	var email string
-	var active bool
-	err = a.DB.QueryRow(ctx, "select id, email, active from students where course_id = $1 and code = $2",
-		courseID, code).Scan(&id, &email, &active)
+	var active, burnt bool
+	err = a.DB.QueryRow(ctx, `select s.id, s.email, s.active,
+			coalesce(rc.attempts >= $3 and rc.expires_at > now(), false)
+		from students s left join reset_codes rc on rc.student_id = s.id
+		where s.course_id = $1 and s.code = $2`, courseID, code, stuResetMaxFails).Scan(&id, &email, &active, &burnt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "ID de alumno no encontrado en la carrera seleccionada.")
 		return
@@ -491,6 +731,12 @@ func (a *App) handleSendResetCode(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, stuMsgInactive)
 		return
 	}
+	// Un código quemado por errores bloquea hasta que vence: un código nuevo
+	// no vuelve a dar intentos. No gasta los envíos de la hora.
+	if burnt {
+		writeError(w, http.StatusTooManyRequests, stuMsgTooMany)
+		return
+	}
 	if !a.Limiter.Allow("stu-reset-send:"+strconv.FormatInt(id, 10), 3, time.Hour) {
 		writeError(w, http.StatusTooManyRequests, stuMsgTooMany)
 		return
@@ -501,11 +747,14 @@ func (a *App) handleSendResetCode(w http.ResponseWriter, r *http.Request) {
 	if ttl < 1 {
 		ttl = defaultSettings().ResetCodeTTLMinutes
 	}
-	// Un código nuevo reemplaza al anterior y reinicia los intentos.
+	// Un código nuevo reemplaza al anterior pero conserva sus intentos si seguía
+	// vigente: reenviar no da más oportunidades de adivinar.
 	_, err = a.DB.Exec(ctx, `insert into reset_codes (student_id, code_hash, expires_at, attempts)
 		values ($1, $2, now() + $3::integer * interval '1 minute', 0)
 		on conflict (student_id) do update set code_hash = excluded.code_hash,
-			expires_at = excluded.expires_at, attempts = 0`, id, stuHashCode(resetCode), ttl)
+			expires_at = excluded.expires_at,
+			attempts = case when reset_codes.expires_at > now() then reset_codes.attempts else 0 end`,
+		id, stuHashCode(resetCode), ttl)
 	if err != nil {
 		a.stuInternal(w, "código: guardar", err)
 		return
@@ -589,10 +838,13 @@ func (a *App) handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		a.stuInternal(w, "restablecer: leer código", err)
 		return
 	}
-	if expired || subtle.ConstantTimeCompare([]byte(hash), []byte(stuHashCode(resetCode))) != 1 {
-		// Vencido o al quinto error el código se borra; antes solo se cuenta el intento.
+	if expired || attempts >= stuResetMaxFails ||
+		subtle.ConstantTimeCompare([]byte(hash), []byte(stuHashCode(resetCode))) != 1 {
+		// Vencido se borra; si no, se cuenta el intento. Desde el quinto error el
+		// código ya no sirve, pero la fila se queda hasta vencer para que pedir
+		// otro no reinicie la cuenta.
 		q := "update reset_codes set attempts = attempts + 1 where student_id = $1"
-		if expired || attempts+1 >= stuResetMaxFails {
+		if expired {
 			q = "delete from reset_codes where student_id = $1"
 		}
 		if _, err := tx.Exec(ctx, q, id); err != nil {
@@ -607,7 +859,11 @@ func (a *App) handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newHash, err := hashPassword(pw)
+	// Aquí solo llega quien tiene el código bueno; la espera por turno es corta.
+	var newHash string
+	if !a.publicBcrypt(w, r, func() { newHash, err = hashPassword(pw) }) {
+		return
+	}
 	if err != nil {
 		a.stuInternal(w, "restablecer: hash", err)
 		return
@@ -639,8 +895,12 @@ func (a *App) handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		a.stuInternal(w, "restablecer: commit", err)
 		return
 	}
-	// Demostró que lee su correo: se levanta el bloqueo de login si lo tenía.
-	a.Limiter.Reset("stu-login:" + strconv.FormatInt(courseID, 10) + ":" + code)
+	// Demostró que lee su correo: se levanta su bloqueo de login. También el
+	// tope de la cuenta: lo que se intentó contra la contraseña vieja ya no cuenta.
+	a.Limiter.Reset(stuLoginKey(courseID, code, clientIP(r, a.Cfg.TrustProxy)))
+	a.Limiter.Reset(stuLoginAcctKey(courseID, code))
+	a.Limiter.Reset(stuLoginKey(0, code, clientIP(r, a.Cfg.TrustProxy)))
+	a.Limiter.Reset(stuLoginAcctKey(0, code))
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Contraseña actualizada correctamente."})
 }
 
@@ -718,7 +978,7 @@ type stuPurchaseJSON struct {
 	Message   string         `json:"message"`
 	NewCoins  int            `json:"newCoins"`
 	Badges    []stuStockJSON `json:"badges"`
-	Purchases map[string]int `json:"purchases"`
+	Purchases stuPurchaseMap `json:"purchases"`
 }
 
 // handlePurchase compra todo el carrito o nada. El alumno sale de la sesión y

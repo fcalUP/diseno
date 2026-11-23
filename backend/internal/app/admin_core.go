@@ -12,10 +12,13 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// Límites del login de administradores (spec §4.2).
+// Límites del login de administradores (spec §4.2), con la misma idea que el
+// de alumnos: el bloqueo fino va por (usuario, red), así nadie deja fuera al
+// profesor desde otra red; el tope por usuario frena intentos repartidos.
 const (
-	admLoginUserMax = 10 // fallos por usuario
-	admLoginIPMax   = 30 // intentos por IP
+	admLoginUserMax = 10  // intentos por (usuario, red)
+	admLoginAcctMax = 100 // intentos por usuario desde cualquier red
+	admLoginIPMax   = 30  // intentos por red
 	admLoginWindow  = 15 * time.Minute
 )
 
@@ -120,9 +123,14 @@ func (a *App) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	username := strings.TrimSpace(body.Username)
-	userKey := "admin-login:" + strings.ToLower(username)
-	if !a.Limiter.Allow("admin-login-ip:"+clientIP(r, a.Cfg.TrustProxy), admLoginIPMax, admLoginWindow) ||
-		a.Limiter.Blocked(userKey, admLoginUserMax, admLoginWindow) {
+	ip := clientIP(r, a.Cfg.TrustProxy)
+	user := strings.ToLower(username)
+	// Todo se cuenta antes de bcrypt y en este orden (ver handleLogin). La red
+	// va al final tras "@", que no sale en una IP.
+	userKey := "admin-login:" + user + "@" + ip
+	if !a.Limiter.Allow("admin-login-ip:"+ip, admLoginIPMax, admLoginWindow) ||
+		!a.Limiter.Allow(userKey, admLoginUserMax, admLoginWindow) ||
+		!a.Limiter.Allow("admin-login-acct:"+user, admLoginAcctMax, admLoginWindow) {
 		writeError(w, http.StatusTooManyRequests, "Demasiados intentos. Intenta de nuevo en unos minutos.")
 		return
 	}
@@ -137,8 +145,11 @@ func (a *App) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Si el usuario no existe hash queda vacío y checkPassword tarda lo mismo.
-	if !checkPassword(hash, body.Password) {
-		a.Limiter.Fail(userKey, admLoginUserMax, admLoginWindow)
+	var good bool
+	if !a.publicBcrypt(w, r, func() { good = checkPassword(hash, body.Password) }) {
+		return
+	}
+	if !good {
 		writeError(w, http.StatusUnauthorized, "Invalid admin credentials.")
 		return
 	}
@@ -162,8 +173,8 @@ func (a *App) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.Limiter.Reset(userKey)
-	a.setSession(w, kindAdmin, id)
+	a.Limiter.Reset(userKey) // el tope del usuario no, igual que en handleLogin
+	a.setSession(w, kindAdmin, id, hash)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success": true,
 		"message": "Admin login successful.",

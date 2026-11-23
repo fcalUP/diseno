@@ -3,10 +3,10 @@ import {
   useState,
   type InputHTMLAttributes,
   type ReactNode,
-  type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react'
 import { Search, X } from 'lucide-react'
+import { CustomSelect, type CustomSelectProps } from '../../components/CustomSelect'
 import { cx, focusRing, inputClass, inputErrorClass } from './styles'
 
 interface FieldProps {
@@ -120,7 +120,7 @@ export interface SelectOption {
 }
 
 export type SelectProps = FieldProps &
-  Omit<SelectHTMLAttributes<HTMLSelectElement>, 'className' | 'value' | 'onChange'> & {
+  Omit<CustomSelectProps, 'className' | 'value' | 'onChange' | 'children'> & {
     value: string | number
     onChange: (value: string) => void
     options: SelectOption[]
@@ -145,7 +145,7 @@ export function Select({
   const fieldId = id ?? autoId
   return (
     <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} error={error} className={className}>
-      <select
+      <CustomSelect
         {...rest}
         id={fieldId}
         value={String(value)}
@@ -159,7 +159,7 @@ export function Select({
             {o.label}
           </option>
         ))}
-      </select>
+      </CustomSelect>
     </Field>
   )
 }

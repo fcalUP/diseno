@@ -52,7 +52,7 @@ func TestJSONArraysNeverNull(t *testing.T) {
 	course := e.courseID("TAR")
 	sid := e.student(course, "A001", "Sin Nada", 0, 0)
 	rec := httptest.NewRecorder()
-	e.a.setSession(rec, kindStudent, sid)
+	e.a.setSession(rec, kindStudent, sid, "x") // e.student guarda el hash "x"
 	stu := rec.Result().Cookies()[0]
 
 	get := func(method, path string, body any, cookie *http.Cookie, want int) map[string]any {

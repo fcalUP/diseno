@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -21,13 +22,18 @@ const (
 	kindStudent    = "alumno"
 	kindAdmin      = "admin"
 	sessionExpired = "Sesión expirada. Inicia sesión de nuevo."
+	msgBusy        = "El servidor está ocupado. Intenta de nuevo en unos segundos."
 )
 
-// Session es el contenido firmado de la cookie: {k, i, e}.
+// Session es el contenido firmado de la cookie: {k, i, e, v}.
 type Session struct {
-	Kind string `json:"k"` // "alumno" | "admin"
-	ID   int64  `json:"i"`
-	Exp  int64  `json:"e"` // unix, segundos
+	Kind          string `json:"k"` // "alumno" | "admin"
+	ID            int64  `json:"i"`
+	Exp           int64  `json:"e"`           // unix, segundos
+	PwV           string `json:"v"`           // pwVersion de la contraseña con que entró
+	AuthID        int64  `json:"a,omitempty"` // inscripción que comprobó la contraseña; no cambia al elegir materia
+	Code          string `json:"c,omitempty"` // identidad del alumno, compartida por sus inscripciones
+	SelectPending bool   `json:"p,omitempty"` // selector pendiente; persiste al recargar hasta elegir materia
 }
 
 // signToken firma v como base64url(json) + "." + base64url(HMAC-SHA256).
@@ -60,14 +66,26 @@ func tokenMAC(key []byte, payload string) []byte {
 
 func cookieName(kind string) string { return "diseno_" + kind }
 
-func (a *App) setSession(w http.ResponseWriter, kind string, id int64) {
-	exp := time.Now().Add(sessionTTL)
+// pwVersion resume el hash de la contraseña sin revelarlo. Cambiar la contraseña
+// (aunque sea a la misma: bcrypt usa otra sal) cambia la versión y las sesiones
+// abiertas con la anterior dejan de servir.
+func (a *App) pwVersion(hash string) string {
+	return hex.EncodeToString(tokenMAC(a.sessionKey, "pwv:"+hash)[:8])
+}
+
+// setSession firma la cookie; pwHash es el password_hash actual de la cuenta.
+func (a *App) setSession(w http.ResponseWriter, kind string, id int64, pwHash string) {
+	a.writeSession(w, Session{Kind: kind, ID: id, Exp: time.Now().Add(sessionTTL).Unix(), PwV: a.pwVersion(pwHash)})
+}
+
+func (a *App) writeSession(w http.ResponseWriter, s Session) {
+	exp := time.Unix(s.Exp, 0)
 	http.SetCookie(w, &http.Cookie{
-		Name:     cookieName(kind),
-		Value:    signToken(a.sessionKey, Session{Kind: kind, ID: id, Exp: exp.Unix()}),
+		Name:     cookieName(s.Kind),
+		Value:    signToken(a.sessionKey, s),
 		Path:     "/",
 		Expires:  exp,
-		MaxAge:   int(sessionTTL.Seconds()),
+		MaxAge:   max(1, int(s.Exp-time.Now().Unix())),
 		HttpOnly: true,
 		Secure:   a.Cfg.CookieSecure,
 		SameSite: http.SameSiteLaxMode,
@@ -110,20 +128,52 @@ func (a *App) adminID(r *http.Request) (int64, bool) {
 }
 
 func (a *App) requireStudent(h func(w http.ResponseWriter, r *http.Request, studentID int64)) http.HandlerFunc {
-	return a.requireActive(kindStudent, "select active from students where id = $1", h)
+	return func(w http.ResponseWriter, r *http.Request) {
+		s, ok := a.session(r, kindStudent)
+		if ok {
+			authID := s.AuthID
+			if authID == 0 {
+				authID = s.ID // compatibilidad con las sesiones anteriores de una inscripción
+			}
+			var code, authCode, hash string
+			var active bool
+			err := a.DB.QueryRow(r.Context(), `select current.code, auth.code, auth.password_hash,
+				current.active and selected_course.active and auth.active and auth_course.active
+				from students current join courses selected_course on selected_course.id = current.course_id
+				join students auth on auth.id = $2 join courses auth_course on auth_course.id = auth.course_id
+				where current.id = $1`, s.ID, authID).Scan(&code, &authCode, &hash, &active)
+			if err == nil && active && code == authCode && (s.Code == "" || s.Code == code) &&
+				hmac.Equal([]byte(s.PwV), []byte(a.pwVersion(hash))) {
+				h(w, r, s.ID)
+				return
+			}
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				if !writeCanceled(w, err) {
+					a.Log.Error("verificar sesión de alumno", "err", err)
+					writeError(w, http.StatusInternalServerError, "Error interno del servidor.")
+				}
+				return
+			}
+		}
+		a.clearSession(w, kindStudent)
+		writeError(w, http.StatusUnauthorized, sessionExpired)
+	}
 }
 
 func (a *App) requireAdmin(h func(w http.ResponseWriter, r *http.Request, adminID int64)) http.HandlerFunc {
-	return a.requireActive(kindAdmin, "select active from admins where id = $1", h)
+	return a.requireActive(kindAdmin, "select active, password_hash from admins where id = $1", h)
 }
 
-// requireActive exige cookie válida y que la fila siga existiendo y activa.
+// requireActive exige cookie válida, que la fila siga existiendo y activa, y
+// que la contraseña sea la misma con que se entró: un cambio de contraseña
+// (o un token viejo sin versión) cierra la sesión.
 func (a *App) requireActive(kind, query string, h func(http.ResponseWriter, *http.Request, int64)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s, ok := a.session(r, kind); ok {
 			var active bool
-			err := a.DB.QueryRow(r.Context(), query, s.ID).Scan(&active)
-			if err == nil && active {
+			var hash string
+			err := a.DB.QueryRow(r.Context(), query, s.ID).Scan(&active, &hash)
+			if err == nil && active && hmac.Equal([]byte(s.PwV), []byte(a.pwVersion(hash))) {
 				h(w, r, s.ID)
 				return
 			}
@@ -157,6 +207,48 @@ func checkPassword(hash, pw string) bool {
 		return false
 	}
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(pw)) == nil
+}
+
+// bcryptPublicWait es lo más que una ruta pública espera turno de bcrypt
+// (las pruebas lo acortan).
+var bcryptPublicWait = 3 * time.Second
+
+// withBcrypt corre fn (que usa bcrypt) con un turno de a.bcryptSem, para que
+// una ráfaga no acapare todos los núcleos. Espera hasta que ctx termine.
+func (a *App) withBcrypt(ctx context.Context, fn func()) error {
+	select {
+	case a.bcryptSem <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	defer func() { <-a.bcryptSem }()
+	fn()
+	return nil
+}
+
+// publicBcrypt es withBcrypt para las rutas públicas: sin turno en
+// bcryptPublicWait responde 503. Devuelve false si ya respondió.
+func (a *App) publicBcrypt(w http.ResponseWriter, r *http.Request, fn func()) bool {
+	ctx, cancel := context.WithTimeout(r.Context(), bcryptPublicWait)
+	defer cancel()
+	if a.withBcrypt(ctx, fn) == nil {
+		return true
+	}
+	if !writeCanceled(w, r.Context().Err()) {
+		writeError(w, http.StatusServiceUnavailable, msgBusy)
+	}
+	return false
+}
+
+// hashPasswordCtx es hashPassword con turno; para el panel y el importador,
+// que esperan lo que haga falta mientras la petición siga viva.
+func (a *App) hashPasswordCtx(ctx context.Context, pw string) (string, error) {
+	var hash string
+	var err error
+	if werr := a.withBcrypt(ctx, func() { hash, err = hashPassword(pw) }); werr != nil {
+		return "", werr
+	}
+	return hash, err
 }
 
 // randomToken devuelve nBytes aleatorios en hex.

@@ -577,14 +577,14 @@ func admCheckUsername(v string) (string, error) {
 }
 
 // admAdminHash valida la contraseña de un admin (8+ caracteres, máximo 72 bytes por bcrypt) y saca su hash.
-func admAdminHash(pw string) (string, error) {
+func (a *App) admAdminHash(ctx context.Context, pw string) (string, error) {
 	if utf8.RuneCountInString(pw) < 8 {
 		return "", admBad(http.StatusBadRequest, "La contraseña debe tener al menos 8 caracteres.")
 	}
 	if len(pw) > 72 {
 		return "", admBad(http.StatusBadRequest, "La contraseña no puede pasar de 72 bytes.")
 	}
-	return hashPassword(pw)
+	return a.hashPasswordCtx(ctx, pw)
 }
 
 // admUsernameTaken compara sin distinguir mayúsculas, para no tener "admin" y "Admin".
@@ -650,12 +650,12 @@ func (a *App) handleAdminAdminsCreate(w http.ResponseWriter, r *http.Request, ad
 		a.admFail(w, "crear administrador", err)
 		return
 	}
-	hash, err := admAdminHash(body.Password)
+	ctx := r.Context()
+	hash, err := a.admAdminHash(ctx, body.Password)
 	if err != nil {
 		a.admFail(w, "crear administrador", err)
 		return
 	}
-	ctx := r.Context()
 	var id, auditID int64
 	ok := a.admTx(w, r, "crear administrador", func(tx pgx.Tx) error {
 		if err := admUsernameTaken(ctx, tx, username, 0); err != nil {
@@ -723,13 +723,14 @@ func (a *App) handleAdminAdminsUpdate(w http.ResponseWriter, r *http.Request, ad
 		}
 		add("username", username, "usuario")
 	}
+	newHash := ""
 	if body.Password != nil {
-		hash, err := admAdminHash(*body.Password)
-		if err != nil {
+		var err error
+		if newHash, err = a.admAdminHash(r.Context(), *body.Password); err != nil {
 			a.admFail(w, "editar administrador", err)
 			return
 		}
-		add("password_hash", hash, "contraseña")
+		add("password_hash", newHash, "contraseña")
 	}
 	if body.Active != nil {
 		add("active", *body.Active, "activo")
@@ -778,6 +779,11 @@ func (a *App) handleAdminAdminsUpdate(w http.ResponseWriter, r *http.Request, ad
 	})
 	if !ok {
 		return
+	}
+	// La contraseña nueva cierra las demás sesiones de esa cuenta; si es la
+	// propia, esta se vuelve a firmar para seguir dentro.
+	if id == adminID && newHash != "" {
+		a.setSession(w, kindAdmin, adminID, newHash)
 	}
 	acct, err := a.admAccount(ctx, id)
 	if err != nil {

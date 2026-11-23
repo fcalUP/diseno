@@ -32,7 +32,7 @@ func undoSetup(t *testing.T) *undoEnv {
 	e := &undoEnv{t: t, a: a, h: a.Routes(), ctx: context.Background()}
 	e.adminID = e.num(`insert into admins (username, password_hash) values ('profe', 'hash-profe') returning id`)
 	rec := httptest.NewRecorder()
-	a.setSession(rec, kindAdmin, e.adminID)
+	a.setSession(rec, kindAdmin, e.adminID, "hash-profe")
 	e.cookie = rec.Result().Cookies()[0]
 	return e
 }

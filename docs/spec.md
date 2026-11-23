@@ -6,8 +6,10 @@ option consistent with it and note it in your final report.
 
 ## 0. What the product is
 
-A gamification portal for Universidad Panamericana design courses. Students pick their
-course ("career" in the legacy code), log in with student ID + 4-char password, see their
+A gamification portal for Universidad Panamericana design courses. Students log in with
+student ID + password, then open their only course automatically or choose among enrolled
+courses ("career" in the legacy code) shown as cards with names and logos. A navbar selector
+switches courses without logging in again. Within a course, students see their
 avatar (one image per level), level, coins, EXP bar, counters, comments, a leaderboard and a
 badge store where they spend coins. The professor administers everything.
 
@@ -33,6 +35,8 @@ New stack:
 1. **Student-facing design must not change.** Port `legacy/index.html` markup and Tailwind
    classes verbatim (same texts, same alerts, same layout, same English copy). Only data
    sources change (API instead of hardcoded values) and real bugs get fixed (listed in §7).
+   User-requested exception: remove course selection from login, add course cards after
+   multi-course login and a course switcher in the student navbar, using the existing style.
 2. **Nothing configurable lives in code.** Courses, which courses appear in the login
    dropdown, side image/logo per course, badges, per-course badge visibility, level
    thresholds, feature toggles, email sender/CC, password rule and its texts, reset-code TTL,

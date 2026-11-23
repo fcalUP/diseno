@@ -12,9 +12,9 @@ Handler signatures by wrapper:
 | `requireStudent` | `func (a *App) handleX(w http.ResponseWriter, r *http.Request, studentID int64)` |
 | `requireAdmin` | `func (a *App) handleX(w http.ResponseWriter, r *http.Request, adminID int64)` |
 
-`requireStudent` / `requireAdmin` already checked the cookie and that the row exists with
-`active = true`. Otherwise they answered 401 `Sesión expirada. Inicia sesión de nuevo.` and
-cleared the cookie.
+`requireStudent` / `requireAdmin` already checked the cookie, that the row exists with
+`active = true`, and that the password hasn't changed since the cookie was issued. Otherwise
+they answered 401 `Sesión expirada. Inicia sesión de nuevo.` and cleared the cookie.
 
 ## Routes
 
@@ -24,6 +24,7 @@ cleared the cookie.
 | GET `/api/config` | `handleConfig` | none | student.go (B1) |
 | POST `/api/login` | `handleLogin` | none | student.go (B1) |
 | GET `/api/me` | `handleMe` | requireStudent | student.go (B1) |
+| POST `/api/switch-course` | `handleSwitchCourse` | requireStudent | student.go |
 | POST `/api/logout` | `handleLogout` | none | student.go (B1) |
 | POST `/api/register` | `handleRegister` | none | student.go (B1) |
 | POST `/api/send-reset-code` | `handleSendResetCode` | none | student.go (B1) |
@@ -91,6 +92,51 @@ Path values: `pathID(r, "id")` for `{id}` (false when missing, not a number or �
 spec §4.2 lists them with the quick dashboard. B2 can move them to admin_students.go; just
 delete the stub so the method isn't declared twice.
 
+## Student login and course selection
+
+`POST /api/login` accepts `{studentId, password, career?}`. The normal login sends only
+the student code and password. Student codes identify the same person across enrollments.
+An active enrollment in an active course must validate the password; the response then
+lists **all** active enrollments in active courses with that code, including enrollments
+imported from Sheets with different passwords. Existing passwords stay independent: neither
+login, import, the password reset nor an administrator password edit synchronizes them.
+An inactive enrollment's password cannot authenticate another enrollment.
+
+Successful login, `GET /api/me`, and `POST /api/switch-course` return:
+
+```json
+{
+  "success": true,
+  "student": {"id": "matricula", "career": "Selected course", "...": "existing student fields"},
+  "levelUpOccurred": false,
+  "courses": [{"id": 1, "name": "Course name", "sideImageUrl": "/media/...", "logoUrl": "/media/..."}],
+  "requiresCourseSelection": true
+}
+```
+
+The course `id` is the course ID, not the enrollment ID. One enrollment opens directly.
+Multiple enrollments set `requiresCourseSelection = true`; the frontend shows course cards
+before rendering a dashboard. The signed cookie keeps this pending state across reloads:
+`/api/me` does not silently choose the first course. While selection is pending, the student
+object is provided for compatibility but no visit or level animation is consumed.
+
+`POST /api/switch-course` accepts `{courseId: number}`. It only selects an active enrollment
+of that same code in an active course; another student's course, an inactive enrollment or
+an inactive course returns 403. Success clears pending selection, returns the selected
+student's own counters and purchases, and keeps that course selected on `/api/me` reloads.
+The optional legacy `career` field selects the requested enrolled course directly.
+
+The student cookie carries the current enrollment ID (`i`), the authenticating enrollment
+ID (`a`), its password version (`v`), the code (`c`), expiration (`e`), and a pending selector
+flag (`p`). Every authenticated student request verifies both enrollments still have the
+same code, are active, and belong to active courses, and that the authenticating password
+version still matches. Switching course keeps that source credential and the original
+expiration. Resetting/changing that source password, removing or deactivating the source
+enrollment, or changing its code revokes the whole session even while another course is
+open. Changing a different enrollment's password does not revoke a session authenticated
+with the original credential. This includes admin password edits, reset codes and imports.
+Older single-enrollment cookies without `a` remain tied to their current enrollment.
+
 ## What the middleware already does
 
 The order is recover, then request log, then security headers, then body limit, then the
@@ -109,18 +155,63 @@ CSRF check, then the mux. Handlers don't repeat any of it.
 
 ## Helpers BF provides (see spec §5.2 for full signatures)
 
-- Sessions: `a.setSession(w, kindStudent|kindAdmin, id)` and `a.clearSession(w, kind)`,
-  where the constants are `"alumno"` and `"admin"`. `a.studentID(r)` / `a.adminID(r)` only
-  check the cookie and never touch the DB.
+- Sessions: `a.setSession(w, kindStudent|kindAdmin, id, passwordHash)` and
+  `a.clearSession(w, kind)`, where the constants are `"alumno"` and `"admin"`. The token
+  carries `v`, a password version (first 8 bytes, hex, of HMAC-SHA256(session key,
+  `"pwv:" + password_hash`)), and the `require*` wrappers reject it once the stored hash
+  changes. So any password change (reset with a code, the panel setting one, an undo that
+  restores an old hash, the importer writing a new one) logs out the sessions opened with the
+  old password. Tokens without `v` are rejected too. When an admin changes their own password,
+  `handleAdminAdminsUpdate` signs a fresh cookie so they stay in. `a.studentID(r)` /
+  `a.adminID(r)` only check the cookie signature and never touch the DB.
 - Passwords: `hashPassword` (bcrypt, cost 10) and `checkPassword(hash, pw)`. Pass
   `hash = ""` when the user doesn't exist: it still burns bcrypt time and returns false, so
-  response timing doesn't reveal which IDs exist.
-- Rate limits: one window per key, so namespace keys (`"login:" + courseID + ":" + code`,
-  `"login-ip:" + ip`). `Allow` counts and checks (`count < max`). `Fail` records a failure
-  and returns false once this failure reaches `max`. `Blocked` is `count >= max` and records
-  nothing. `Reset` forgets the key. Typical login: `Blocked` first (answer 429), then `Fail`
-  on a wrong password and `Reset` on success. Get the IP with
-  `clientIP(r, a.Cfg.TrustProxy)`.
+  response timing doesn't reveal which IDs exist. Every bcrypt call in a request runs with a
+  turn from `a.bcryptSem` (capacity `max(2, NumCPU)`): public routes wrap it in
+  `a.publicBcrypt(w, r, fn)`, which waits up to 3 s and otherwise answers 503
+  `El servidor está ocupado. Intenta de nuevo en unos segundos.`; panel and importer code use
+  `a.hashPasswordCtx(ctx, pw)` or `a.withBcrypt(ctx, fn)`, which wait as long as the request
+  lives.
+- Rate limits: one window per key, so namespace keys. `Allow` checks and counts in one step
+  (`count < max`) and `Reset` forgets the key. A login calls `Allow` before bcrypt and `Reset`
+  on success; checking first and counting the failure afterwards let a parallel burst through
+  whole, so that API is gone. Get the client with `clientIP(r, a.Cfg.TrustProxy)`: IPv4 as
+  is, IPv6 collapsed to its /64 (one subscriber gets a whole /64, so per-address counting
+  stops nobody). Current limits ("network" = IPv4 or IPv6 /64):
+
+  | Route | Key | Limit |
+  |---|---|---|
+  | `POST /api/login` | network | 100 / 5 min |
+  | `POST /api/login` | (code, network), all login forms | 10 / 15 min, cleared on success |
+  | `POST /api/login` | code, any network and login form | 100 / 15 min |
+  | `POST /api/login` with legacy career | (course, code, network) | 10 / 15 min, cleared on success |
+  | `POST /api/login` with legacy career | (course, code), any network | 100 / 15 min |
+  | `POST /api/admin-login` | network | 30 / 15 min |
+  | `POST /api/admin-login` | (lowercased username, network) | 10 / 15 min, cleared on success |
+  | `POST /api/admin-login` | lowercased username, any network | 100 / 15 min |
+  | `POST /api/register` | network | 20 / hour |
+  | `POST /api/register` | code already enrolled in another course | 10 / 15 min |
+  | `POST /api/send-reset-code` | network | 20 / hour |
+  | `POST /api/send-reset-code` | student | 3 / hour |
+  | `POST /api/reset-password-with-code` | code | 5 wrong tries, then dead until it expires |
+  | `POST /api/admin/import/preview` | admin | 10 / min |
+
+  The per-account rows are checked after the per-network row, so a network that is already
+  blocked doesn't use up the account's budget. A successful reset with a code clears that
+  student's per-network and per-account login keys. Asking for a new reset code while the
+  current one is still valid keeps its wrong-try count, and while a burnt code is still valid
+  `send-reset-code` answers 429 without sending.
+- Student IDs and names: new IDs (register, panel create/update/generate) must match
+  `codeRe` (`^[A-Za-z0-9._-]{1,40}$`, the ID goes into `code@domain`), and names reject
+  `badNameRune` (control characters and the U+202A–U+202E / U+2066–U+2069 direction marks).
+  On update, an imported ID or name that isn't being changed is accepted as it is. The Sheets
+  importer stays lenient but runs codes, names, sexo and emails through `stripControl`.
+- Registering an ID that already exists in another course (avatars are keyed by ID) needs the
+  password of one of those enrollments; otherwise 409 `Ese ID ya está registrado en otro
+  curso. Usa la misma contraseña de ese curso o pide al profesor que te inscriba.`
+- `Student.purchases` (login, `/api/me`, purchase) keeps the `Record<string, number>` shape
+  but lists badges in the order they were first bought (lowest non-reverted purchase id),
+  like the legacy portal, not alphabetically.
 - Settings: `a.Settings(ctx)` returns a copy. Its struct has JSON tags equal to
   `AdminSettings`, with the secrets tagged `json:"-"`, so B2 can embed `Settings` in the
   response and add `resendApiKey` / `googleServiceAccount` status fields. `a.SaveSettings(ctx,

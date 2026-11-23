@@ -46,7 +46,7 @@ func (e *admT) newAdmin(username, pw string) (int64, *http.Cookie) {
 	var id int64
 	e.one(&id, `insert into admins (username, password_hash) values ($1, $2) returning id`, username, hash)
 	rec := httptest.NewRecorder()
-	e.a.setSession(rec, kindAdmin, id)
+	e.a.setSession(rec, kindAdmin, id, hash)
 	return id, rec.Result().Cookies()[0]
 }
 

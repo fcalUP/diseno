@@ -66,9 +66,20 @@ func pathID(r *http.Request, name string) (int64, bool) {
 	return id, err == nil && id > 0
 }
 
-// clientIP da la IP del visitante. Detrás de CloudFront (trustProxy) usa
-// CloudFront-Viewer-Address y luego X-Forwarded-For; si no, RemoteAddr.
+// clientIP da la IP del visitante para los límites. Una IPv6 cuenta como su /64:
+// quien tiene una /64 estrena dirección en cada petición sin esfuerzo, así que
+// contarlas sueltas no frena a nadie. La IPv4 queda igual.
 func clientIP(r *http.Request, trustProxy bool) string {
+	addr := clientAddr(r, trustProxy)
+	if ip := net.ParseIP(addr); ip != nil && ip.To4() == nil {
+		return ip.Mask(net.CIDRMask(64, 128)).String()
+	}
+	return addr
+}
+
+// clientAddr da la dirección del visitante. Detrás de CloudFront (trustProxy) usa
+// CloudFront-Viewer-Address y luego X-Forwarded-For; si no, RemoteAddr.
+func clientAddr(r *http.Request, trustProxy bool) string {
 	if trustProxy {
 		if ip := viewerAddressIP(r.Header.Get("CloudFront-Viewer-Address")); ip != "" {
 			return ip

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"sync"
 	"testing"
 	"time"
 )
@@ -22,33 +23,49 @@ func TestLimiter(t *testing.T) {
 		t.Fatal("al salir de la ventana debió pasar")
 	}
 
-	// Fallos: con 3 permitidos, el tercero ya llega al límite.
-	if !l.Fail("user", 3, time.Minute) || !l.Fail("user", 3, time.Minute) || l.Blocked("user", 3, time.Minute) {
-		t.Fatal("dos fallos no deben bloquear")
-	}
-	if l.Fail("user", 3, time.Minute) || !l.Blocked("user", 3, time.Minute) {
-		t.Fatal("el tercer fallo debe bloquear")
-	}
+	l.Allow("user", 2, time.Minute)
+	l.Allow("user", 2, time.Minute)
 	l.Reset("user")
-	if l.Blocked("user", 3, time.Minute) {
+	if !l.Allow("user", 2, time.Minute) {
 		t.Fatal("Reset debe desbloquear")
 	}
 
-	// La ventana es deslizante: el primer fallo vence antes que los demás.
-	l.Fail("k", 2, time.Minute)
+	// La ventana es deslizante: el primer intento vence antes que los demás.
+	l.Allow("k", 2, time.Minute)
 	now = now.Add(40 * time.Second)
-	l.Fail("k", 2, time.Minute)
-	if !l.Blocked("k", 2, time.Minute) {
-		t.Fatal("dos fallos en la ventana deben bloquear")
+	l.Allow("k", 2, time.Minute)
+	if l.Allow("k", 2, time.Minute) {
+		t.Fatal("dos intentos en la ventana deben bloquear")
 	}
 	now = now.Add(21 * time.Second)
-	if l.Blocked("k", 2, time.Minute) {
-		t.Fatal("el primer fallo ya salió de la ventana")
+	if !l.Allow("k", 2, time.Minute) {
+		t.Fatal("el primer intento ya salió de la ventana")
 	}
 
 	now = now.Add(time.Hour)
 	l.cleanup()
 	if len(l.hits) != 0 {
 		t.Fatalf("cleanup dejó %d claves", len(l.hits))
+	}
+}
+
+// Regresión (H1): revisar y contar en un solo paso. Con 50 a la vez solo pasan max.
+func TestLimiterAllowConcurrent(t *testing.T) {
+	l := &Limiter{hits: map[string]*hitLog{}, now: time.Now}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	passed := 0
+	for range 50 {
+		wg.Go(func() {
+			if l.Allow("k", 10, time.Minute) {
+				mu.Lock()
+				passed++
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+	if passed != 10 {
+		t.Fatalf("pasaron %d intentos, esperaba 10", passed)
 	}
 }

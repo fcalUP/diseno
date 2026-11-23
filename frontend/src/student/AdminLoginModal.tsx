@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { api, errorMessage } from '../lib/api'
-import type { AdminLoginResponse } from '../lib/types'
+import type { AdminLoginResponse, PublicCourse } from '../lib/types'
+import { CustomSelect } from '../components/CustomSelect'
 
 interface AdminLoginModalProps {
   show: boolean
   onClose: () => void
   onAdminLoginSuccess: (career: string) => Promise<void>
   selectedCareer: string
+  courses: PublicCourse[]
+  setSelectedCareer: (career: string) => void
 }
 
 // Siempre montado, como antes: usuario y contraseña se conservan entre aperturas.
@@ -15,6 +18,8 @@ export default function AdminLoginModal({
   onClose,
   onAdminLoginSuccess,
   selectedCareer,
+  courses,
+  setSelectedCareer,
 }: AdminLoginModalProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -45,6 +50,14 @@ export default function AdminLoginModal({
         <h2 id="admin-login-title" className="text-2xl font-bold text-center text-gray-800">
           Administrator Access
         </h2>
+        <CustomSelect
+          aria-label="Course"
+          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
+          value={selectedCareer}
+          onChange={(e) => setSelectedCareer(e.target.value)}
+        >
+          {courses.map((course) => <option key={course.id} value={course.name}>{course.name}</option>)}
+        </CustomSelect>
         <input
           className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 transition-all duration-300"
           placeholder="Username"

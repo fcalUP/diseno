@@ -30,6 +30,8 @@ func NewLimiter() *Limiter {
 }
 
 // Allow cuenta un intento; false (sin contarlo) si ya hay max en la ventana.
+// Revisar y contar van juntos: un login lo llama antes de bcrypt, así una
+// ráfaga en paralelo no pasa completa antes de que se anote el primer fallo.
 func (l *Limiter) Allow(key string, max int, window time.Duration) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -39,20 +41,6 @@ func (l *Limiter) Allow(key string, max int, window time.Duration) bool {
 	}
 	l.add(key, max, window, now)
 	return true
-}
-
-// Fail cuenta un fallo; false cuando con este se llega al máximo.
-func (l *Limiter) Fail(key string, max int, window time.Duration) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.add(key, max, window, l.now()) < max
-}
-
-// Blocked dice si ya hay max eventos en la ventana, sin contar nada.
-func (l *Limiter) Blocked(key string, max int, window time.Duration) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.count(key, window, l.now()) >= max
 }
 
 func (l *Limiter) Reset(key string) {
@@ -77,7 +65,7 @@ func (l *Limiter) count(key string, window time.Duration, now time.Time) int {
 	return len(h.times)
 }
 
-func (l *Limiter) add(key string, max int, window time.Duration, now time.Time) int {
+func (l *Limiter) add(key string, max int, window time.Duration, now time.Time) {
 	l.count(key, window, now)
 	h := l.hits[key]
 	if h == nil {
@@ -88,7 +76,6 @@ func (l *Limiter) add(key string, max int, window time.Duration, now time.Time) 
 	if len(h.times) > max { // solo importan los últimos max
 		h.times = h.times[len(h.times)-max:]
 	}
-	return len(h.times)
 }
 
 func (l *Limiter) cleanup() {
