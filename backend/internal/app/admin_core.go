@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"regexp"
@@ -113,6 +114,65 @@ func (q *admWhere) sql() string {
 
 // ---------- Sesión de admin ----------
 
+type admLoginAccount struct {
+	ID     int64
+	Hash   string
+	Active bool
+}
+
+func (a *App) admLoginAccount(ctx context.Context, username string) (admLoginAccount, error) {
+	var account admLoginAccount
+	err := a.DB.QueryRow(ctx, `select id, password_hash, active from admins where username = $1`, username).
+		Scan(&account.ID, &account.Hash, &account.Active)
+	return account, err
+}
+
+// Ambos accesos comparten las mismas llaves: cambiar de endpoint no renueva
+// los intentos de una cuenta de administrador.
+func (a *App) admAllowLogin(w http.ResponseWriter, r *http.Request, username string) (string, bool) {
+	ip := clientIP(r, a.Cfg.TrustProxy)
+	user := strings.ToLower(username)
+	userKey := "admin-login:" + user + "@" + ip
+	if !a.Limiter.Allow("admin-login-ip:"+ip, admLoginIPMax, admLoginWindow) ||
+		!a.Limiter.Allow(userKey, admLoginUserMax, admLoginWindow) ||
+		!a.Limiter.Allow("admin-login-acct:"+user, admLoginAcctMax, admLoginWindow) {
+		writeError(w, http.StatusTooManyRequests, stuMsgTooMany)
+		return "", false
+	}
+	return userKey, true
+}
+
+// admFinishLogin mantiene el registro y la auditoría en una sola transacción.
+// El campo message se conserva únicamente para clientes del endpoint antiguo.
+func (a *App) admFinishLogin(w http.ResponseWriter, r *http.Request, account admLoginAccount, username, userKey string, legacy bool) {
+	ctx := r.Context()
+	if !a.admTx(w, r, "login de admin", func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `update admins set last_login_at = now() where id = $1`, account.ID); err != nil {
+			return err
+		}
+		_, err := a.auditAdmin(ctx, tx, account.ID, AuditEntry{
+			Action:   "login",
+			Entity:   "admin",
+			EntityID: itoa64(account.ID),
+			Summary:  "Inicio de sesión de " + username,
+			Undoable: false,
+		})
+		return err
+	}) {
+		return
+	}
+	a.Limiter.Reset(userKey) // el tope por cuenta se conserva
+	a.setSession(w, kindAdmin, account.ID, account.Hash)
+	a.clearSession(w, kindStudent)
+	response := map[string]any{"success": true, "admin": admUserJSON{ID: account.ID, Username: username}}
+	if legacy {
+		response["message"] = "Admin login successful."
+	} else {
+		response["role"] = "admin"
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
 func (a *App) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Username string `json:"username"`
@@ -121,65 +181,30 @@ func (a *App) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &body) {
 		return
 	}
-	ctx := r.Context()
 	username := strings.TrimSpace(body.Username)
-	ip := clientIP(r, a.Cfg.TrustProxy)
-	user := strings.ToLower(username)
-	// Todo se cuenta antes de bcrypt y en este orden (ver handleLogin). La red
-	// va al final tras "@", que no sale en una IP.
-	userKey := "admin-login:" + user + "@" + ip
-	if !a.Limiter.Allow("admin-login-ip:"+ip, admLoginIPMax, admLoginWindow) ||
-		!a.Limiter.Allow(userKey, admLoginUserMax, admLoginWindow) ||
-		!a.Limiter.Allow("admin-login-acct:"+user, admLoginAcctMax, admLoginWindow) {
-		writeError(w, http.StatusTooManyRequests, "Demasiados intentos. Intenta de nuevo en unos minutos.")
+	userKey, ok := a.admAllowLogin(w, r, username)
+	if !ok {
 		return
 	}
-
-	var id int64
-	var hash string
-	var active bool
-	err := a.DB.QueryRow(ctx, `select id, password_hash, active from admins where username = $1`, username).
-		Scan(&id, &hash, &active)
+	account, err := a.admLoginAccount(r.Context(), username)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		a.admFail(w, "login de admin", err)
 		return
 	}
-	// Si el usuario no existe hash queda vacío y checkPassword tarda lo mismo.
+	// Si el usuario no existe Hash queda vacío y checkPassword tarda lo mismo.
 	var good bool
-	if !a.publicBcrypt(w, r, func() { good = checkPassword(hash, body.Password) }) {
+	if !a.publicBcrypt(w, r, func() { good = checkPassword(account.Hash, body.Password) }) {
 		return
 	}
 	if !good {
 		writeError(w, http.StatusUnauthorized, "Invalid admin credentials.")
 		return
 	}
-	if !active {
+	if !account.Active {
 		writeError(w, http.StatusForbidden, "Tu cuenta de administrador está desactivada.")
 		return
 	}
-	ok := a.admTx(w, r, "login de admin", func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `update admins set last_login_at = now() where id = $1`, id); err != nil {
-			return err
-		}
-		_, err := a.auditAdmin(ctx, tx, id, AuditEntry{
-			Action:   "login",
-			Entity:   "admin",
-			EntityID: itoa64(id),
-			Summary:  "Inicio de sesión de " + username,
-			Undoable: false,
-		})
-		return err
-	})
-	if !ok {
-		return
-	}
-	a.Limiter.Reset(userKey) // el tope del usuario no, igual que en handleLogin
-	a.setSession(w, kindAdmin, id, hash)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"success": true,
-		"message": "Admin login successful.",
-		"admin":   admUserJSON{ID: id, Username: username},
-	})
+	a.admFinishLogin(w, r, account, username, userKey, true)
 }
 
 func (a *App) handleAdminLogout(w http.ResponseWriter, r *http.Request, adminID int64) {

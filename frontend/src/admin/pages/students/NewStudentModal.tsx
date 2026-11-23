@@ -186,10 +186,11 @@ function NewStudentDialog({ courses, defaultCourseId, onClose, onCreated }: NewS
           />
           <TextField
             label="Contraseña"
+            type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             hint="Déjala vacía para generar una."
-            autoComplete="off"
             spellCheck={false}
           />
         </div>

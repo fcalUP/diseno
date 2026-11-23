@@ -24,6 +24,7 @@ they answered 401 `Sesión expirada. Inicia sesión de nuevo.` and cleared the c
 | GET `/api/health` | `handleHealth` | none | app.go |
 | GET `/api/config` | `handleConfig` | none | student.go |
 | POST `/api/login` | `handleLogin` | none | student.go |
+| GET `/api/session` | `handleSession` | none (full admin/student session validation inside) | auth.go |
 | GET `/api/me` | `handleMe` | requireStudent | student.go |
 | POST `/api/switch-course` | `handleSwitchCourse` | requireStudent | student.go |
 | POST `/api/logout` | `handleLogout` | none | student.go |
@@ -90,24 +91,51 @@ Path values: `pathID(r, "id")` for `{id}` (false when missing, not a number or �
 `r.PathValue("batchId")` and `r.PathValue("jobId")` for the others.
 
 `handleAdminStudentsList` and `handleAdminUpdateStudentData` currently live in
-`admin_core.go` because the complete panel shares these handlers with the quick dashboard.
+`admin_core.go` because the complete panel and older clients share these handlers.
 Do not create a second method with the same name.
 
-## Student login and course selection
+## Unified login, sessions and course selection
 
-`POST /api/login` accepts `{studentId, password, career?}`. The normal login sends only
-the student code and password. Student codes identify the same person across enrollments.
+`POST /api/login` accepts `{studentId, password, career?}`. `studentId` is either a student
+code or an administrator username; the common form sends just that identifier and password.
+The server checks credentials and determines the role. A valid active administrator takes
+priority if both tables contain the same identifier and password; a student's own password
+still authenticates their enrollment when the matching administrator password differs or
+the administrator is inactive. The client cannot choose its role. Usernames retain their
+case-sensitive lookup, identifiers are trimmed, and administrator passwords are checked
+exactly as entered; student passwords retain their legacy whitespace trimming.
+
+Administrator success returns `{"success":true,"role":"admin","admin":{"id":1,"username":"..."}}`
+without a success message. The frontend opens `/admin/alumnos`, directly in the complete
+panel; there is no separate administrator form, quick dashboard or summary screen.
+`POST /api/admin-login` remains available for older clients with `{username,password}` and
+the old `{success,message,admin}` response. Both endpoints share admin rate-limit keys and
+the same transactional login audit and timestamp. Any successful login clears the other
+role's cookie before the browser continues.
+
+`GET /api/session` restores either role in one request. It fully validates the admin
+cookie against the active database account and password version, then tries the student
+cookie if there is no valid admin session. A revoked or malformed admin cookie never
+prevents restoring a valid student session. If both are valid, admin takes priority and
+the student cookie is cleared. If neither is valid, it clears both cookies and returns
+401 `{error}`. An admin result
+uses the unified login response above; a student result uses the response below, retaining
+pending course selection and authenticating-enrollment revocation. Existing `GET /api/me`
+remains student-only. Session restoration does not create a new admin login audit entry.
+
+Student codes identify the same person across enrollments.
 An active enrollment in an active course must validate the password; the response then
 lists **all** active enrollments in active courses with that code, including enrollments
 imported from Sheets with different passwords. Existing passwords stay independent: neither
 login, import, the password reset nor an administrator password edit synchronizes them.
 An inactive enrollment's password cannot authenticate another enrollment.
 
-Successful login, `GET /api/me`, and `POST /api/switch-course` return:
+Student login, student `GET /api/session`, `GET /api/me`, and `POST /api/switch-course` return:
 
 ```json
 {
   "success": true,
+  "role": "student",
   "student": {"id": "matricula", "career": "Selected course", "...": "existing student fields"},
   "levelUpOccurred": false,
   "courses": [{"id": 1, "name": "Course name", "sideImageUrl": "/media/...", "logoUrl": "/media/..."}],
@@ -153,11 +181,16 @@ CSRF check, then the mux. Handlers don't repeat any of it.
   including requests with no body such as `DELETE /api/admin/avatars?code=&level=`; without
   it the answer is 403. Only `PUT /api/uploads/local` is exempt. When an `Origin` header is
   present it has to match `PUBLIC_URL`, and with a localhost `PUBLIC_URL` any
-  `http://localhost:*` or `http://127.0.0.1:*` origin is accepted.
+  `http://localhost:*` or `http://127.0.0.1:*` origin is accepted. API mutations with
+  `Sec-Fetch-Site: cross-site` are rejected before these fallback checks. Local signed
+  uploads remain exempt from the API CSRF checks.
 - Bodies are capped at 64 KB (25 MB for the local upload). `decodeJSON` answers 413 when the
-  cap is hit and 400 for broken JSON. An empty body decodes as `{}`, and unknown fields are
-  ignored (the legacy quick admin modal sends extras like `career` and `rowIndex`).
+  cap is hit, including trailing whitespace, and 400 for broken JSON or additional values
+  or garbage after the first value. An empty body decodes as `{}`, and unknown fields are
+  ignored for legacy-client compatibility. Production's shared WAF further caps JSON at 8 KB.
 - `writeJSON` / `writeError` set `Cache-Control: no-store`.
+- CSP includes `object-src 'none'`; `Permissions-Policy` disables camera, microphone and
+  geolocation. The policy preserves the configured media, upload and WAF sources.
 - A panic becomes 500 `{"error":"Error interno del servidor."}` and the stack goes to the log.
 
 ## Shared helpers (verify exact signatures in their source files)
@@ -189,13 +222,13 @@ CSRF check, then the mux. Handlers don't repeat any of it.
   | Route | Key | Limit |
   |---|---|---|
   | `POST /api/login` | network | 100 / 5 min |
-  | `POST /api/login` | (code, network), all login forms | 10 / 15 min, cleared on success |
-  | `POST /api/login` | code, any network and login form | 100 / 15 min |
+  | `POST /api/login`, student attempts | (code, network), all login forms | 10 / 15 min, cleared on success |
+  | `POST /api/login`, student attempts | code, any network and login form | 100 / 15 min |
   | `POST /api/login` with legacy career | (course, code, network) | 10 / 15 min, cleared on success |
   | `POST /api/login` with legacy career | (course, code), any network | 100 / 15 min |
-  | `POST /api/admin-login` | network | 30 / 15 min |
-  | `POST /api/admin-login` | (lowercased username, network) | 10 / 15 min, cleared on success |
-  | `POST /api/admin-login` | lowercased username, any network | 100 / 15 min |
+  | `POST /api/admin-login` and `/api/login` for existing admin usernames | network, shared across both endpoints | 30 / 15 min |
+  | same admin endpoints | (lowercased username, network), shared | 10 / 15 min, cleared on success |
+  | same admin endpoints | lowercased username, any network, shared | 100 / 15 min |
   | `POST /api/register` | network | 20 / hour |
   | `POST /api/register` | code already enrolled in another course | 10 / 15 min |
   | `POST /api/send-reset-code` | network | 20 / hour |
@@ -208,6 +241,8 @@ CSRF check, then the mux. Handlers don't repeat any of it.
   student's per-network and per-account login keys. Asking for a new reset code while the
   current one is still valid keeps its wrong-try count, and while a burnt code is still valid
   `send-reset-code` answers 429 without sending.
+  Unified logins for identifiers without an administrator row do not consume the admin
+  network quota, so a class of students retains the portal's 100 attempts per 5 minutes.
 - Student IDs and names: new IDs (register, panel create/update/generate) must match
   `codeRe` (`^[A-Za-z0-9._-]{1,40}$`, the ID goes into `code@domain`), and names reject
   `badNameRune` (control characters and the U+202A–U+202E / U+2066–U+2069 direction marks).
@@ -251,8 +286,12 @@ CSRF check, then the mux. Handlers don't repeat any of it.
 - Mail: `mail.go` defines `newResendMailer(a *App) Mailer`, initialized by `New()`. Read
   mail.go for behavior when credentials are absent; a response alone does not prove delivery.
 - Import: `a.importMu` (`sync.Mutex`) and `a.importJobs` (`sync.Map`) implement the in-memory
-  one-job-at-a-time registry. Job status is not durable across an app restart; database data
-  and audit entries are persistent.
+  one-job-at-a-time registry. Preview, run and media import share the same exclusive slot;
+  while any of them is executing, another returns 409 `impBusy` without loading Sheets
+  or the import snapshots. Preview releases the slot after success, failure, cancellation
+  or panic and remains read-only. Its existing 10/minute per-admin quota still applies;
+  requests rejected because the slot is busy do not consume that quota. Job status is
+  not durable across an app restart; database data and audit entries are persistent.
 
 ## Test helpers (app_test.go, package `app`)
 

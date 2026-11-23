@@ -32,6 +32,7 @@ import type {
   MediaImportResponse,
   MessageResponse,
   PasswordResponse,
+  PortalLoginResponse,
   PublicConfig,
   PurchaseRequest,
   PurchaseResponse,
@@ -176,6 +177,18 @@ const seg = encodeURIComponent
 type Ok = { success: true }
 type WithAudit<T> = T & { auditId: number }
 
+// StrictMode puede montar dos veces el inicio en desarrollo. Comparte solo la
+// petición en curso para no consumir dos veces la visita/animación del alumno.
+let sessionRequest: Promise<StudentResult<PortalLoginResponse>> | undefined
+function loadSession() {
+  if (!sessionRequest) {
+    sessionRequest = studentCall<PortalLoginResponse>('GET', '/api/session').finally(() => {
+      sessionRequest = undefined
+    })
+  }
+  return sessionRequest
+}
+
 export interface StudentFilters {
   courseId?: number
   career?: string
@@ -206,7 +219,8 @@ export const api = {
 
   // ---- Público / alumno: nunca lanzan por status, sólo por fallas de red ----
   config: () => studentCall<PublicConfig>('GET', '/api/config'),
-  login: (b: LoginRequest) => studentCall<LoginResponse>('POST', '/api/login', b),
+  login: (b: LoginRequest) => studentCall<PortalLoginResponse>('POST', '/api/login', b),
+  session: loadSession,
   switchCourse: (courseId: number) => studentCall<LoginResponse>('POST', '/api/switch-course', { courseId }),
   me: () => studentCall<LoginResponse>('GET', '/api/me'),
   logout: () => studentCall<Ok>('POST', '/api/logout', {}),

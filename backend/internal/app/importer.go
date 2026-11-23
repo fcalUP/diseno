@@ -170,6 +170,13 @@ func (a *App) handleAdminImportPreview(w http.ResponseWriter, r *http.Request, a
 		a.impWriteErr(w, "vista previa", err)
 		return
 	}
+	// La simulación también carga la hoja y las instantáneas de la base en
+	// memoria: comparte el único turno con las corridas y la importación de media.
+	if !a.importMu.TryLock() {
+		writeError(w, http.StatusConflict, impBusy)
+		return
+	}
+	defer a.importMu.Unlock()
 	// Cada vista previa consulta a Google y corre bcrypt por alumno en todos los núcleos.
 	if !a.Limiter.Allow("import-preview:"+itoa64(adminID), 10, time.Minute) {
 		writeError(w, http.StatusTooManyRequests, "Demasiadas vistas previas seguidas. Espera un minuto.")

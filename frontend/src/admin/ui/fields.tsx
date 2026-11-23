@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { Search, X } from 'lucide-react'
 import { CustomSelect, type CustomSelectProps } from '../../components/CustomSelect'
+import PasswordInput from '../../components/PasswordInput'
 import { cx, focusRing, inputClass, inputErrorClass } from './styles'
 
 interface FieldProps {
@@ -54,9 +55,14 @@ export type TextFieldProps = FieldProps & Omit<InputHTMLAttributes<HTMLInputElem
 export function TextField({ label, hideLabel, hint, error, className, id, ...rest }: TextFieldProps) {
   const autoId = useId()
   const fieldId = id ?? autoId
+  const { type, ...inputProps } = rest
   return (
     <Field id={fieldId} label={label} hideLabel={hideLabel} hint={hint} error={error} className={className}>
-      <input id={fieldId} className={cx(inputClass, error && inputErrorClass)} {...a11y(fieldId, hint, error)} {...rest} />
+      {type === 'password' ? (
+        <PasswordInput id={fieldId} className={cx(inputClass, error && inputErrorClass)} {...a11y(fieldId, hint, error)} {...inputProps} />
+      ) : (
+        <input id={fieldId} type={type} className={cx(inputClass, error && inputErrorClass)} {...a11y(fieldId, hint, error)} {...inputProps} />
+      )}
     </Field>
   )
 }

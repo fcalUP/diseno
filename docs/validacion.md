@@ -75,6 +75,7 @@ corresponden a nombres de pruebas que sí existen en `backend/internal/app/`:
 | Cambio | Selección inicial para `go test -run` |
 |---|---|
 | Login y materias | `TestStu(AutomaticSingleCourse|MultipleCoursesAndPersistentSelection|CoursesExcludeInactiveAndOtherStudents|CourseSessionRevokesWithAuthenticatingEnrollment|LoginLimitSharedAcrossCourseAndAutomatic)` |
+| Acceso único y restauración de rol | `TestUnified(Login|SessionRoleRestoration)` y `TestSecUnifiedAdminLoginBurst` |
 | Sesiones, cookies y límites | `Test(TokenTamper|SessionCookie|RequireActiveRow|SecSessionsFollowPassword|SecStudentLoginBurst|SecAdminLoginBurst|LimiterAllowConcurrent)` |
 | Alumnos y generación | `TestAdm(StudentCreate|StudentsGenerate|StudentUpdate|StudentDelete|StudentPassword|StudentsBulk)` y `TestSecIDAndNameRules` |
 | Imágenes y migraciones | `Test(AdmUpload|CatAvatars|LocalUpload|LocalStorageTraversal|MigrateTwice|MigrateDefaultAvatars)` |
@@ -109,6 +110,9 @@ la suite completa. Las pruebas de mayor interés están en
 [undo_test.go](../backend/internal/app/undo_test.go). El detector de carreras complementa las
 aserciones: la prueba `TestStuPurchaseConcurrent` verifica además que dos compras de la última
 unidad produzcan una sola venta, existencias cero y ninguna sobreventa.
+`TestImportPreviewSharesSlotAndReleases` comprueba que preview comparte el turno de importación
+y lo libera ante éxito, error del proveedor, cancelación y pánico; `TestImportJobLifecycle`
+comprueba también el rechazo de preview mientras corre una importación.
 
 ## Configuración de despliegue sin publicar
 
@@ -200,13 +204,14 @@ no pudiste realizar.
 
 | Área modificada | Casos y resultado esperado |
 |---|---|
-| Login y materias | Entrar con matrícula y contraseña sin selector previo. Una inscripción entra directo; varias muestran tarjetas con nombre y logo antes del dashboard. Refrescar conserva la selección pendiente o la materia abierta. Cambiar desde navbar carga los contadores y compras de esa inscripción. Denegar materias ajenas o inactivas. Cambiar la clave o desactivar la inscripción que autenticó revoca la sesión incluso al estar en otra materia; cambiar la clave de otra inscripción no la revoca. |
+| Login y materias | Usar el formulario único de `/` con matrícula y contraseña, sin elegir rol ni materia. Una inscripción entra directo; varias muestran tarjetas con nombre y logo antes del dashboard. Refrescar conserva la selección pendiente o la materia abierta. Cambiar desde navbar carga los contadores y compras de esa inscripción. Denegar materias ajenas o inactivas. Cambiar la clave o desactivar la inscripción que autenticó revoca la sesión incluso al estar en otra materia; cambiar la clave de otra inscripción no la revoca. |
+| Contraseñas | Los campos empiezan ocultos; el ojo muestra/oculta sin perder el valor ni enviar el formulario. Probar clic, toque y teclado, `aria-pressed` y foco. Revisar login, registro, recuperación y campos del panel. No capturar contraseñas visibles en evidencia compartida. |
 | Pickers personalizados | Abrir con ratón y toque; recorrer con flechas, Home/End y búsqueda por texto; elegir con Enter y cerrar con Escape o clic fuera. Conservar foco; Escape cierra el picker sin cerrar el modal padre. Saltar opciones deshabilitadas, manejar lista vacía y control deshabilitado. Dentro de modal/drawer, comprobar que el menú no se recorta y que funciona al desplazar y en móvil. No introducir `<select>` visibles ni apariencia nativa. |
 | Alumnos y generación | Alta individual y edición; errores de matrícula/nombre, campos obligatorios y límites numéricos. Altas admiten Hombre/Mujer; edición puede conservar un valor heredado fijo. Pegar lista con encabezados, H/M, duplicados y filas inválidas; crear únicamente válidas y descargar CSV con claves generadas. Comprobar lote parcial, reintento y deshacer. |
 | Avatares e imágenes | Subir formato permitido y guardar; rechazar formato/tamaño inválido; esperar subida antes de guardar/cerrar. Ver imagen tras recargar. Una alta nueva sin importación debe tener avatar predeterminado; comprobar hombres y mujeres en distintos niveles y conservar personalizaciones. |
 | Tienda y contexto | Saldo suficiente/insuficiente, existencias agotadas y doble clic. Probar dos alumnos comprando la última unidad: solo una venta y saldo/existencias coherentes. Verificar revertir/rehacer. Cambiar materia limpia carrito y modales; respuestas tardías de tienda/leaderboard no reabren el contexto anterior; no permitir switch durante compra o cambio en curso. |
 | Importación | Vista previa sin escrituras; importar sobre una hoja de prueba compartida con la cuenta de servicio. Reimportar no duplica compras ni vuelve a descontar monedas históricas. Probar modos actualizar/solo nuevos, errores de credenciales y progreso. Deshacer el lote restaura el estado anterior; revisar conflictos y auditoría. Las pruebas Go usan un servidor Sheets simulado, no garantizan acceso a una hoja real. |
-| Administración | Rutas privadas sin cookie devuelven 401; login correcto/incorrecto, límites, logout y sesión revocada por cambio de clave. Comprobar panel completo y acceso rápido. No permitir eliminar/desactivar al último admin activo. Verificar errores y que no se muestren secretos guardados. |
+| Administración | Entrar como administrador desde el mismo formulario de `/`: abrir directamente `/admin/alumnos`, sin enlace o modal de login admin, aviso de acceso exitoso, tablero rápido ni sección Resumen. `/admin` redirige a Alumnos; sin sesión, una ruta del panel vuelve a `/`. Recargar y volver al inicio con sesión vigente conserva el acceso al panel. Probar credenciales incorrectas, cuenta inactiva, límites compartidos con `/api/admin-login`, logout y revocación por cambio de clave; logout y expiración regresan al formulario único. Si una matrícula coincide con un usuario admin, comprobar la resolución por credenciales y que no se mezclen cookies de ambos roles. Rutas privadas sin cookie devuelven 401. No permitir eliminar/desactivar al último admin activo. Verificar errores y que no se muestren secretos guardados. |
 
 La revisión anterior usó Playwright y capturas bajo `/tmp/diseno-qa-frontend/` y otros
 directorios temporales. **Esos scripts y resultados no están versionados, pueden haber

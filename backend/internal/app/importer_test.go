@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -477,6 +478,119 @@ func TestImportPreviewWritesNothing(t *testing.T) {
 	}
 }
 
+// impPreviewGate simula una respuesta de metadatos lenta. Señala cuándo la
+// vista previa ya llegó al proveedor y respeta la cancelación de esa petición.
+type impPreviewGate struct {
+	next       http.RoundTripper
+	entered    chan struct{}
+	release    chan struct{}
+	once       sync.Once
+	panicAfter bool
+}
+
+func (g *impPreviewGate) RoundTrip(r *http.Request) (*http.Response, error) {
+	if r.URL.Path == "/v4/spreadsheets/"+impTestSheetID {
+		g.once.Do(func() { close(g.entered) })
+		select {
+		case <-g.release:
+		case <-r.Context().Done():
+			return nil, r.Context().Err()
+		}
+		if g.panicAfter {
+			panic("fallo simulado de vista previa")
+		}
+	}
+	return g.next.RoundTrip(r)
+}
+
+func TestImportPreviewSharesSlotAndReleases(t *testing.T) {
+	for _, outcome := range []string{"success", "provider_error", "cancelled", "panic"} {
+		t.Run(outcome, func(t *testing.T) {
+			c := newImpTester(t)
+			f := newImpFake(t, []impFakeTab{{"TAR", [][]string{impStudentHeader}}})
+			gate := &impPreviewGate{next: impHTTPClient.Transport, entered: make(chan struct{}), release: make(chan struct{})}
+			gate.panicAfter = outcome == "panic"
+			impHTTPClient = &http.Client{Transport: gate, Timeout: time.Minute}
+			payload, err := json.Marshal(impCreds(map[string]any{"include": impNoMedia}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := func(ctx context.Context, path string) *httptest.ResponseRecorder {
+				req := httptest.NewRequest("POST", path, bytes.NewReader(payload)).WithContext(ctx)
+				req.Header.Set("Content-Type", "application/json")
+				req.AddCookie(c.cookie)
+				rec := httptest.NewRecorder()
+				c.h.ServeHTTP(rec, req)
+				return rec
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			result := make(chan *httptest.ResponseRecorder, 1)
+			finished := make(chan struct{})
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(gate.release) }) }
+			t.Cleanup(func() {
+				cancel()
+				release()
+				select {
+				case <-finished:
+				case <-time.After(5 * time.Second):
+					t.Error("la vista previa bloqueada no terminó al limpiarse")
+				}
+			})
+			go func() {
+				defer close(finished)
+				result <- request(ctx, "/api/admin/import/preview")
+			}()
+			select {
+			case <-gate.entered:
+			case <-time.After(5 * time.Second):
+				t.Fatal("la vista previa no llegó al proveedor")
+			}
+			for _, path := range []string{"/api/admin/import/preview", "/api/admin/import/run", "/api/admin/import/media"} {
+				// Un fallo de regresión no debe dejar la prueba esperando la red.
+				otherCtx, stop := context.WithTimeout(context.Background(), time.Second)
+				rec := request(otherCtx, path)
+				stop()
+				var body struct{ Error string }
+				if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+					t.Fatal(err)
+				}
+				if rec.Code != http.StatusConflict || body.Error != impBusy {
+					t.Fatalf("%s durante vista previa: %d %s", path, rec.Code, rec.Body)
+				}
+			}
+			want := http.StatusOK
+			switch outcome {
+			case "provider_error":
+				f.setFail(http.StatusForbidden)
+				want = http.StatusBadRequest
+				release()
+			case "cancelled":
+				want = http.StatusBadRequest
+				cancel()
+			case "panic":
+				want = http.StatusInternalServerError
+				release()
+			default:
+				release()
+			}
+			select {
+			case rec := <-result:
+				if rec.Code != want {
+					t.Fatalf("vista previa %s: %d %s", outcome, rec.Code, rec.Body)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("la vista previa no devolvió su resultado")
+			}
+			// Tras éxito, error o cancelación otro trabajo puede tomar el turno.
+			f.setFail(0)
+			gate.panicAfter = false
+			release()
+			c.preview(impCreds(map[string]any{"include": impNoMedia}))
+		})
+	}
+}
+
 func TestImportJobLifecycle(t *testing.T) {
 	c := newImpTester(t)
 	f := newImpFake(t, impLegacyTabs())
@@ -503,6 +617,9 @@ func TestImportJobLifecycle(t *testing.T) {
 	}
 	if code, msg := c.errMsg("POST", "/api/admin/import/run", impCreds(map[string]any{})); code != http.StatusConflict || msg != impBusy {
 		t.Fatalf("segunda corrida: %d %q", code, msg)
+	}
+	if code, msg := c.errMsg("POST", "/api/admin/import/preview", impCreds(map[string]any{})); code != http.StatusConflict || msg != impBusy {
+		t.Fatalf("vista previa durante una corrida: %d %q", code, msg)
 	}
 	if code, _ := c.errMsg("POST", "/api/admin/import/media", nil); code != http.StatusConflict {
 		t.Fatalf("media durante una corrida: %d", code)

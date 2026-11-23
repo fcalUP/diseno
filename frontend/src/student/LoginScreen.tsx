@@ -1,4 +1,5 @@
 import type { PublicConfig } from '../lib/types'
+import PasswordInput from '../components/PasswordInput'
 
 interface LoginScreenProps {
   courses: PublicConfig['courses']
@@ -12,7 +13,6 @@ interface LoginScreenProps {
   error: string
   setShowRegister: (show: boolean) => void
   setShowReset: (show: boolean) => void
-  setShowAdminLoginModal: (show: boolean) => void
 }
 
 export default function LoginScreen({
@@ -27,7 +27,6 @@ export default function LoginScreen({
   error,
   setShowRegister,
   setShowReset,
-  setShowAdminLoginModal,
 }: LoginScreenProps) {
   // Conserva las imágenes del portal; el curso se detecta después de autenticar.
   const course = courses[0]
@@ -56,13 +55,13 @@ export default function LoginScreen({
               className="mx-auto w-32 h-32 mb-4"
             />
             <h2 className="text-3xl font-bold mb-4 text-gray-800">
-              Student Portal
+              Portal
             </h2>
 
             <input
               className="w-full p-3 mb-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
-              placeholder="Student ID"
-              aria-label="Student ID"
+              placeholder="Student ID or username"
+              aria-label="Student ID or username"
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
@@ -71,9 +70,11 @@ export default function LoginScreen({
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
             />
-            <input
-              type="password"
-              className="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+            <PasswordInput
+              className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+              wrapperClassName="mb-4"
+              showLabel="Show password"
+              hideLabel="Hide password"
               placeholder="Password"
               aria-label="Password"
               autoComplete="current-password"
@@ -110,13 +111,6 @@ export default function LoginScreen({
                   Forgot your password?
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setShowAdminLoginModal(true)}
-                className="text-blue-500 hover:underline ml-4 transition-colors duration-300"
-              >
-                Administrator
-              </button>
             </div>
           </form>
         </div>

@@ -57,17 +57,24 @@ export interface Student {
 }
 
 export interface LoginRequest {
-  studentId: string
+  studentId: string // matrícula del alumno o usuario del administrador
   password: string
   career?: string // compatibilidad con clientes que ya eligieron curso
 }
 
 export interface LoginResponse {
   success: true
+  role: 'student'
   student: Student
   levelUpOccurred: boolean
   courses: PublicCourse[]
   requiresCourseSelection: boolean
+}
+
+export type PortalLoginResponse = LoginResponse | {
+  success: true
+  role: 'admin'
+  admin: AdminUser
 }
 
 export interface RegisterRequest {

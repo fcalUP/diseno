@@ -84,6 +84,91 @@ func TestBodyLimitAndDecode(t *testing.T) {
 	}
 }
 
+func TestJSONBodyMustContainSingleValue(t *testing.T) {
+	cases := []struct {
+		name, body string
+		want       int
+	}{
+		{"objeto", `{"a":1}`, http.StatusOK},
+		{"espacios", " \n\t{\"a\":1}\r\n ", http.StatusOK},
+		{"vacío compatible", "", http.StatusOK},
+		{"solo espacios compatible", " \n\t", http.StatusOK},
+		{"segundo objeto", `{"a":1}{"a":2}`, http.StatusBadRequest},
+		{"segundo array", `{"a":1} []`, http.StatusBadRequest},
+		{"segundo null", `{"a":1} null`, http.StatusBadRequest},
+		{"segundo escalar", `{"a":1} true`, http.StatusBadRequest},
+		{"basura final", `{"a":1} basura`, http.StatusBadRequest},
+		{"segundo objeto incompleto", `{"a":1} {`, http.StatusBadRequest},
+		{"límite exacto", `{}` + strings.Repeat(" ", maxBodyBytes-2), http.StatusOK},
+		{"exceso tras objeto válido", `{}` + strings.Repeat(" ", maxBodyBytes), http.StatusRequestEntityTooLarge},
+		{"exceso solo espacios", strings.Repeat(" ", maxBodyBytes+1), http.StatusRequestEntityTooLarge},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			applied := false
+			h := appNoDB(t).middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var body map[string]any
+				if !decodeJSON(w, r, &body) {
+					return
+				}
+				applied = true
+				writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+			}))
+			req := httptest.NewRequest("POST", "/api/x", strings.NewReader(c.body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			if rec.Code != c.want {
+				t.Fatalf("estado %d, esperaba %d: %s", rec.Code, c.want, rec.Body)
+			}
+			if applied != (c.want == http.StatusOK) {
+				t.Fatalf("el handler aplicó una petición inválida: applied=%v, estado=%d", applied, rec.Code)
+			}
+		})
+	}
+}
+
+func TestCSRFFetchMetadata(t *testing.T) {
+	a := appNoDB(t)
+	a.Cfg.PublicURL = "https://diseno.example.com"
+	h := a.middleware(decodeOKHandler())
+	cases := []struct {
+		method, path, site, origin, contentType string
+		want                                    int
+	}{
+		{"POST", "/api/login", "cross-site", "", "application/json", http.StatusForbidden},
+		{"POST", "/api/login", "cross-site", a.Cfg.PublicURL, "application/json", http.StatusForbidden},
+		{"PUT", "/api/admin/levels", "cross-site", "", "application/json", http.StatusForbidden},
+		{"PATCH", "/api/admin/students/1", "cross-site", "", "application/json", http.StatusForbidden},
+		{"DELETE", "/api/admin/students/1", "cross-site", "", "application/json", http.StatusForbidden},
+		{"PUT", localUploadURL, "cross-site", "", "image/png", http.StatusForbidden},
+		{"PUT", localUploadURL, "same-origin", a.Cfg.PublicURL, "image/png", http.StatusOK},
+		{"POST", "/api/login", "same-origin", a.Cfg.PublicURL, "application/json", http.StatusOK},
+		{"POST", "/api/login", "same-site", a.Cfg.PublicURL, "application/json", http.StatusOK},
+		{"POST", "/api/login", "same-site", "https://other.example.com", "application/json", http.StatusForbidden},
+		{"POST", "/api/login", "none", a.Cfg.PublicURL, "application/json", http.StatusOK},
+		{"POST", "/api/login", "", "", "application/json", http.StatusOK},
+		{"POST", "/api/login", "", "https://evil.example", "application/json", http.StatusForbidden},
+		{"POST", "/api/login", "same-origin", a.Cfg.PublicURL, "text/plain", http.StatusForbidden},
+		{"GET", "/api/config", "cross-site", "", "", http.StatusOK},
+		{"HEAD", "/", "cross-site", "", "", http.StatusOK},
+		{"POST", "/unrelated", "cross-site", "", "", http.StatusOK},
+	}
+	for _, c := range cases {
+		t.Run(c.method+" "+c.path+" "+c.site+" "+c.origin+" "+c.contentType, func(t *testing.T) {
+			req := httptest.NewRequest(c.method, c.path, strings.NewReader("{}"))
+			req.Header.Set("Content-Type", c.contentType)
+			req.Header.Set("Sec-Fetch-Site", c.site)
+			req.Header.Set("Origin", c.origin)
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+			if rec.Code != c.want {
+				t.Fatalf("estado %d, esperaba %d: %s", rec.Code, c.want, rec.Body)
+			}
+		})
+	}
+}
+
 func TestSecurityHeadersAndRecover(t *testing.T) {
 	a := appNoDB(t)
 	a.Cfg.UploadOrigin = "https://b.s3.us-east-1.amazonaws.com"
@@ -97,9 +182,34 @@ func TestSecurityHeadersAndRecover(t *testing.T) {
 	if !strings.Contains(csp, "connect-src 'self' https://b.s3.us-east-1.amazonaws.com;") || !strings.Contains(csp, "frame-ancestors 'none'") {
 		t.Fatalf("CSP: %s", csp)
 	}
-	for k, v := range map[string]string{"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "strict-origin-when-cross-origin"} {
+	for k, v := range map[string]string{
+		"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
+		"Referrer-Policy":    "strict-origin-when-cross-origin",
+		"Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+	} {
 		if rec.Header().Get(k) != v {
 			t.Errorf("%s = %q", k, rec.Header().Get(k))
+		}
+	}
+}
+
+func TestCSPDisablesObjectsAndPreservesUploadAndWAF(t *testing.T) {
+	a := appNoDB(t)
+	a.Cfg.UploadOrigin = "https://b.s3.us-east-1.amazonaws.com"
+	a.Cfg.WafSDKOrigin = "https://challenge.example.com"
+	h := a.middleware(decodeOKHandler())
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
+	csp := rec.Header().Get("Content-Security-Policy")
+	for _, directive := range []string{
+		"object-src 'none'",
+		"script-src 'self' https://challenge.example.com",
+		"connect-src 'self' https://b.s3.us-east-1.amazonaws.com https://challenge.example.com",
+		"img-src 'self' data: blob:",
+		"frame-ancestors 'none'",
+	} {
+		if !strings.Contains(csp, directive+";") {
+			t.Errorf("CSP no contiene %q: %s", directive, csp)
 		}
 	}
 }

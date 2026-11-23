@@ -129,66 +129,105 @@ func (a *App) adminID(r *http.Request) (int64, bool) {
 
 func (a *App) requireStudent(h func(w http.ResponseWriter, r *http.Request, studentID int64)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s, ok := a.session(r, kindStudent)
+		s, ok, err := a.validStudentSession(r)
+		if err != nil {
+			a.stuInternal(w, "verificar sesión de alumno", err)
+			return
+		}
 		if ok {
-			authID := s.AuthID
-			if authID == 0 {
-				authID = s.ID // compatibilidad con las sesiones anteriores de una inscripción
-			}
-			var code, authCode, hash string
-			var active bool
-			err := a.DB.QueryRow(r.Context(), `select current.code, auth.code, auth.password_hash,
-				current.active and selected_course.active and auth.active and auth_course.active
-				from students current join courses selected_course on selected_course.id = current.course_id
-				join students auth on auth.id = $2 join courses auth_course on auth_course.id = auth.course_id
-				where current.id = $1`, s.ID, authID).Scan(&code, &authCode, &hash, &active)
-			if err == nil && active && code == authCode && (s.Code == "" || s.Code == code) &&
-				hmac.Equal([]byte(s.PwV), []byte(a.pwVersion(hash))) {
-				h(w, r, s.ID)
-				return
-			}
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				if !writeCanceled(w, err) {
-					a.Log.Error("verificar sesión de alumno", "err", err)
-					writeError(w, http.StatusInternalServerError, "Error interno del servidor.")
-				}
-				return
-			}
+			h(w, r, s.ID)
+			return
 		}
 		a.clearSession(w, kindStudent)
 		writeError(w, http.StatusUnauthorized, sessionExpired)
 	}
 }
 
-func (a *App) requireAdmin(h func(w http.ResponseWriter, r *http.Request, adminID int64)) http.HandlerFunc {
-	return a.requireActive(kindAdmin, "select active, password_hash from admins where id = $1", h)
+// Estas comprobaciones completas también sirven al arranque unificado. Leer
+// una cookie firmada por sí solo nunca basta para restaurar una sesión.
+func (a *App) validStudentSession(r *http.Request) (Session, bool, error) {
+	s, ok := a.session(r, kindStudent)
+	if !ok {
+		return Session{}, false, nil
+	}
+	authID := s.AuthID
+	if authID == 0 {
+		authID = s.ID // compatibilidad con las sesiones anteriores de una inscripción
+	}
+	var code, authCode, hash string
+	var active bool
+	err := a.DB.QueryRow(r.Context(), `select current.code, auth.code, auth.password_hash,
+		current.active and selected_course.active and auth.active and auth_course.active
+		from students current join courses selected_course on selected_course.id = current.course_id
+		join students auth on auth.id = $2 join courses auth_course on auth_course.id = auth.course_id
+		where current.id = $1`, s.ID, authID).Scan(&code, &authCode, &hash, &active)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s, false, nil
+	}
+	valid := err == nil && active && code == authCode && (s.Code == "" || s.Code == code) &&
+		hmac.Equal([]byte(s.PwV), []byte(a.pwVersion(hash)))
+	return s, valid, err
 }
 
-// requireActive exige cookie válida, que la fila siga existiendo y activa, y
-// que la contraseña sea la misma con que se entró: un cambio de contraseña
-// (o un token viejo sin versión) cierra la sesión.
-func (a *App) requireActive(kind, query string, h func(http.ResponseWriter, *http.Request, int64)) http.HandlerFunc {
+// validAdminSession exige cuenta activa y la misma versión de contraseña.
+// Carga también el nombre en esa consulta para restaurar el panel sin repetirla.
+func (a *App) validAdminSession(r *http.Request) (Session, admUserJSON, bool, error) {
+	s, ok := a.session(r, kindAdmin)
+	if !ok {
+		return Session{}, admUserJSON{}, false, nil
+	}
+	user := admUserJSON{ID: s.ID}
+	var active bool
+	var hash string
+	err := a.DB.QueryRow(r.Context(), "select username, active, password_hash from admins where id = $1", s.ID).
+		Scan(&user.Username, &active, &hash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s, user, false, nil
+	}
+	return s, user, err == nil && active && hmac.Equal([]byte(s.PwV), []byte(a.pwVersion(hash))), err
+}
+
+func (a *App) requireAdmin(h func(w http.ResponseWriter, r *http.Request, adminID int64)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s, ok := a.session(r, kind); ok {
-			var active bool
-			var hash string
-			err := a.DB.QueryRow(r.Context(), query, s.ID).Scan(&active, &hash)
-			if err == nil && active && hmac.Equal([]byte(s.PwV), []byte(a.pwVersion(hash))) {
-				h(w, r, s.ID)
-				return
-			}
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				if writeCanceled(w, err) {
-					return
-				}
-				a.Log.Error("verificar sesión", "kind", kind, "err", err)
-				writeError(w, http.StatusInternalServerError, "Error interno del servidor.")
-				return
-			}
+		s, _, ok, err := a.validAdminSession(r)
+		if err != nil {
+			a.stuInternal(w, "verificar sesión de administrador", err)
+			return
 		}
-		a.clearSession(w, kind)
+		if ok {
+			h(w, r, s.ID)
+			return
+		}
+		a.clearSession(w, kindAdmin)
 		writeError(w, http.StatusUnauthorized, sessionExpired)
 	}
+}
+
+// handleSession restaura el rol con una sola petición. Una cookie admin vieja
+// no debe impedir recuperar una sesión de alumno que todavía sea válida.
+func (a *App) handleSession(w http.ResponseWriter, r *http.Request) {
+	_, user, ok, err := a.validAdminSession(r)
+	if err != nil {
+		a.stuInternal(w, "restaurar sesión de administrador", err)
+		return
+	}
+	if ok {
+		a.clearSession(w, kindStudent)
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "role": "admin", "admin": user})
+		return
+	}
+	a.clearSession(w, kindAdmin)
+	student, ok, err := a.validStudentSession(r)
+	if err != nil {
+		a.stuInternal(w, "restaurar sesión de alumno", err)
+		return
+	}
+	if ok {
+		a.handleMe(w, r, student.ID)
+		return
+	}
+	a.clearSession(w, kindStudent)
+	writeError(w, http.StatusUnauthorized, sessionExpired)
 }
 
 // dummyHash sirve para gastar el mismo tiempo cuando el usuario no existe.

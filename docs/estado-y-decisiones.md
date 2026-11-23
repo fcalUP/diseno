@@ -15,8 +15,14 @@ la infraestructura, los respaldos y los procedimientos de despliegue están en
   PostgreSQL como base de datos. El backend sirve también el frontend compilado. Se conserva
   Tailwind 3 para mantener las clases del diseño heredado.
 - **Diseño:** conservar la apariencia original del portal. Las excepciones solicitadas son el
-  acceso multicurso y los controles personalizados. No aprovechar una tarea de mantenimiento para
-  rediseñar el resto de las pantallas.
+  acceso multicurso, los controles personalizados y el formulario único de acceso. No aprovechar
+  una tarea de mantenimiento para rediseñar el resto de las pantallas.
+- **Acceso único:** alumnos y administradores entran por el formulario de `/`, con matrícula o
+  usuario y contraseña. El servidor detecta el rol. El administrador abre directamente
+  `/admin/alumnos`, sin enlace *Administrator*, login separado, notificación de acceso exitoso,
+  tablero rápido ni sección Resumen. `/admin` redirige a Alumnos; sin sesión de administrador,
+  al salir o al expirar la sesión se vuelve al formulario único. Los endpoints heredados se
+  conservan para compatibilidad; no deben reintroducir las pantallas retiradas.
 - **Multicurso:** el alumno entra con matrícula y contraseña, sin elegir materia en el login. Si
   tiene una materia activa, entra directamente; si tiene varias, elige en tarjetas con nombre y
   logo. Puede cambiar desde la barra superior sin iniciar sesión de nuevo. El progreso, las
@@ -61,6 +67,54 @@ selección táctil, opciones vacías o deshabilitadas, y uso dentro de modales y
 La prueba de humo del despliegue comprueba API, SPA, assets, autenticación requerida y encabezados
 a través de Caddy. Estos checks no acreditan por sí solos una importación real de la hoja ni la
 entrega de correo.
+
+## Validación local del acceso único
+
+El cambio del 23 de noviembre de 2026 unifica el acceso, abre el panel directamente en
+Alumnos, agrega el ojo de las contraseñas y carga cada sección administrativa por separado.
+La restauración de rol usa `GET /api/session`, con validación completa y la configuración
+pública en paralelo. Esta evidencia corresponde al entorno local y no acredita un despliegue.
+
+Se usó PostgreSQL local en la base nueva `diseno_login_qa`, con cuentas y archivos de prueba
+propios. Playwright y Chrome comprobaron:
+
+- **17 grupos del panel:** formulario único y guardas, entrada directa sin popup, vistas
+  iniciales de Compras e Importar, validación del ID de Sheets, alta de curso con imagen,
+  alumno individual y edición, generación con duplicados y filas inválidas, insignia con
+  imagen, validación y guardado de niveles, avatar, alta de otro administrador y restricciones
+  de la propia cuenta, ajustes, deshacer/rehacer en Actividad, y una compra local con
+  reversión/restauración y comprobación de saldos. Se recorrieron las once secciones del panel
+  en escritorio; también menú, Escape/foco, selector en modal y navegación en móvil de 390 px,
+  restauración de sesión y logout.
+- **5 grupos del alumno y acceso:** ojo de contraseña y errores, alumno con una materia,
+  restauración y permisos, varias materias con selección pendiente/recarga/cambio y saldos,
+  revocación al cambiar la contraseña de origen y acceso/restauración/logout del administrador.
+- **2 regresiones del arranque:** un fallo temporal de configuración conserva el aviso de
+  nivel y no repite la consulta de sesión del alumno; una sesión admin abre el panel aunque
+  falle la petición de configuración pública.
+
+Frontend pasó `lint`, `typecheck` y `build` con Node 24.22.3. Los cinco grupos de acceso y
+las dos regresiones del arranque se ejecutaron también sobre ese build final.
+
+No hubo excepciones JavaScript ni respuestas 5xx en la QA del panel. Se revisaron capturas de
+escritorio y móvil: no hubo desbordamiento horizontal de página y las tablas conservaron su
+scroll interno. Los reportes y scripts son temporales en `/tmp/diseno-login-qa/`
+(`admin-report.json`, `student-report.json`, `boot-retry-report.json`); no hay una suite E2E
+versionada en el repositorio.
+Las capturas del panel enmascaran campos y valores que pudieran mostrar contraseñas.
+
+La comparación local de builds con las mismas dependencias redujo el módulo principal de
+`AdminApp` de 234 338 a 38 504 bytes (aproximadamente 84 %).
+Alumnos se carga aparte. Es una medida de tamaño del bundle, no de latencia ni de capacidad de
+producción.
+
+La [revisión de seguridad y alojamiento](seguridad-y-alojamiento.md) registra el alcance de la
+inspección de AWS, los refuerzos de JSON/CSRF/cabeceras y Go 1.26.11, las verificaciones locales
+y las acciones pendientes. La vista previa y las importaciones real/de medios comparten un
+turno exclusivo; su rechazo 409 y liberación ante error/cancelación se cubren con regresiones
+Go sobre Sheets simulado. No se validó una importación real de Google Sheets ni una entrega
+de correo: la QA usó un entorno sin esas credenciales externas. Tampoco se aplicaron cambios
+de infraestructura como parte de estas comprobaciones.
 
 ## Pendientes que no deben darse por terminados
 

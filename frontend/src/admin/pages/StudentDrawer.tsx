@@ -479,9 +479,10 @@ function StudentPanel({ studentId, initial, onClose, onChanged }: PanelProps) {
               >
                 <TextField
                   label="Contraseña nueva"
+                  type="password"
+                  autoComplete="new-password"
                   value={pwText}
                   onChange={(e) => setPwText(e.target.value)}
-                  autoComplete="off"
                   spellCheck={false}
                   className="flex-1"
                 />

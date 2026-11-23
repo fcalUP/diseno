@@ -1,5 +1,6 @@
 import type { PublicCourse } from '../lib/types'
 import { CustomSelect } from '../components/CustomSelect'
+import PasswordInput from '../components/PasswordInput'
 
 interface ResetModalProps {
   resetId: string
@@ -75,8 +76,10 @@ export default function ResetModal({
               value={resetCode}
               onChange={(e) => setResetCode(e.target.value)}
             />
-            <input
-              type="password"
+            <PasswordInput
+              autoComplete="new-password"
+              showLabel="Show password"
+              hideLabel="Hide password"
               className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
               placeholder={passwordHint}
               value={resetPass}

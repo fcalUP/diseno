@@ -276,6 +276,9 @@ func TestAdmLogin(t *testing.T) {
 	if cookie == nil || !cookie.HttpOnly {
 		t.Fatalf("el login no dejó la cookie de admin: %v", rec.Result().Cookies())
 	}
+	if !secCleared(rec, "diseno_alumno") {
+		t.Fatal("el login compatible no eliminó la sesión previa de alumno")
+	}
 	if rec := e.do("GET", "/api/admin/me", nil, cookie); rec.Code != http.StatusOK {
 		t.Fatalf("me con la cookie del login: %d", rec.Code)
 	}

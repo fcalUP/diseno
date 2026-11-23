@@ -33,7 +33,13 @@ Lo que conviene tener en la cabeza:
   CloudFormation como parámetro NoEcho (`OriginSecret`) para la distribución y `deploy.sh` a Caddy.
 - El 80 queda abierto para que Let's Encrypt valide el certificado de `design-origin.nexed.dev`. La
   cuenta ACME va sin correo; si quieres uno, crea `/diseno/prod/ACME_EMAIL` y vuelve a desplegar.
-- No hay SSH. Se entra con Session Manager.
+- El grupo de seguridad no permite entrada por SSH; la operación usa Session Manager.
+  El servicio `sshd` puede seguir escuchando dentro del host.
+- La plantilla de la política de peticiones de esta distribución reenvía `Sec-Fetch-Site`
+  para la comprobación CSRF adicional del API. Si se actualiza desde una plantilla anterior,
+  este encabezado requiere aplicar el cambio de CloudFormation; publicar únicamente
+  una imagen no actualiza la política. Se conservan las comprobaciones de `Origin`
+  y JSON aunque el encabezado no esté presente.
 - El WAF compartido bloquea cuerpos de más de 8 KB, curl y los navegadores sin interfaz, y le pone
   CAPTCHA a las IP de nube, incluidos los runners de GitHub. Por eso la prueba de humo corre dentro
   de la instancia y nunca a través de CloudFront.

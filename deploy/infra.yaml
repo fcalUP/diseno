@@ -404,6 +404,9 @@ Resources:
           HeaderBehavior: whitelist
           Headers:
             - Origin
+            # El API usa Fetch Metadata como defensa CSRF adicional. Solo se
+            # reenvía en esta distribución; no modifica el WAF compartido.
+            - Sec-Fetch-Site
             - Referer
             - User-Agent
             - Accept

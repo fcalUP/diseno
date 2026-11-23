@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import {
   Activity,
   Award,
   BookOpen,
   CircleUser,
-  ExternalLink,
   FileSpreadsheet,
   Images,
-  LayoutDashboard,
   LogOut,
   Menu,
   Settings,
@@ -21,7 +19,8 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { Button, IconButton, cx, focusRing, useAdmin } from './ui'
+import { errorMessage } from '../lib/api'
+import { Button, IconButton, Spinner, cx, focusRing, useAdmin, useToast } from './ui'
 
 interface NavItem {
   to: string
@@ -32,7 +31,6 @@ interface NavItem {
 
 // Mismo orden que docs/spec.md §6.3.
 const NAV: NavItem[] = [
-  { to: '/admin', label: 'Resumen', icon: LayoutDashboard, end: true },
   { to: '/admin/alumnos', label: 'Alumnos', icon: Users },
   { to: '/admin/generar', label: 'Generar alumnos', icon: UserPlus },
   { to: '/admin/avatares', label: 'Avatares', icon: Images },
@@ -54,6 +52,7 @@ function titleFor(pathname: string): string {
 
 export default function AdminLayout() {
   const { admin, logout } = useAdmin()
+  const toast = useToast()
   const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -156,19 +155,6 @@ export default function AdminLayout() {
             <CircleUser aria-hidden="true" className="h-5 w-5 text-gray-400" />
             {admin.username}
           </span>
-          <a
-            href="/"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Ver portal (se abre en otra pestaña)"
-            className={cx(
-              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50',
-              focusRing,
-            )}
-          >
-            <ExternalLink aria-hidden="true" className="h-4 w-4" />
-            <span className="hidden sm:inline">Ver portal</span>
-          </a>
           <Button
             variant="ghost"
             size="sm"
@@ -177,7 +163,10 @@ export default function AdminLayout() {
             aria-label="Cerrar sesión"
             onClick={() => {
               setLeaving(true)
-              void logout()
+              void logout().catch((error: unknown) => {
+                setLeaving(false)
+                toast.error(errorMessage(error))
+              })
             }}
           >
             <span className="hidden sm:inline">Cerrar sesión</span>
@@ -185,7 +174,9 @@ export default function AdminLayout() {
         </header>
 
         <main className="mx-auto w-full max-w-screen-2xl flex-1 p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <Suspense fallback={<div className="flex justify-center py-16"><Spinner size="lg" label="Cargando sección…" showLabel /></div>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

@@ -19,9 +19,11 @@ React + Vite + TypeScript + ESLint en `frontend/`; Go con `net/http` y `pgx/v5` 
 PostgreSQL como fuente de datos. `legacy/` conserva el sistema anterior como referencia visual
 y del formato de Sheets; no es el servidor de producción.
 
-El alumno entra con matrícula y contraseña. Una materia abre directamente; varias muestran
-tarjetas con nombre y logo. La barra permite cambiar de materia. El panel completo vive en
-`/admin`; el acceso rápido de administrador desde el portal también sigue funcionando.
+Alumnos y administradores usan el mismo formulario en `/`, con matrícula o usuario y contraseña;
+el servidor detecta el tipo de cuenta. Una materia abre directamente; varias muestran tarjetas
+con nombre y logo. La barra permite cambiar de materia. El administrador entra directamente a
+`/admin/alumnos`, sin login separado, tablero rápido ni sección Resumen. `/admin` redirige a
+Alumnos; sin sesión de administrador, vuelve al formulario único.
 
 ## Reglas que deben conservarse
 
@@ -31,6 +33,9 @@ tarjetas con nombre y logo. La barra permite cambiar de materia. El panel comple
   No reintroduzcas `<select>` visibles ni pickers con apariencia nativa. Mantén teclado,
   Escape, foco, opciones deshabilitadas y uso táctil. Los archivos se eligen mediante los
   botones y zonas de carga existentes, con el input nativo oculto.
+- Usa [PasswordInput](frontend/src/components/PasswordInput.tsx) para las contraseñas; en el
+  panel, `TextField type="password"` lo integra. Conserva el ojo para mostrar/ocultar, el
+  foco y el estado accesible sin enviar el formulario al pulsarlo.
 - La matrícula (`students.code`) identifica al alumno entre materias; `students.id` identifica
   una inscripción. No mezcles estos IDs ni monedas, compras o progreso entre inscripciones.
   Conserva la sesión anclada a la inscripción que autenticó la contraseña, su revocación y
@@ -59,7 +64,7 @@ tarjetas con nombre y logo. La barra permite cambiar de materia. El panel comple
 | Cambio | Archivos que revisar juntos |
 |---|---|
 | Petición, respuesta o ruta | `backend/internal/app/app.go`, handler correspondiente, `frontend/src/lib/types.ts`, `frontend/src/lib/api.ts`, `docs/routes_contract.md` |
-| Login, sesión o materias | `auth.go`, `student.go`, `student_courses_test.go`, `security_test.go`, `frontend/src/student/StudentApp.tsx`, `CourseSelector.tsx`, `CourseSwitcher.tsx` |
+| Login, sesión o materias | `auth.go`, `student.go`, `admin_core.go`, `student_courses_test.go`, `security_test.go`, `frontend/src/student/StudentApp.tsx`, `LoginScreen.tsx`, `frontend/src/admin/AdminApp.tsx`, `CourseSelector.tsx`, `CourseSwitcher.tsx` |
 | Panel y formularios | `frontend/src/admin/pages/`, `frontend/src/admin/ui/`, `frontend/src/components/CustomSelect.tsx`, handler y validaciones Go correspondientes |
 | Ajuste configurable | `settings.go`, validación/vista en `admin_misc.go`, tipos y página `Settings.tsx`; invalida el caché después del commit de la transacción |
 | Datos persistentes | Nueva migración numerada en `backend/internal/app/migrations/`; revisar auditoría, importador y deshacer si cambia una entidad |

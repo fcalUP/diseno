@@ -21,14 +21,14 @@ Vite sirve la interfaz y utiliza un proxy al API Go; las imágenes usan el almac
 
 | Área | Archivos que conviene abrir primero |
 |---|---|
-| Entrada React y navegación | [App.tsx](../frontend/src/App.tsx): portal en `/`, panel cargado por separado en `/admin/*`. |
+| Entrada React y navegación | [App.tsx](../frontend/src/App.tsx): formulario único y portal en `/`, panel cargado por separado en `/admin/*`, con entrada directa en `/admin/alumnos`; cada sección del panel carga su propio módulo al abrirla. |
 | Estado del portal | [StudentApp.tsx](../frontend/src/student/StudentApp.tsx), [CourseSelector.tsx](../frontend/src/student/CourseSelector.tsx), [CourseSwitcher.tsx](../frontend/src/student/CourseSwitcher.tsx). |
 | Panel y cliente HTTP | [AdminApp.tsx](../frontend/src/admin/AdminApp.tsx), [api.ts](../frontend/src/lib/api.ts), [types.ts](../frontend/src/lib/types.ts). |
 | Arranque Go | [main.go](../backend/cmd/server/main.go): configura PostgreSQL, aplica migraciones, crea el primer admin si no existe y abre HTTP. |
 | Rutas y dependencias | [app.go](../backend/internal/app/app.go): `App` reúne pool, almacenamiento, correo, cachés y limitador; `Routes()` registra el API. |
 | Sesiones y HTTP | [auth.go](../backend/internal/app/auth.go), [http.go](../backend/internal/app/http.go), [ratelimit.go](../backend/internal/app/ratelimit.go). |
 | Operaciones del alumno | [student.go](../backend/internal/app/student.go): configuración pública, login, materias, registro, recuperación, tienda y leaderboard. |
-| Administración | [admin_students.go](../backend/internal/app/admin_students.go): alumnos y generación; [admin_catalog.go](../backend/internal/app/admin_catalog.go): cursos, insignias, niveles y avatares; [admin_misc.go](../backend/internal/app/admin_misc.go): compras, ajustes, admins y subidas. El panel rápido heredado usa [admin_core.go](../backend/internal/app/admin_core.go). |
+| Administración | [admin_students.go](../backend/internal/app/admin_students.go): alumnos y generación; [admin_catalog.go](../backend/internal/app/admin_catalog.go): cursos, insignias, niveles y avatares; [admin_misc.go](../backend/internal/app/admin_misc.go): compras, ajustes, admins y subidas. [admin_core.go](../backend/internal/app/admin_core.go) conserva autenticación y endpoints compatibles con clientes anteriores. |
 | Datos externos y actividad | [sheets.go](../backend/internal/app/sheets.go), [importer.go](../backend/internal/app/importer.go), [audit.go](../backend/internal/app/audit.go), [undo.go](../backend/internal/app/undo.go). |
 
 El backend usa `net/http` y SQL mediante `pgx`; los manejadores y las reglas viven en el paquete `internal/app`, sin ORM ni capa separada de repositorios. El [Dockerfile](../Dockerfile) empaqueta el build Vite y el binario Go; [web.go](../backend/internal/app/web.go) sirve la SPA y conserva las rutas del navegador. `legacy/` conserva la aplicación anterior como referencia; no es el código que sirve la app migrada.
@@ -49,9 +49,46 @@ No cambies una matrícula reutilizándola para otra persona: la identidad multic
 
 ## Login, materia seleccionada y contraseñas
 
-`POST /api/login` recibe `{studentId, password}`; `career` sigue siendo opcional para clientes anteriores. Una contraseña válida en **cualquier inscripción activa de un curso activo** autentica la matrícula y permite listar todas sus inscripciones vigentes. Una inscripción desactivada no sirve para autenticar otras.
+El formulario de `/` es el único acceso para alumnos y administradores. `POST /api/login`
+recibe `{studentId, password}`: `studentId` admite matrícula o usuario de administrador;
+`career` sigue siendo opcional para clientes anteriores. El servidor comprueba las credenciales
+y responde con `role: "student"` o `role: "admin"`; el cliente no elige ni autoriza el rol.
+Un administrador válido abre directamente `/admin/alumnos`, sin notificación de acceso exitoso,
+tablero rápido ni sección Resumen. `/admin` redirige a Alumnos. Entrar a una ruta del panel sin
+sesión de administrador, cerrar sesión o recibir un 401 lleva al formulario de `/`.
+Si falla el cierre de sesión, el panel muestra el error y conserva la vista para evitar que
+la cookie todavía válida provoque una vuelta inmediata al panel. Se retiró el enlace *Ver
+portal*, ya que `/` restaura la sesión de administrador y abre el mismo panel.
 
-La respuesta contiene `student`, `courses`, `levelUpOccurred` y `requiresCourseSelection`. Con una materia entra directo; con varias muestra tarjetas de materia y logo. La cookie conserva la selección pendiente: recargar mediante `GET /api/me` sigue mostrando tarjetas hasta `POST /api/switch-course` con `{courseId}`. Mientras tanto no se registra la visita ni se consume la animación de nivel del primer curso. Tras elegir, `/api/me` conserva la materia seleccionada.
+Una contraseña válida en **cualquier inscripción activa de un curso activo** autentica la
+matrícula y permite listar todas sus inscripciones vigentes. Una inscripción desactivada no
+sirve para autenticar otras.
+
+La respuesta del alumno contiene `role: "student"`, `student`, `courses`, `levelUpOccurred`
+y `requiresCourseSelection`; `/api/me` y `/api/switch-course` conservan esa forma. Con una
+materia entra directo; con varias muestra tarjetas de materia y logo. La cookie conserva la
+selección pendiente: recargar mediante `GET /api/me` sigue mostrando tarjetas hasta
+`POST /api/switch-course` con `{courseId}`. Mientras tanto no se registra la visita ni se consume
+la animación de nivel del primer curso. Tras elegir, `/api/me` conserva la materia seleccionada.
+
+La respuesta de administrador es `{success: true, role: "admin", admin: {id, username}}`.
+El inicio de sesión exitoso limpia la cookie del otro rol. Al volver a `/`, una sesión de
+administrador vigente lleva al panel completo. El portal pide configuración y
+`GET /api/session` en paralelo: esta ruta restaura cualquiera de los dos roles con la misma
+validación completa de cuentas, contraseña y estado que los middlewares privados. Si hay una
+sesión admin válida tiene prioridad y limpia una cookie de alumno residual; una cookie admin
+inválida no impide restaurar una sesión alumno válida. Sin ninguna sesión válida responde 401
+y limpia ambas cookies. El cliente reutiliza el resultado autenticado al abrir el panel y
+evita repetir inmediatamente la consulta de sesión.
+Si falla la configuración pública, el reintento conserva la sesión ya restaurada del alumno
+para no consumir otra vez su aviso de nivel. Una sesión admin válida abre el panel aunque
+esa petición de configuración falle.
+
+`POST /api/admin-login` sigue disponible para clientes anteriores y comparte los límites de
+administrador con el acceso único; la interfaz ya no ofrece un formulario separado.
+Los campos de contraseña usan [PasswordInput](../frontend/src/components/PasswordInput.tsx),
+con botón de mostrar/ocultar, foco por teclado y estado accesible; los campos del panel lo
+reciben mediante `TextField` cuando `type="password"`.
 
 La cookie `diseno_alumno` es un payload firmado con HMAC-SHA256, con `HttpOnly`, `SameSite=Lax` y `Secure` según configuración. Dura 12 horas y contiene:
 
@@ -102,7 +139,18 @@ La pestaña de cada curso se resuelve con `sheet_name` y `sheet_aliases`, inclus
 
 `Badges!A:C` contiene **nombre, existencias, costo**. `Purchases!A:E` contiene **fecha, matrícula, nombre de insignia, cantidad, carrera**; E puede faltar en filas antiguas. Sin materia identificable, una compra solo se asigna si la matrícula tiene una única inscripción; si hay ambigüedad se omite con aviso. Las fechas se interpretan en `America/Mexico_City` con formatos heredados. Los números conservan el comportamiento permisivo de `parseInt` anterior y generan avisos cuando corresponde.
 
-`POST /api/admin/import/preview` simula sin escrituras dentro de una transacción de solo lectura. `/run` responde `202 {jobId}` y el panel consulta `/jobs/{jobId}` hasta `done` o `error`. Hay una importación real/media a la vez por proceso; la corrida tiene límite de diez minutos y aplica datos/auditoría en una sola transacción. Los trabajos viven en memoria: reiniciar el servidor pierde su estado de consulta, aunque los datos que llegaron a commit y su auditoría permanecen. Al iniciar nuevas corridas se depuran trabajos terminados hace más de un día.
+`POST /api/admin/import/preview` simula sin escrituras dentro de una transacción de solo lectura.
+`/run` responde `202 {jobId}` y el panel consulta `/jobs/{jobId}` hasta `done` o `error`.
+La vista previa, la importación real y la de medios comparten un único turno exclusivo por
+proceso: mientras cualquiera trabaja, otra petición devuelve 409 antes de cargar Sheets o
+las instantáneas de importación. La vista previa libera el turno también ante error,
+cancelación o pánico. Conserva su cuota de diez peticiones por minuto y administrador;
+el rechazo por turno ocupado no consume esa cuota.
+
+La corrida tiene límite de diez minutos y aplica datos/auditoría en una sola transacción.
+Los trabajos viven en memoria: reiniciar el servidor pierde su estado de consulta, aunque
+los datos que llegaron a commit y su auditoría permanecen. Al iniciar nuevas corridas se
+depuran trabajos terminados hace más de un día.
 
 Hay dos modos: `upsert` crea/actualiza y `create_only` omite registros ya existentes. Alumnos se identifican por curso/matrícula e insignias por slug. Si la contraseña importada coincide se conserva el hash; si está vacía se mantiene la del alumno existente o se genera una para el nuevo, con aviso para restablecerla y entregarla. Compras usan `source_ref` único: una huella de sus datos y ocurrencia entre filas idénticas evita duplicarlas al reimportar o reordenar filas. **Importarlas no vuelve a descontar monedas ni existencias**; sí agrega historial reversible. Editar los datos de una compra en Sheets cambia su huella y puede crear otra fila histórica: no es una sincronización bidireccional.
 
@@ -116,7 +164,15 @@ El nivel se calcula con [levels.go](../backend/internal/app/levels.go) a partir 
 
 [config.go](../backend/internal/app/config.go) lee variables de proceso: conexión PostgreSQL, secreto de sesión, URL pública/cookies/proxy, rutas web/media, almacenamiento y parámetros del SDK WAF. [settings.go](../backend/internal/app/settings.go) combina valores predeterminados con sobrescrituras de PostgreSQL; para secretos usa primero el valor guardado y después el respaldo del entorno. Las claves de Resend y la cuenta de servicio de Google se cifran con AES-256-GCM usando una clave derivada de `SESSION_SECRET`, y el API expone solo su estado de configuración. Cambiar ese secreto invalida sesiones y deja ilegibles los ajustes cifrados anteriores; hay que volver a configurarlos. No copies credenciales a documentación ni a fixtures persistentes.
 
-El middleware exige JSON en mutaciones del API, comprueba `Origin` cuando existe y agrega CSP/cabeceras de seguridad. El cuerpo del API se limita a 64 KB, pero [api.ts](../frontend/src/lib/api.ts) usa 8 KB por compatibilidad con el WAF y divide operaciones masivas. El SDK del WAF se inyecta desde Go cuando está configurado; el cliente usa su `fetch` para adjuntar el token del WAF al API propio, no a las subidas de S3. Los límites de login y los turnos bcrypt son locales al proceso; IPv6 se agrupa por `/64`.
+El middleware exige JSON en mutaciones del API, comprueba `Origin` cuando existe y rechaza
+`Sec-Fetch-Site: cross-site`. El decodificador acepta un solo valor JSON y rechaza contenido
+adicional, incluida basura o exceso de bytes después del valor. Agrega CSP con
+`object-src 'none'` y una `Permissions-Policy` que deshabilita cámara, micrófono y geolocalización.
+El cuerpo del API se limita a 64 KB, pero [api.ts](../frontend/src/lib/api.ts) usa 8 KB por
+compatibilidad con el WAF y divide operaciones masivas. El SDK del WAF se inyecta desde Go
+cuando está configurado; el cliente usa su `fetch` para adjuntar el token del WAF al API propio,
+no a las subidas de S3. Los límites de login y los turnos bcrypt son locales al proceso;
+IPv6 se agrupa por `/64`.
 
 ## Al extender el backend
 

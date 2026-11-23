@@ -96,9 +96,10 @@ func (a *App) Routes() http.Handler {
 
 	mux.HandleFunc("GET /api/health", a.handleHealth)
 
-	// Público y alumno (student.go)
+	// Acceso único y público/alumno (student.go y auth.go)
 	mux.HandleFunc("GET /api/config", a.handleConfig)
 	mux.HandleFunc("POST /api/login", a.handleLogin)
+	mux.HandleFunc("GET /api/session", a.handleSession)
 	mux.HandleFunc("GET /api/me", st(a.handleMe))
 	mux.HandleFunc("POST /api/switch-course", st(a.handleSwitchCourse))
 	mux.HandleFunc("POST /api/logout", a.handleLogout)

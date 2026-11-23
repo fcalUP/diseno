@@ -1,23 +1,22 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { lazy, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import { RefreshCw } from 'lucide-react'
 import { ADMIN_SESSION_EXPIRED, ApiError, api, errorMessage } from '../lib/api'
 import type { AdminUser } from '../lib/types'
 import AdminLayout from './AdminLayout'
-import AdminLogin from './AdminLogin'
-import Activity from './pages/Activity'
-import Admins from './pages/Admins'
-import Avatars from './pages/Avatars'
-import Badges from './pages/Badges'
-import Courses from './pages/Courses'
-import Dashboard from './pages/Dashboard'
-import GenerateStudents from './pages/GenerateStudents'
-import Import from './pages/Import'
-import Levels from './pages/Levels'
-import Purchases from './pages/Purchases'
-import Settings from './pages/Settings'
-import Students from './pages/Students'
 import { AdminContext, Button, Card, ConfirmProvider, Spinner, Toaster, type AdminSession } from './ui'
+
+const Students = lazy(() => import('./pages/Students'))
+const GenerateStudents = lazy(() => import('./pages/GenerateStudents'))
+const Avatars = lazy(() => import('./pages/Avatars'))
+const Courses = lazy(() => import('./pages/Courses'))
+const Badges = lazy(() => import('./pages/Badges'))
+const Purchases = lazy(() => import('./pages/Purchases'))
+const Levels = lazy(() => import('./pages/Levels'))
+const Import = lazy(() => import('./pages/Import'))
+const Activity = lazy(() => import('./pages/Activity'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Admins = lazy(() => import('./pages/Admins'))
 
 type Session =
   | { status: 'loading' }
@@ -29,12 +28,17 @@ function FullScreen({ children }: { children: ReactNode }) {
   return <div className="flex w-full min-h-screen self-stretch items-center justify-center p-4">{children}</div>
 }
 
-export default function AdminApp() {
-  const [session, setSession] = useState<Session>({ status: 'loading' })
+export default function AdminApp({ authenticatedAdmin, onAdminSessionChange }: {
+  authenticatedAdmin: AdminUser | null
+  onAdminSessionChange: (admin: AdminUser | null) => void
+}) {
+  const [session, setSession] = useState<Session>(() => authenticatedAdmin ? { status: 'in', admin: authenticatedAdmin } : { status: 'loading' })
   const [check, setCheck] = useState(0)
 
   // Pregunta al servidor si ya hay sesión de administrador (y otra vez con refresh).
   useEffect(() => {
+    // El login o /api/session ya revalidó la cuenta en el servidor.
+    if (authenticatedAdmin && check === 0) return
     let alive = true
     api.admin.me().then(
       ({ admin }) => {
@@ -52,14 +56,17 @@ export default function AdminApp() {
     return () => {
       alive = false
     }
-  }, [check])
+  }, [authenticatedAdmin, check])
 
   // Si cualquier llamada del panel recibe 401, la sesión expiró: de vuelta al login.
   useEffect(() => {
-    const expired = () => setSession({ status: 'out' })
+    const expired = () => {
+      onAdminSessionChange(null)
+      setSession({ status: 'out' })
+    }
     window.addEventListener(ADMIN_SESSION_EXPIRED, expired)
     return () => window.removeEventListener(ADMIN_SESSION_EXPIRED, expired)
-  }, [])
+  }, [onAdminSessionChange])
 
   // index.html dice lang="en" por el portal de alumnos; el panel está en español.
   useEffect(() => {
@@ -74,13 +81,10 @@ export default function AdminApp() {
   const refresh = useCallback(() => setCheck((n) => n + 1), [])
 
   const logout = useCallback(async () => {
-    try {
-      await api.admin.logout()
-    } catch {
-      // Aunque falle la petición, se sale del panel en este navegador.
-    }
+    await api.admin.logout()
+    onAdminSessionChange(null)
     setSession({ status: 'out' })
-  }, [])
+  }, [onAdminSessionChange])
 
   const admin = session.status === 'in' ? session.admin : null
   const ctx = useMemo<AdminSession | null>(() => (admin ? { admin, logout, refresh } : null), [admin, logout, refresh])
@@ -112,13 +116,13 @@ export default function AdminApp() {
       </FullScreen>
     )
   } else if (!ctx) {
-    content = <AdminLogin onLoggedIn={(user) => setSession({ status: 'in', admin: user })} />
+    content = <Navigate to="/" replace />
   } else {
     content = (
       <AdminContext value={ctx}>
         <Routes>
           <Route element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/admin/alumnos" replace />} />
             <Route path="alumnos" element={<Students />} />
             <Route path="generar" element={<GenerateStudents />} />
             <Route path="avatares" element={<Avatars />} />

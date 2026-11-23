@@ -10,8 +10,11 @@ pendientes; las instrucciones actuales del usuario tienen prioridad.
 
 ## 0. What the product is
 
-A gamification portal for Universidad Panamericana design courses. Students log in with
-student ID + password, then open their only course automatically or choose among enrolled
+A gamification portal for Universidad Panamericana design courses. Students and administrators
+use one login form at `/`, accepting a student ID or admin username plus password. The server
+detects the role from valid credentials. Administrators open the complete panel directly at
+`/admin/alumnos`, without a separate login, success notification, quick dashboard or Resumen
+page. Students open their only course automatically or choose among enrolled
 courses ("career" in the legacy code) shown as cards with names and logos. A navbar selector
 switches courses without logging in again. Within a course, students see their
 avatar (one image per level), level, coins, EXP bar, counters, comments, a leaderboard and a
@@ -27,7 +30,7 @@ New stack:
   **3.4** (v3 on purpose: the legacy markup uses v3-only utilities like `bg-opacity-60`; v4
   would change the look). React Router 8 (declarative mode, `import ... from "react-router"`),
   `lucide-react` icons in the admin panel and the course selection controls.
-- `backend/`: Go 1.26, stdlib `net/http` (Go 1.22+ method patterns), `pgx/v5` (pgxpool),
+- `backend/`: Go 1.26.11, stdlib `net/http` (Go 1.22+ method patterns), `pgx/v5` (pgxpool),
   `golang.org/x/crypto/bcrypt`, `golang.org/x/oauth2/google` + plain REST for Google Sheets,
   `aws-sdk-go-v2` (s3 + presign) for media. No web framework, no ORM, no codegen.
 - PostgreSQL 18. Schema in `backend/internal/app/migrations/*.sql` (embedded, applied at boot).
@@ -38,7 +41,7 @@ New stack:
 
 1. **Preserve the student-facing design.** The reference is `legacy/index.html` markup
    and Tailwind classes. The implemented exceptions requested by the user are automatic
-   course detection, course cards, the navbar switcher and custom pickers. Keep their
+   course detection, course cards, the navbar switcher, custom pickers and unified login. Keep their
    current behavior and the existing style unless a new change is requested. Section 7
    records the legacy bugs already corrected during migration.
 2. **Configuration belongs in the panel.** Active courses, side image/logo per course,
@@ -52,8 +55,9 @@ New stack:
 4. **Every JSON request body must stay under 8 KB.** The shared WAF blocks larger bodies
    for this host. The frontend chunks bulk operations (≤ 50 rows per request) and never
    uploads files through the API: files go straight to S3 with a presigned PUT.
-5. Admin panel copy is **Spanish** (Mexico). Student UI copy stays exactly as legacy
-   (mostly English). Backend error messages keep the legacy Spanish strings where they exist.
+5. Admin panel copy is **Spanish** (Mexico). Student UI copy stays as legacy (mostly English),
+   except for the requested login changes. Backend error messages keep the legacy Spanish
+   strings where they exist.
 6. Code comments in Spanish, short, written like a person (no AI filler, no emojis).
 7. Prefer the standard library and existing dependencies. Justify new dependencies against
    the requested behavior and maintainability; avoid speculative abstractions. Preserve
@@ -108,8 +112,10 @@ General:
 - Mutating requests (POST/PUT/PATCH/DELETE under `/api/`) must send
   `Content-Type: application/json` (exception: `PUT /api/uploads/local`). If an `Origin`
   header is present it must equal `PUBLIC_URL` (or be a localhost origin when
-  `PUBLIC_URL` is http://localhost...). Otherwise 403.
+  `PUBLIC_URL` is http://localhost...). `Sec-Fetch-Site: cross-site` is also rejected with 403.
 - Bodies limited to 64 KB server-side (WAF caps at 8 KB in production anyway).
+  Decode exactly one JSON value; reject trailing values or garbage and enforce the byte
+  limit through the end of the body, including trailing whitespace.
 - Sessions: HMAC-signed cookies with a password version and a source enrollment for
   multicourse login (see the routes contract). Student cookie `diseno_alumno`, admin cookie
   `diseno_admin`.
@@ -126,7 +132,8 @@ General:
 |---|---|---|---|
 | GET `/api/health` | – | – | `{ok:true}` (checks DB ping) |
 | GET `/api/config` | – | – | `PublicConfig` |
-| POST `/api/login` | – | `{studentId, password, career?}` | `LoginResponse`, sets student cookie |
+| POST `/api/login` | – | `{studentId, password, career?}` | Student response (`role:"student"`) or admin response (`role:"admin"`), sets the matching cookie and clears the other role's cookie |
+| GET `/api/session` | – | – | Restores either role with full session validation; same role-specific response as login, or 401 if neither session is valid |
 | GET `/api/me` | student | – | `LoginResponse` |
 | POST `/api/switch-course` | student | `{courseId}` | `LoginResponse`, updates selected enrollment |
 | POST `/api/logout` | – | `{}` | `{success:true}` clears cookie |
@@ -140,16 +147,31 @@ General:
 Behavior details:
 - `career` is the course **name** (what the dropdown shows). Resolve it against active
   courses; unknown/inactive → 400 `{"error":"Carrera no válida."}`.
-- Login: requires student ID and password; missing fields → 400 `ID y contraseña requeridos.`;
+- Unified login: `studentId` accepts a student code or admin username; the client sends no role.
+  Requires an identifier and password; missing fields → 400 `ID y contraseña requeridos.`;
   wrong credentials → 401; inactive matching enrollment → 403; rate limiting → 429.
+  Valid admin credentials return `{success:true, role:"admin", admin:{id,username}}` without
+  a success message and open `/admin/alumnos`. Admin login is audited. A successful login
+  clears the other role's cookie. If a code also exists as an admin username, valid active
+  admin credentials take priority; a different matching student password can still open
+  the student portal.
   An active enrollment's password authenticates the identity across all its active courses,
   even when imported passwords differ. One course opens directly; multiple courses set
   `requiresCourseSelection`. Optional legacy `career` selects an enrolled course directly.
-  Login, `/api/me` and `/api/switch-course` return `courses` plus the existing student data.
+  Student login, `/api/me` and `/api/switch-course` return `role:"student"`, `courses` and
+  the existing student data.
   Pending selection persists across reloads and does not consume a visit or level animation.
   Switching preserves the source credential and expiration, and resets course-specific UI
   state. See [the full session and rate-limit contract](routes_contract.md).
 - `/api/me` preserves the selected course and checks level-up only after a course is chosen.
+- `/api/session` checks admin and student cookies using the private routes' complete account
+  and password-version validation. A valid admin session takes priority and clears a residual
+  student cookie; an invalid admin session is cleared and can fall back to a valid student
+  session. No valid session returns 401 and clears both cookies. The portal requests config
+  and session concurrently and passes the validated admin result to the panel to avoid an
+  immediate extra session request. Retrying failed public config reuses a restored student
+  session so the level-up notification is preserved; an admin session can open the panel
+  even when public config fails.
 - Register: validates trimmed `id`, `name`, `sexo`, `password` against the
   `passwordPattern` setting, course active. Disabled → 403 `El registro está cerrado.`
   Invalid → 400 legacy text `Datos inválidos o incompletos. Contraseña debe ser 4 HEX
@@ -180,7 +202,11 @@ Behavior details:
   `badges` = sum of non-reverted purchase quantities. Disabled → 403
   `El leaderboard está desactivado.` Do not expose student codes.
 
-### 4.2 Admin auth and legacy quick dashboard
+### 4.2 Admin session and compatible legacy endpoints
+
+The interface uses the unified login from §4.1. `/api/admin-login` and
+`/api/admin/update-student-data` remain available for older clients; their continued API
+support does not restore a separate admin login or quick dashboard in the current UI.
 
 | Method & path | Request | Response |
 |---|---|---|
@@ -192,7 +218,8 @@ Behavior details:
 
 - Admin login limits: 10 attempts/15 min per (username, network), 100/15 min per username,
   30/15 min per network. Success clears the matching username/network counter; see
-  routes_contract.md.
+  routes_contract.md. Both login endpoints share these admin counters when checking an
+  existing admin account. Student-only identifiers do not consume the admin network quota.
 - On boot, if `admins` is empty, create `ADMIN_USERNAME` (default `Admin`) with
   `ADMIN_PASSWORD`; if that env is empty generate a random one and log it once.
   Production Compose requires a supplied `ADMIN_PASSWORD`; existing accounts are never
@@ -255,7 +282,7 @@ Purchases, settings, admins, uploads, stats
   `/media/u/` urls they confirm the object exists via `Storage.Stat`.
 - `PUT /api/uploads/local?token=` (local driver only, not under `/api/admin`, token is the
   auth) stores the raw body.
-- `GET stats` → `AdminStats`.
+- `GET stats` → `AdminStats` (retained for compatibility; the panel has no Resumen page).
 
 Activity log
 - `GET audit?entity=&q=&actorType=&batchId=&limit=&beforeId=` → `{entries, nextBeforeId}`.
@@ -270,6 +297,10 @@ Import
 - `POST import/run {spreadsheetId?, credentialsJson?, include, mode}` → 202
   `{jobId}`; `GET import/jobs/{jobId}` → `ImportJob`. One job at a time (409 otherwise).
 - `POST import/media` → `{media, warnings, batchId}`.
+- Preview, run and media import share one exclusive process slot. A concurrent request
+  returns 409 before loading Sheets or import snapshots. Preview remains read-only and
+  releases the slot on success, error, cancellation or panic. Its 10/minute per-admin quota
+  is retained; rejection because the slot is busy does not consume it.
 
 ## 5. Backend internals
 
@@ -307,7 +338,8 @@ security headers (`X-Content-Type-Options: nosniff`, `Referrer-Policy:
 strict-origin-when-cross-origin`, `X-Frame-Options: DENY`, CSP below) → body limit →
 CSRF/origin check for /api mutations → mux.
 CSP is built in `http.go` from the application's own origin, Google Fonts, the configured
-upload origin and the optional WAF SDK origin. Keep the SDK's script and connection domains
+upload origin and the optional WAF SDK origin, with `object-src 'none'`. The response also
+sets `Permissions-Policy: camera=(), microphone=(), geolocation=()`. Keep the SDK's script and connection domains
 working; do not relax CSP broadly to fix a broken resource.
 
 ### 5.5 Static serving (web.go)
@@ -354,7 +386,7 @@ export class ApiError extends Error { status: number; data: unknown }
 export async function apiGet<T>(path: string): Promise<T>
 export async function apiSend<T>(method: 'POST'|'PUT'|'PATCH'|'DELETE', path: string, body?: unknown): Promise<T>
 export async function uploadImage(file: File): Promise<string>  // returns /media/... url
-export const api = { config(), login(b), me(), switchCourse(courseId), logout(), register(b), sendResetCode(b),
+export const api = { config(), login(b), session(), me(), switchCourse(courseId), logout(), register(b), sendResetCode(b),
   resetPassword(b), badges(career), purchase(b), leaderboard(), admin: { login(b), logout(),
   me(), ...one method per admin endpoint } }
 ```
@@ -380,12 +412,23 @@ header, row selection with checkboxes, empty state, responsive horizontal scroll
 Hooks: `useAsync(fn, deps)` → `{data, error, loading, reload}`, `useUndo()` →
 `(ref: {auditId?: number; batchId?: string}) => Promise<boolean>` that calls the audit
 undo endpoint and toasts the result (handles 409 by asking to force).
+`PasswordInput` is shared by the portal and `TextField type="password"`: passwords start
+hidden, and a keyboard-accessible eye button toggles visibility without submitting the form.
+It exposes `aria-pressed` and `aria-controls`; portal button labels stay in English and panel
+labels in Spanish.
 
 ### 6.3 Admin pages (Spanish)
-Sidebar order: Resumen, Alumnos, Generar alumnos, Avatares, Cursos, Insignias, Compras,
+The panel opens directly at `/admin/alumnos`; `/admin` redirects there. Without an admin
+session, panel routes return to the shared login at `/`; logout and session expiry do the
+same. Returning to `/` with a valid admin session opens the complete panel. A failed logout
+keeps the panel open and shows the error so a still-valid cookie does not cause a redirect loop.
+There is no separate admin form, quick dashboard, Resumen section or "Ver portal" link.
+Each admin section uses a lazy module, so opening Alumnos does not download every settings,
+catalog, import and audit page at once.
+
+Sidebar order: Alumnos, Generar alumnos, Avatares, Cursos, Insignias, Compras,
 Niveles, Importar, Actividad, Ajustes, Administradores. Every list has search/filters,
 toggles for `active`, and auditable mutations offer "Deshacer" where supported.
-- Resumen: KPIs, per-course table, low stock badges, recent activity with undo.
 - Alumnos: course tabs/filter, search, active filter, table (avatar thumb, ID, nombre, nivel,
   EXP, monedas, tareas, asistencias, juegos, insignias, activo toggle, acciones), row click
   opens `StudentDrawer` (all fields incl. comentarios, curso, sexo, correo; avatar slots per

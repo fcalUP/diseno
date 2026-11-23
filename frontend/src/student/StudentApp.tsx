@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { ApiError, api } from '../lib/api'
+import { useNavigate } from 'react-router'
+import { api } from '../lib/api'
 import { calcLevel, getLevelProgress } from '../lib/level'
 import type {
-  AdminStudent,
+  AdminUser,
   LeaderboardRow,
   LoginResponse,
   PublicConfig,
@@ -10,8 +11,6 @@ import type {
   StoreBadge,
   Student,
 } from '../lib/types'
-import AdminDashboard from './AdminDashboard'
-import AdminLoginModal from './AdminLoginModal'
 import LeaderboardModal from './LeaderboardModal'
 import LoginScreen from './LoginScreen'
 import RegisterModal from './RegisterModal'
@@ -26,42 +25,68 @@ interface Boot {
   session: LoginResponse | null
 }
 
+interface SessionProps {
+  onAdminSessionChange: (admin: AdminUser | null) => void
+}
+
 // Portal de alumnos: la interfaz de siempre, ahora con datos del API. No pinta nada hasta
 // tener la configuración; si ya había sesión abierta, entra directo como con el login.
-export default function StudentApp() {
+export default function StudentApp({ onAdminSessionChange }: SessionProps) {
   const [boot, setBoot] = useState<Boot | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     let alive = true
     let retry: number | undefined
-    const load = () => {
-      api
-        .config()
-        .then(async (config) => {
-          if (config.error !== undefined) throw new Error(config.error)
-          // /api/me registra la subida de nivel; si el efecto ya se limpió no se llama.
-          if (!alive) return
-          const me = await api.me().catch(() => null)
-          if (alive) setBoot({ config, session: me?.success ? me : null })
-        })
-        .catch((e: unknown) => {
-          // Sin configuración no hay qué mostrar: se reintenta en unos segundos.
-          console.error(e)
-          if (alive) retry = window.setTimeout(load, 5000)
-        })
+    let restoredSession: Awaited<ReturnType<typeof api.session>> | undefined
+    const load = async () => {
+      try {
+        // Configuración y sesión se piden juntas para evitar esperas de red en serie.
+        const configRequest = api.config().then(
+          (value) => ({ ok: true as const, value }),
+          (error: unknown) => ({ ok: false as const, error }),
+        )
+        const session = restoredSession ?? await api.session()
+        if (!alive) return
+        // Una falla de configuración no debe consumir de nuevo la animación del
+        // alumno ni impedir que una sesión admin válida abra su panel.
+        if (session.success) restoredSession = session
+        if (session.success && session.role === 'admin') {
+          onAdminSessionChange(session.admin)
+          navigate('/admin/alumnos', { replace: true })
+          return
+        }
+        const configResult = await configRequest
+        if (!alive) return
+        if (!configResult.ok) throw configResult.error
+        const config = configResult.value
+        onAdminSessionChange(null)
+        if (config.error !== undefined) throw new Error(config.error)
+        setBoot({ config, session: session.success ? session : null })
+      } catch (e: unknown) {
+        // Sin configuración no hay qué mostrar: se reintenta en unos segundos.
+        console.error(e)
+        if (alive) retry = window.setTimeout(load, 5000)
+      }
     }
     load()
     return () => {
       alive = false
       window.clearTimeout(retry)
     }
-  }, [])
+  }, [navigate, onAdminSessionChange])
 
-  if (!boot) return null
-  return <Portal config={boot.config} session={boot.session} />
+  if (!boot) return (
+    <div role="status" className="flex min-h-screen w-full items-center justify-center">
+      <span className="h-10 w-10 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
+      <span className="sr-only">Cargando…</span>
+    </div>
+  )
+  return <Portal config={boot.config} session={boot.session} onAdminSessionChange={onAdminSessionChange} />
 }
 
-function Portal({ config, session }: Boot) {
+function Portal({ config, session, onAdminSessionChange }: Boot & SessionProps) {
+  const navigate = useNavigate()
   const { courses, features, levels } = config
   const firstCourse = courses[0]?.name ?? ''
   // Sin GIF configurado no hay animación que mostrar.
@@ -114,11 +139,6 @@ function Portal({ config, session }: Boot) {
   const [courseError, setCourseError] = useState('')
   const [buying, setBuying] = useState(false)
 
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
-  const [showAdminLoginModal, setShowAdminLoginModal] = useState(false)
-  const [adminStudentsData, setAdminStudentsData] = useState<AdminStudent[]>([])
-  const [showAdminDashboard, setShowAdminDashboard] = useState(false)
-
   // Evita mandar la misma compra dos veces con un doble clic.
   const buyingRef = useRef(false)
   const loggingInRef = useRef(false)
@@ -143,6 +163,12 @@ function Portal({ config, session }: Boot) {
     loggingInRef.current = false
     setLoggingIn(false)
     if (data.success) {
+      setPassword('')
+      if (data.role === 'admin') {
+        onAdminSessionChange(data.admin)
+        navigate('/admin/alumnos', { replace: true })
+        return
+      }
       courseEpoch.current += 1
       setStudentData(withLevel(data.student))
       setAvailableCourses(data.courses)
@@ -150,7 +176,6 @@ function Portal({ config, session }: Boot) {
       setCanReturnToCourse(false)
       setCourseError('')
       setIsLoggedIn(true)
-      setPassword('')
       if (data.requiresCourseSelection) pendingLevelUp.current = data.levelUpOccurred ? data.student.career : null
       else if (data.levelUpOccurred && levelUpGif) setShowLevelUpGif(true)
     } else {
@@ -227,10 +252,6 @@ function Portal({ config, session }: Boot) {
     setShowLevelUpGif(false)
     setSelectedCareer(firstCourse)
     setRegisterCareer(firstCourse)
-    setIsAdminLoggedIn(false)
-    setShowAdminLoginModal(false)
-    setAdminStudentsData([])
-    setShowAdminDashboard(false)
   }
 
   const handleLogout = async () => {
@@ -365,41 +386,9 @@ function Portal({ config, session }: Boot) {
     }
   }
 
-  const fetchAdminStudentsData = async (career: string) => {
-    try {
-      const data = await api.admin.students({ career })
-      setAdminStudentsData(data.students)
-    } catch (error) {
-      if (error instanceof ApiError) {
-        alert(error.message)
-      } else {
-        console.error('Error fetching admin student data:', error)
-        alert('Error loading student data for administrator.')
-      }
-      setAdminStudentsData([])
-    }
-  }
-
-  const handleAdminLoginSuccess = async (career: string) => {
-    setIsAdminLoggedIn(true)
-    await fetchAdminStudentsData(career)
-    setShowAdminDashboard(true)
-    setShowAdminLoginModal(false)
-  }
-
-  // La X del panel rápido cierra la sesión de administrador y deja todo como al inicio.
-  const handleAdminClose = async () => {
-    try {
-      await api.admin.logout()
-    } catch {
-      // Aunque falle la petición, el panel se cierra en este navegador.
-    }
-    resetState()
-  }
-
   return (
     <>
-      {isAdminLoggedIn ? null : isLoggedIn && studentData && showCourseSelection ? (
+      {isLoggedIn && studentData && showCourseSelection ? (
         <CourseSelector
           courses={availableCourses}
           studentName={studentData.name}
@@ -440,7 +429,6 @@ function Portal({ config, session }: Boot) {
           error={loginError}
           setShowRegister={setShowRegister}
           setShowReset={setShowReset}
-          setShowAdminLoginModal={setShowAdminLoginModal}
         />
       )}
 
@@ -503,25 +491,6 @@ function Portal({ config, session }: Boot) {
         />
       )}
 
-      <AdminLoginModal
-        show={showAdminLoginModal}
-        onClose={() => setShowAdminLoginModal(false)}
-        onAdminLoginSuccess={handleAdminLoginSuccess}
-        selectedCareer={selectedCareer}
-        courses={courses}
-        setSelectedCareer={setSelectedCareer}
-      />
-
-      {showAdminDashboard && (
-        <AdminDashboard
-          onClose={handleAdminClose}
-          studentsData={adminStudentsData}
-          setStudentsData={setAdminStudentsData}
-          selectedCareer={selectedCareer}
-          levels={levels}
-          onRefreshStudents={fetchAdminStudentsData}
-        />
-      )}
     </>
   )
 }

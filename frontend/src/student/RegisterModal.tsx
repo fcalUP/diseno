@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CustomSelect } from '../components/CustomSelect'
+import PasswordInput from '../components/PasswordInput'
 import { api, errorMessage } from '../lib/api'
 import type { PublicConfig } from '../lib/types'
 
@@ -98,8 +99,10 @@ export default function RegisterModal({
           ))}
         </CustomSelect>
 
-        <input
-          type="password"
+        <PasswordInput
+          autoComplete="new-password"
+          showLabel="Show password"
+          hideLabel="Hide password"
           className="w-full border p-3 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 transition-all duration-300"
           placeholder={passwordHint}
           id="reg-pass"

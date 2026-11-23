@@ -10,7 +10,7 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26-alpine AS api
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.26.11-alpine AS api
 ARG TARGETOS TARGETARCH
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./

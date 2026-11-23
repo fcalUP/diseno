@@ -8,6 +8,10 @@ desde un panel.
 El alumno entra con matrícula y contraseña, sin elegir materia. Si tiene varias inscripciones,
 elige una desde tarjetas con nombre y logo; después puede cambiar de materia desde la barra
 superior. Las monedas, actividades, compras y progreso corresponden a la materia abierta.
+Alumnos y administradores usan el mismo formulario en `/`: matrícula o usuario y contraseña.
+El servidor detecta la cuenta y lleva al administrador directamente a *Alumnos* en el panel
+completo, sin un aviso de acceso exitoso ni una pantalla de resumen.
+Los campos de contraseña permiten mostrarla u ocultarla con el botón del ojo.
 Los selectores del portal y del panel son personalizados, con navegación por teclado y móvil.
 
 Antes los datos vivían en un Google Sheets y el servidor leía y escribía directo en la hoja. Ahora
@@ -25,6 +29,7 @@ Empieza por [AGENTS.md](AGENTS.md). Estas memorias están versionadas con el pro
 | [Arquitectura y flujos](docs/arquitectura.md) | Para entender datos, sesiones, materias, imágenes, tienda e importaciones. |
 | [Validación](docs/validacion.md) | Para levantar el entorno, elegir pruebas y revisar los flujos afectados. |
 | [Estado y decisiones](docs/estado-y-decisiones.md) | Para retomar el trabajo sin perder decisiones del producto ni confundir estado histórico con estado actual. |
+| [Seguridad y alojamiento](docs/seguridad-y-alojamiento.md) | Para conocer el alcance de la inspección de AWS, los refuerzos locales y las acciones operativas pendientes. |
 | [Contrato HTTP](docs/routes_contract.md) | Al modificar rutas, permisos, cuerpos JSON o respuestas. |
 | [Especificación funcional](docs/spec.md) | Como referencia de comportamiento y del panel. |
 | [Operación en AWS](deploy/README.md) | Para despliegues, secretos, respaldos, diagnóstico y recuperación. |
@@ -64,8 +69,8 @@ Nada de esto requiere tocar código:
   rehacer, uno por uno o en lote (por ejemplo, una importación completa).
 - **Administradores**: alta, baja, contraseñas.
 
-El enlace *Administrator* del login sigue abriendo el panel rápido de siempre, con un acceso al
-panel completo.
+El panel abre en `/admin/alumnos`; `/admin` redirige a esa sección. Si no hay sesión de
+administrador, vuelve al formulario único del portal. Cerrar sesión también regresa al inicio.
 
 ## Importar desde Google Sheets
 
@@ -83,7 +88,7 @@ desde *Actividad*.
 
 ## Desarrollo local
 
-Hace falta Go 1.26, Node 24 y Docker (o un Postgres propio).
+Hace falta Go 1.26.11, Node 24 y Docker (o un Postgres propio).
 
 ```sh
 docker compose up -d                      # Postgres 18 en 127.0.0.1:5433

@@ -65,7 +65,7 @@ export default function Students() {
   const students = studentsQ.data?.students ?? NO_STUDENTS
   const courses = useMemo(() => sortCourses(coursesQ.data?.courses ?? []), [coursesQ.data])
 
-  // El curso va en la URL (?curso=ID) para que el Resumen pueda enlazar aquí ya filtrado.
+  // El curso va en la URL (?curso=ID) para conservar y compartir el filtro.
   const wanted = Number(params.get('curso'))
   const courseId =
     Number.isInteger(wanted) && wanted > 0 && (!coursesQ.data || courses.some((c) => c.id === wanted)) ? wanted : null

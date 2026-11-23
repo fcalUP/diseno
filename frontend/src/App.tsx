@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import StudentApp from './student/StudentApp'
+import type { AdminUser } from './lib/types'
 
 // El panel va en su propio chunk: los alumnos nunca descargan su código.
 const AdminApp = lazy(() => import('./admin/AdminApp'))
@@ -15,6 +16,7 @@ function Loading() {
 }
 
 export default function App() {
+  const [admin, setAdmin] = useState<AdminUser | null>(null)
   return (
     <BrowserRouter>
       <Routes>
@@ -22,11 +24,11 @@ export default function App() {
           path="/admin/*"
           element={
             <Suspense fallback={<Loading />}>
-              <AdminApp />
+              <AdminApp authenticatedAdmin={admin} onAdminSessionChange={setAdmin} />
             </Suspense>
           }
         />
-        <Route path="*" element={<StudentApp />} />
+        <Route path="*" element={<StudentApp onAdminSessionChange={setAdmin} />} />
       </Routes>
     </BrowserRouter>
   )

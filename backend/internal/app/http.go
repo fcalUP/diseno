@@ -22,12 +22,22 @@ const (
 	localUploadURL = "/api/uploads/local"
 )
 
-// decodeJSON lee el cuerpo en dst. Un cuerpo vacío cuenta como {}.
+// decodeJSON lee un único valor JSON en dst. Un cuerpo vacío cuenta como {}.
 // Si falla ya respondió 400 (o 413) y devuelve false.
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
-	err := json.NewDecoder(r.Body).Decode(dst)
-	if err == nil || errors.Is(err, io.EOF) {
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(dst)
+	if errors.Is(err, io.EOF) {
 		return true
+	}
+	if err == nil {
+		// Decode acepta streams: leer hasta EOF evita ignorar otro valor o basura
+		// después del primero y comprueba el límite también en los espacios finales.
+		var extra json.RawMessage
+		err = decoder.Decode(&extra)
+		if errors.Is(err, io.EOF) {
+			return true
+		}
 	}
 	var tooBig *http.MaxBytesError
 	if errors.As(err, &tooBig) {
@@ -195,7 +205,7 @@ func (a *App) csp() string {
 		"img-src 'self' data: blob:; " +
 		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
 		"font-src https://fonts.gstatic.com; connect-src " + connect + "; " +
-		"frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		"object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 }
 
 func securityHeaders(csp string, next http.Handler) http.Handler {
@@ -205,6 +215,7 @@ func securityHeaders(csp string, next http.Handler) http.Handler {
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Content-Security-Policy", csp)
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -224,7 +235,9 @@ func limitBody(next http.Handler) http.Handler {
 	})
 }
 
-// csrfCheck: toda mutación del API exige JSON y, si trae Origin, que sea el nuestro.
+// csrfCheck: toda mutación del API rechaza solicitudes cross-site del navegador,
+// exige JSON y, si trae Origin, que sea el nuestro. Los clientes sin Fetch Metadata
+// conservan las comprobaciones de Content-Type y Origin.
 func (a *App) csrfCheck(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -235,6 +248,10 @@ func (a *App) csrfCheck(next http.Handler) http.Handler {
 		}
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
 			next.ServeHTTP(w, r)
+			return
+		}
+		if strings.EqualFold(r.Header.Get("Sec-Fetch-Site"), "cross-site") {
+			writeError(w, http.StatusForbidden, "Origen no permitido.")
 			return
 		}
 		if !isLocalUpload(r) {

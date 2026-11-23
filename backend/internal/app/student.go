@@ -177,6 +177,7 @@ type stuStudentJSON struct {
 
 type stuLoginJSON struct {
 	Success                 bool              `json:"success"`
+	Role                    string            `json:"role"`
 	Student                 stuStudentJSON    `json:"student"`
 	LevelUpOccurred         bool              `json:"levelUpOccurred"`
 	Courses                 []stuPublicCourse `json:"courses"`
@@ -364,7 +365,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code, pw := strings.TrimSpace(req.StudentID), strings.TrimSpace(req.Password)
-	if code == "" || pw == "" {
+	if code == "" || req.Password == "" {
 		writeError(w, http.StatusBadRequest, "ID y contraseña requeridos.")
 		return
 	}
@@ -374,6 +375,35 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	// El identificador también puede ser un usuario de administrador. Se
+	// comprueba su contraseña exacta, sin aplicar el trim heredado de alumnos.
+	// Solo una cuenta de admin existente consume sus límites: una clase de
+	// alumnos conserva el cupo de red propio del portal.
+	admin, err := a.admLoginAccount(ctx, code)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		a.stuInternal(w, "login: buscar administrador", err)
+		return
+	}
+	var inactiveAdmin bool
+	if err == nil {
+		userKey, ok := a.admAllowLogin(w, r, code)
+		if !ok {
+			return
+		}
+		var good bool
+		if !a.publicBcrypt(w, r, func() { good = checkPassword(admin.Hash, req.Password) }) {
+			return
+		}
+		if good && admin.Active {
+			a.admFinishLogin(w, r, admin, code, userKey, false)
+			return
+		}
+		inactiveAdmin = good && !admin.Active
+	}
+	if pw == "" && !inactiveAdmin {
+		writeError(w, http.StatusBadRequest, "ID y contraseña requeridos.")
+		return
+	}
 	var courseID int64
 	if strings.TrimSpace(req.Career) != "" {
 		id, ok, err := a.stuCourseID(ctx, req.Career)
@@ -406,7 +436,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var auth, selected *stuEnrollment
 	var inactiveMatch bool
 	if !a.publicBcrypt(w, r, func() {
-		if len(enrollments) == 0 {
+		if len(enrollments) == 0 && admin.ID == 0 {
 			checkPassword("", pw) // mismo costo para matrículas inexistentes
 		}
 		for i := range enrollments {
@@ -426,6 +456,10 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if auth == nil {
+		if inactiveAdmin {
+			writeError(w, http.StatusForbidden, "Tu cuenta de administrador está desactivada.")
+			return
+		}
 		if inactiveMatch {
 			writeError(w, http.StatusForbidden, stuMsgInactive)
 			return
@@ -453,7 +487,8 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	a.writeSession(w, Session{Kind: kindStudent, ID: selected.ID, AuthID: auth.ID, Code: code,
 		Exp: time.Now().Add(sessionTTL).Unix(), PwV: a.pwVersion(auth.Hash), SelectPending: pending})
-	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Student: st, LevelUpOccurred: levelUp,
+	a.clearSession(w, kindAdmin)
+	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Role: "student", Student: st, LevelUpOccurred: levelUp,
 		Courses: courses, RequiresCourseSelection: pending})
 }
 
@@ -475,7 +510,7 @@ func (a *App) handleMe(w http.ResponseWriter, r *http.Request, studentID int64) 
 		a.stuInternal(w, "me: materias", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Student: st, LevelUpOccurred: levelUp,
+	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Role: "student", Student: st, LevelUpOccurred: levelUp,
 		Courses: courses, RequiresCourseSelection: s.SelectPending})
 }
 
@@ -520,7 +555,7 @@ func (a *App) handleSwitchCourse(w http.ResponseWriter, r *http.Request, student
 	}
 	s.ID, s.Code, s.SelectPending = id, st.ID, false
 	a.writeSession(w, s) // conserva vencimiento y credencial de origen
-	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Student: st, LevelUpOccurred: levelUp, Courses: courses})
+	writeJSON(w, http.StatusOK, stuLoginJSON{Success: true, Role: "student", Student: st, LevelUpOccurred: levelUp, Courses: courses})
 }
 
 func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {

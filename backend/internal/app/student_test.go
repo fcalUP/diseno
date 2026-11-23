@@ -260,7 +260,7 @@ func TestStuLogin(t *testing.T) {
 
 	rec := e.loginReq(stuTAR, " A001 ", "AB12")
 	body := e.want(rec, http.StatusOK, "")
-	stuKeys(t, body, "success", "student", "levelUpOccurred", "courses", "requiresCourseSelection")
+	stuKeys(t, body, "success", "role", "student", "levelUpOccurred", "courses", "requiresCourseSelection")
 	var cookie *http.Cookie
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == "diseno_alumno" {
@@ -271,7 +271,7 @@ func TestStuLogin(t *testing.T) {
 		t.Fatalf("cookie: %+v", cookie)
 	}
 	// Con 12 de EXP es nivel 1 y nunca había entrado: toca animación.
-	if body["success"] != true || body["levelUpOccurred"] != true {
+	if body["success"] != true || body["role"] != "student" || body["levelUpOccurred"] != true {
 		t.Fatalf("login: %v", body)
 	}
 	st := stuKeys(t, body["student"], "id", "name", "sexo", "email", "career", "monedas", "tareas",
@@ -395,8 +395,8 @@ func TestStuMeAndLogout(t *testing.T) {
 	var before, after time.Time
 	e.scan("select last_login_at from students where id = $1", []any{id}, &before)
 	me := e.want(e.call("GET", "/api/me", nil, cookie), http.StatusOK, "")
-	stuKeys(t, me, "success", "student", "levelUpOccurred", "courses", "requiresCourseSelection")
-	if me["success"] != true || !reflect.DeepEqual(me["student"], login["student"]) {
+	stuKeys(t, me, "success", "role", "student", "levelUpOccurred", "courses", "requiresCourseSelection")
+	if me["success"] != true || me["role"] != "student" || !reflect.DeepEqual(me["student"], login["student"]) {
 		t.Fatalf("/api/me: %v\nlogin: %v", me, login)
 	}
 	// Recargar no cuenta como entrar.
